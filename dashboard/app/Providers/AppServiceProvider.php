@@ -43,5 +43,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('players.mute', fn (User $user) => $user->isAdmin() || $user->role === 'moderator');
         Gate::define('economy.manage', fn (User $user) => $user->isAdmin());
         Gate::define('console.run', fn (User $user) => $user->isAdmin());
+
+        // Managing the MOD's own dashboard accounts (UserManagementEndpoint) is
+        // admin-only on the mod side too — mirror that restriction here so a
+        // moderator never even sees the option in this app, rather than letting
+        // them hit it and get a 403 back from the mod itself.
+        Gate::define('mod-users.manage', fn (User $user) => $user->isAdmin());
     }
 }

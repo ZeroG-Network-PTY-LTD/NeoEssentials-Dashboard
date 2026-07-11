@@ -49,3 +49,49 @@ export interface LogEntry {
   username: string;
   message: string;
 }
+
+/**
+ * Matches KitsEndpoint's kitJson exactly — the mod's kit dashboard API is
+ * read-only (list/stats/single-view only), no item contents/cost are
+ * exposed, and there's no create/update/delete/give route.
+ */
+export interface Kit {
+  name: string;
+  displayName: string;
+  description: string;
+  enabled: boolean;
+  permission: string | null;
+  cooldownMs: number;
+  cooldownDisplay: string;
+  maxUses: number;
+  itemCount: number;
+}
+
+export interface KitStats {
+  total: number;
+  enabled: number;
+  withPermission: number;
+  withCooldown: number;
+  withUsageLimit: number;
+}
+
+/** Mod dashboard account role — distinct from this app's own admin/moderator. */
+export type ModUserRole = 'ADMIN' | 'MODERATOR' | 'VIEWER';
+
+export interface ModUser {
+  id: string;
+  username: string;
+  email?: string;
+  role: ModUserRole;
+  enabled: boolean;
+  [key: string]: unknown;
+}
+
+export interface ModUserSession {
+  sessionId: string;
+  username: string;
+  role: ModUserRole;
+  ipAddress: string;
+  createdAt: number;
+  lastAccessAt: number;
+}

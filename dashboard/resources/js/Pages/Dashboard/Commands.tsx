@@ -1,10 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import type { Warp } from '@/types/minecraft';
-
-interface Props {
-  warps: Warp[];
-}
 
 const QUICK_COMMANDS = [
   'time set day',
@@ -13,7 +8,7 @@ const QUICK_COMMANDS = [
   'weather rain',
 ];
 
-export default function Commands({ warps }: Props) {
+export default function Commands() {
   const { data, setData, post, processing, recentlySuccessful } = useForm({ command: '' });
 
   const submit = (e: React.FormEvent) => {
@@ -62,28 +57,6 @@ export default function Commands({ warps }: Props) {
           ))}
         </div>
       </form>
-
-      <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-          Warps
-        </div>
-        {warps.map((w) => (
-          <div
-            key={w.name}
-            className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]"
-          >
-            <span className="flex-1">{w.name}</span>
-            <span className="font-data text-[12px] text-[var(--mc-text-muted)]">
-              {w.x.toFixed(0)}, {w.y.toFixed(0)}, {w.z.toFixed(0)} · {w.dimension}
-            </span>
-          </div>
-        ))}
-        {warps.length === 0 && (
-          <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
-            No warps set yet.
-          </div>
-        )}
-      </div>
     </DashboardLayout>
   );
 }

@@ -19,6 +19,7 @@ class DashboardGatesTest extends TestCase
         $this->assertTrue($admin->can('players.mute'));
         $this->assertTrue($admin->can('economy.manage'));
         $this->assertTrue($admin->can('console.run'));
+        $this->assertTrue($admin->can('mod-users.manage'));
     }
 
     public function test_moderator_can_only_mute(): void
@@ -30,5 +31,6 @@ class DashboardGatesTest extends TestCase
         $this->assertTrue($moderator->can('players.mute'));
         $this->assertFalse($moderator->can('economy.manage'));
         $this->assertFalse($moderator->can('console.run'));
+        $this->assertFalse($moderator->can('mod-users.manage'));
     }
 }

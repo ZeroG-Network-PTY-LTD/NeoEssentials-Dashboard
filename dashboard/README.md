@@ -85,22 +85,35 @@ until someone builds it for real.
 
 ## What's implemented vs. what's still missing
 
-Implemented (ported from the original in-mod-repo scaffold):
-- Overview, Players, Economy, Commands, Logs pages
+Implemented:
+- Overview, Players, Economy, Commands, Logs pages (ported from the original
+  in-mod-repo scaffold)
+- Warps (full CRUD — the mod's `/api/warps` imposes no admin requirement
+  beyond being logged in, so any moderator/admin here can manage them)
+- Kits (read-only — the mod's `KitsEndpoint` has no create/update/delete/give
+  routes, only list/stats/single-view; kit configuration still happens
+  in-game or via `kits.json`)
+- Mod dashboard account management (`/dashboard/users` — admin-only, both in
+  this app and on the mod side: create/delete accounts, change role, reset
+  password, enable/disable, view + revoke active sessions). This manages
+  logins for the **mod's own** embedded dashboard, including the service
+  account this app itself authenticates as — distinct from this app's own
+  `admin`/`moderator` accounts.
 - Full auth (login/register/password reset/email verification) via Breeze
 - `MinecraftApiService` — the actual integration layer calling the mod's API
+- Authorization (see "Roles and permissions" above) — the `can:*` gates every
+  route above references are defined and tested
 
 Not yet implemented — the mod's dashboard API supports all of these, but no
 frontend page exists here yet:
-- Permissions / user management
-- Kits
-- Holograms
-- Backups / cloud storage
-- Warps / homes management UI
-- Discord account linking status
-
-Authorization is now wired up (see "Roles and permissions" below) — the
-`can:*` gates the ported routes reference are defined and tested.
+- Permissions — group/user permission node management (`PermissionEndpoint`)
+- Holograms — full CRUD exists mod-side (`HologramEndpoint`), no page yet
+- Backups / cloud storage (`BackupEndpoint`, `CloudStorageEndpoint`)
+- Discord account-linking configuration (`DiscordEndpoint`) — note this is
+  admin *configuration* of the linking feature, not a per-user "link my
+  Discord" flow (that lives elsewhere in the mod, outside this endpoint)
+- Homes — the mod's dashboard API only exposes a read-only per-player homes
+  lookup (`MinecraftApiService::homes()`), no home management UI yet
 
 ## Known rough edges
 

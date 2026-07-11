@@ -16,9 +16,7 @@ class ConsoleController extends Controller
 
     public function commands(): Response
     {
-        return Inertia::render('Dashboard/Commands', [
-            'warps' => $this->mc->warps(),
-        ]);
+        return Inertia::render('Dashboard/Commands');
     }
 
     public function runCommand(Request $request): RedirectResponse

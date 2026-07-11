@@ -3,8 +3,11 @@
 use App\Http\Controllers\ConsoleController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EconomyController;
+use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\WarpsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -25,10 +28,9 @@ Route::middleware('auth')->group(function () {
 });
 
 // All dashboard routes require an authenticated, verified user. The `can:` gates
-// below (players.kick, players.ban, players.mute, economy.manage, console.run)
-// aren't defined yet — Phase 2 adds a lightweight role system to back them.
-// Until then these specific actions will 403 with an "ability not defined" error;
-// everything else (viewing players/economy/logs, teleport, heal) works as-is.
+// below are defined in AppServiceProvider::registerDashboardGates() against this
+// app's own admin/moderator role (see App\Models\User) — not the mod's own
+// dashboard account roles, which are a separate thing managed under /users.
 Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
 
     // Named 'dashboard' (not 'dashboard.index') because AuthenticatedSessionController
@@ -60,6 +62,32 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             ->middleware(['can:console.run', 'throttle:commands-run'])->name('commands.run');
 
         Route::get('/logs', [ConsoleController::class, 'logs'])->name('logs.index');
+
+        // No gate here — the mod's own /api/warps endpoint imposes no admin
+        // requirement beyond being logged in at all, so this app doesn't add one
+        // either (any authenticated moderator/admin can manage warps).
+        Route::get('/warps', [WarpsController::class, 'index'])->name('warps.index');
+        Route::post('/warps', [WarpsController::class, 'store'])->name('warps.store');
+        Route::delete('/warps/{name}', [WarpsController::class, 'destroy'])->name('warps.destroy');
+
+        // Read-only — the mod has no create/update/delete/give routes for kits.
+        Route::get('/kits', [KitsController::class, 'index'])->name('kits.index');
+
+        // Mod dashboard accounts — admin-only in this app, mirroring the mod's
+        // own UserManagementEndpoint being entirely admin-only.
+        Route::middleware('can:mod-users.manage')->group(function () {
+            Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+            Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+            // Must be registered before the generic /users/{id} DELETE route below —
+            // otherwise DELETE /users/sessions/{sessionId} matches /users/{id} first
+            // (treating "sessions" as the {id} value) and never reaches this handler.
+            Route::delete('/users/sessions/{sessionId}', [UserManagementController::class, 'revokeSession'])->name('users.sessions.revoke');
+            Route::post('/users/{id}/role', [UserManagementController::class, 'setRole'])->name('users.role');
+            Route::post('/users/{id}/password', [UserManagementController::class, 'resetPassword'])->name('users.password');
+            Route::post('/users/{id}/enable', [UserManagementController::class, 'enable'])->name('users.enable');
+            Route::post('/users/{id}/disable', [UserManagementController::class, 'disable'])->name('users.disable');
+            Route::delete('/users/{id}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+        });
     });
 });
 

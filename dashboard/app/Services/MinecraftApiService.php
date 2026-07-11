@@ -173,6 +173,81 @@ class MinecraftApiService
         return $this->delete("api/warps/{$name}");
     }
 
+    // --- Kits (read-only — the mod's KitsEndpoint has no create/update/delete/
+    // give routes, only list/stats/single-view) --------------------------------
+
+    /** All configured kits, shaped to match KitsEndpoint's kitJson. Cached briefly. */
+    public function kits(): array
+    {
+        $data = Cache::remember('mc_api:kits', $this->cacheTtl, fn () => $this->get('api/kits/list'));
+
+        return $data['kits'] ?? [];
+    }
+
+    public function kitStats(): array
+    {
+        return Cache::remember('mc_api:kit_stats', $this->cacheTtl, fn () => $this->get('api/kits/stats'));
+    }
+
+    // --- Mod dashboard accounts (UserManagementEndpoint — entirely admin-only
+    // on the mod side; distinct from THIS app's own users table/roles) ---------
+
+    /** Accounts that can log into the mod's OWN dashboard (not this app's). */
+    public function modUsers(): array
+    {
+        $data = $this->get('api/users/list');
+
+        return $data['users'] ?? [];
+    }
+
+    public function modUserSessions(): array
+    {
+        $data = $this->get('api/users/sessions');
+
+        return $data['sessions'] ?? [];
+    }
+
+    public function createModUser(string $username, string $password, string $email, string $role): array
+    {
+        return $this->post('api/users/create', [
+            'username' => $username,
+            'password' => $password,
+            'email' => $email,
+            'role' => $role, // ADMIN | MODERATOR | VIEWER
+        ]);
+    }
+
+    public function setModUserRole(string $id, string $role): array
+    {
+        return $this->post("api/users/{$id}/role", ['role' => $role]);
+    }
+
+    /** Omit/blank $password to have the mod generate and return a temp one. */
+    public function setModUserPassword(string $id, ?string $password = null): array
+    {
+        return $this->post("api/users/{$id}/password", ['password' => $password ?? '']);
+    }
+
+    public function enableModUser(string $id): array
+    {
+        return $this->post("api/users/{$id}/enable", []);
+    }
+
+    public function disableModUser(string $id): array
+    {
+        return $this->post("api/users/{$id}/disable", []);
+    }
+
+    public function deleteModUser(string $id): array
+    {
+        return $this->delete("api/users/{$id}");
+    }
+
+    public function revokeModUserSession(string $sessionId): array
+    {
+        return $this->delete("api/users/sessions/{$sessionId}");
+    }
+
     // --- Homes / console -----------------------------------------------------
 
     public function homes(string $username): array

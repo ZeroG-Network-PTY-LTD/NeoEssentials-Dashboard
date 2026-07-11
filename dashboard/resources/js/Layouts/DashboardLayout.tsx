@@ -7,22 +7,32 @@ import {
   Terminal,
   ScrollText,
   Radio,
+  MapPin,
+  Package,
+  UserCog,
 } from 'lucide-react';
 import { PageProps } from '@/types';
-
-const NAV = [
-  { label: 'Overview', href: route('dashboard'), icon: LayoutGrid },
-  { label: 'Players', href: route('dashboard.players.index'), icon: Users },
-  { label: 'Economy', href: route('dashboard.economy.index'), icon: Coins },
-  { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
-  { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },
-];
 
 type DashboardPageProps = PageProps<{ apiReachable?: boolean }>;
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const { url, props } = usePage<DashboardPageProps>();
   const reachable = props.apiReachable ?? true;
+  const isAdmin = props.auth.user.role === 'admin';
+
+  const nav = [
+    { label: 'Overview', href: route('dashboard'), icon: LayoutGrid },
+    { label: 'Players', href: route('dashboard.players.index'), icon: Users },
+    { label: 'Economy', href: route('dashboard.economy.index'), icon: Coins },
+    { label: 'Warps', href: route('dashboard.warps.index'), icon: MapPin },
+    { label: 'Kits', href: route('dashboard.kits.index'), icon: Package },
+    { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
+    { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },
+    // Mod dashboard account management is admin-only (mirrors the mod's own
+    // UserManagementEndpoint) — hide the link entirely for moderators rather
+    // than showing a dead end that 403s.
+    ...(isAdmin ? [{ label: 'Users', href: route('dashboard.users.index'), icon: UserCog }] : []),
+  ];
 
   return (
     <div className="min-h-screen flex bg-[var(--mc-bg-base)] text-[var(--mc-text-primary)]">
@@ -37,7 +47,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
         </div>
 
         <nav className="flex-1 px-2 py-3 flex flex-col gap-1">
-          {NAV.map(({ label, href, icon: Icon }) => {
+          {nav.map(({ label, href, icon: Icon }) => {
             const active = url.startsWith(new URL(href, window.location.origin).pathname);
             return (
               <Link

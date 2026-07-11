@@ -635,6 +635,7 @@ class MinecraftApiService
                 ->{$method}("{$this->baseUrl}/{$path}", $data);
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
+            $this->markReachable(false);
             throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
         }
 
@@ -652,6 +653,8 @@ class MinecraftApiService
             throw new RuntimeException("Minecraft API returned an error ({$response->status()}).");
         }
 
+        $this->markReachable(true);
+
         return $response->json() ?? [];
     }
 
@@ -664,6 +667,7 @@ class MinecraftApiService
             $response = Http::withToken($sessionId)->timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
+            $this->markReachable(false);
             throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
         }
 
@@ -676,6 +680,8 @@ class MinecraftApiService
             Log::warning('Minecraft API error', ['path' => $path, 'status' => $response->status()]);
             throw new RuntimeException("Minecraft API returned an error ({$response->status()}).");
         }
+
+        $this->markReachable(true);
 
         return $response;
     }
@@ -696,13 +702,17 @@ class MinecraftApiService
                     ]);
             } catch (\Throwable $e) {
                 Log::warning('Minecraft API login unreachable', ['error' => $e->getMessage()]);
+                $this->markReachable(false);
                 throw new RuntimeException('Could not reach the Minecraft server API to log in. Is the server online?');
             }
 
             if ($response->failed() || !($response->json('success'))) {
                 Log::warning('Minecraft API login failed', ['status' => $response->status(), 'body' => $response->body()]);
+                $this->markReachable(false);
                 throw new RuntimeException('Minecraft API login failed — check MC_SERVICE_USERNAME/MC_SERVICE_PASSWORD.');
             }
+
+            $this->markReachable(true);
 
             return $response->json('sessionId');
         });
@@ -713,5 +723,24 @@ class MinecraftApiService
         foreach (['status', 'players', 'economy_leaderboard', 'warps', 'holograms', 'hologram_stats', 'discord_status'] as $key) {
             Cache::forget("mc_api:{$key}");
         }
+    }
+
+    /**
+     * Tracks the outcome of the most recent real request/login attempt made
+     * during this process, so the sidebar's "API connected/unreachable"
+     * indicator (a shared Inertia prop, see HandleInertiaRequests) can read a
+     * cheap cached flag instead of making its own extra network call on every
+     * page load — it just reflects whatever the current page's own
+     * controller calls already found out.
+     */
+    private function markReachable(bool $reachable): void
+    {
+        Cache::put('mc_api:reachable', $reachable, now()->addSeconds(30));
+    }
+
+    /** Optimistic (true) until the first real attempt reports otherwise. */
+    public function isReachable(): bool
+    {
+        return Cache::get('mc_api:reachable', true);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Inertia\Response;
 
 class EconomyController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -17,7 +20,7 @@ class EconomyController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Economy', [
-            'leaderboard' => $this->mc->economyLeaderboard(),
+            'leaderboard' => $this->safe(fn () => $this->mc->economyLeaderboard(), []),
         ]);
     }
 
@@ -29,8 +32,9 @@ class EconomyController extends Controller
             'amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $this->mc->economyAdjust($data['uuid'], $data['action'], (float) $data['amount']);
-
-        return back()->with('success', 'Balance updated.');
+        return $this->attempt(
+            fn () => $this->mc->economyAdjust($data['uuid'], $data['action'], (float) $data['amount']),
+            'Balance updated.',
+        );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Inertia\Response;
 
 class DiscordController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -17,20 +20,22 @@ class DiscordController extends Controller
     /** Status/events are readable by any logged-in account (moderator or admin). */
     public function index(): Response
     {
+        $fallbackStatus = ['anyActive' => false, 'adapterCount' => 0, 'eventCount' => 0, 'adapters' => []];
+
         return Inertia::render('Dashboard/Discord', [
-            'status' => $this->mc->discordStatus(),
-            'events' => $this->mc->discordEvents(),
+            'status' => $this->safe(fn () => $this->mc->discordStatus(), $fallbackStatus),
+            'events' => $this->safe(fn () => $this->mc->discordEvents(), []),
             // Only admins see/manage the auth-config form — mirrors the mod's
             // own DiscordEndpoint restricting that route to ADMIN accounts.
-            'authConfig' => auth()->user()->isAdmin() ? $this->mc->discordAuthConfig() : null,
+            'authConfig' => auth()->user()->isAdmin()
+                ? $this->safe(fn () => $this->mc->discordAuthConfig(), null)
+                : null,
         ]);
     }
 
     public function clearEvents(): RedirectResponse
     {
-        $this->mc->clearDiscordEvents();
-
-        return back()->with('success', 'Discord event log cleared.');
+        return $this->attempt(fn () => $this->mc->clearDiscordEvents(), 'Discord event log cleared.');
     }
 
     public function test(Request $request): RedirectResponse
@@ -40,9 +45,10 @@ class DiscordController extends Controller
             'message' => ['nullable', 'string'],
         ]);
 
-        $this->mc->sendDiscordTestMessage($data['channel'] ?? null, $data['message'] ?? null);
-
-        return back()->with('success', 'Test message sent.');
+        return $this->attempt(
+            fn () => $this->mc->sendDiscordTestMessage($data['channel'] ?? null, $data['message'] ?? null),
+            'Test message sent.',
+        );
     }
 
     public function updateAuthConfig(Request $request): RedirectResponse
@@ -64,8 +70,9 @@ class DiscordController extends Controller
             unset($data['oauth2']['clientSecret']);
         }
 
-        $this->mc->updateDiscordAuthConfig($data);
-
-        return back()->with('success', 'Discord auth configuration updated.');
+        return $this->attempt(
+            fn () => $this->mc->updateDiscordAuthConfig($data),
+            'Discord auth configuration updated.',
+        );
     }
 }

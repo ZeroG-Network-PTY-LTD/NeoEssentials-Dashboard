@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class KitsController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -20,8 +23,10 @@ class KitsController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Kits', [
-            'kits' => $this->mc->kits(),
-            'stats' => $this->mc->kitStats(),
+            'kits' => $this->safe(fn () => $this->mc->kits(), []),
+            'stats' => $this->safe(fn () => $this->mc->kitStats(), [
+                'total' => 0, 'enabled' => 0, 'withPermission' => 0, 'withCooldown' => 0, 'withUsageLimit' => 0,
+            ]),
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Inertia\Response;
 
 class HologramsController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -17,8 +20,10 @@ class HologramsController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Holograms', [
-            'holograms' => $this->mc->holograms(),
-            'stats' => $this->mc->hologramStats(),
+            'holograms' => $this->safe(fn () => $this->mc->holograms(), []),
+            'stats' => $this->safe(fn () => $this->mc->hologramStats(), [
+                'total' => 0, 'visible' => 0, 'animated' => 0, 'shopHolograms' => 0,
+            ]),
         ]);
     }
 
@@ -26,9 +31,10 @@ class HologramsController extends Controller
     {
         $data = $this->validated($request, true);
 
-        $this->mc->createHologram($data);
-
-        return back()->with('success', "Hologram '{$data['id']}' created.");
+        return $this->attempt(
+            fn () => $this->mc->createHologram($data),
+            "Hologram '{$data['id']}' created.",
+        );
     }
 
     /**
@@ -40,39 +46,31 @@ class HologramsController extends Controller
     public function update(Request $request, string $id): RedirectResponse
     {
         $data = $this->validated($request, false);
-        $existing = $this->mc->hologram($id);
 
-        $this->mc->updateHologram($id, array_merge($existing, $data, ['id' => $id]));
-
-        return back()->with('success', "Hologram '{$id}' updated.");
+        return $this->attempt(function () use ($data, $id) {
+            $existing = $this->mc->hologram($id);
+            $this->mc->updateHologram($id, array_merge($existing, $data, ['id' => $id]));
+        }, "Hologram '{$id}' updated.");
     }
 
     public function destroy(string $id): RedirectResponse
     {
-        $this->mc->deleteHologram($id);
-
-        return back()->with('success', "Hologram '{$id}' deleted.");
+        return $this->attempt(fn () => $this->mc->deleteHologram($id), "Hologram '{$id}' deleted.");
     }
 
     public function spawn(string $id): RedirectResponse
     {
-        $this->mc->spawnHologram($id);
-
-        return back();
+        return $this->attempt(fn () => $this->mc->spawnHologram($id), "Hologram '{$id}' spawned.");
     }
 
     public function despawn(string $id): RedirectResponse
     {
-        $this->mc->despawnHologram($id);
-
-        return back();
+        return $this->attempt(fn () => $this->mc->despawnHologram($id), "Hologram '{$id}' despawned.");
     }
 
     public function toggleVisibility(string $id): RedirectResponse
     {
-        $this->mc->toggleHologramVisibility($id);
-
-        return back();
+        return $this->attempt(fn () => $this->mc->toggleHologramVisibility($id), 'Visibility toggled.');
     }
 
     /**

@@ -1,4 +1,4 @@
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
   LayoutGrid,
@@ -14,10 +14,48 @@ import {
   MessageCircle,
   ShieldCheck,
   DatabaseBackup,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 
 type DashboardPageProps = PageProps<{ apiReachable?: boolean }>;
+
+function FlashToast() {
+  const { props } = usePage<DashboardPageProps>();
+  const [dismissed, setDismissed] = useState(false);
+  const message = props.flash?.success ?? props.flash?.error ?? null;
+  const isError = !props.flash?.success && !!props.flash?.error;
+
+  // Re-arm whenever a new flash message arrives (Inertia keeps re-sending the
+  // same prop reference across unrelated navigations otherwise wouldn't matter,
+  // but a fresh redirect always produces a new string here).
+  useEffect(() => setDismissed(false), [message]);
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setDismissed(true), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  if (!message || dismissed) return null;
+
+  return (
+    <div
+      className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-[var(--radius-lg)] border text-[13px] shadow-lg ${
+        isError
+          ? 'bg-[var(--mc-ember-50)] border-[var(--mc-ember-400)] text-[var(--mc-ember-500)]'
+          : 'bg-[var(--mc-moss-50)] border-[var(--mc-moss-400,var(--mc-moss-500))] text-[var(--mc-moss-500)]'
+      }`}
+    >
+      {isError ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+      {message}
+      <button onClick={() => setDismissed(true)} className="ml-2 opacity-60 hover:opacity-100">
+        &times;
+      </button>
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const { url, props } = usePage<DashboardPageProps>();
@@ -86,6 +124,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
       </aside>
 
       <main className="flex-1 px-8 py-7 max-w-6xl">{children}</main>
+      <FlashToast />
     </div>
   );
 }

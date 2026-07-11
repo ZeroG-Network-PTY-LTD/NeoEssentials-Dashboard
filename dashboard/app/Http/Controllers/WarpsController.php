@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Inertia\Response;
 
 class WarpsController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -17,7 +20,7 @@ class WarpsController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Warps', [
-            'warps' => $this->mc->warps(),
+            'warps' => $this->safe(fn () => $this->mc->warps(), []),
         ]);
     }
 
@@ -36,15 +39,11 @@ class WarpsController extends Controller
         $name = $data['name'];
         unset($data['name']);
 
-        $this->mc->createWarp($name, $data);
-
-        return back()->with('success', "Warp '{$name}' created.");
+        return $this->attempt(fn () => $this->mc->createWarp($name, $data), "Warp '{$name}' created.");
     }
 
     public function destroy(string $name): RedirectResponse
     {
-        $this->mc->deleteWarp($name);
-
-        return back()->with('success', "Warp '{$name}' deleted.");
+        return $this->attempt(fn () => $this->mc->deleteWarp($name), "Warp '{$name}' deleted.");
     }
 }

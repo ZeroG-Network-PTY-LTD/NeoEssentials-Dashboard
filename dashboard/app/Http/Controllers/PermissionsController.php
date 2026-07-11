@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Inertia\Response;
 
 class PermissionsController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -17,18 +20,19 @@ class PermissionsController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Permissions', [
-            'overview' => $this->mc->permissionOverview(),
-            'groups' => $this->mc->permissionGroups(),
-            'users' => $this->mc->permissionUsers(),
-            'aliases' => $this->mc->permissionAliases(),
+            'overview' => $this->safe(fn () => $this->mc->permissionOverview(), [
+                'success' => false, 'totalGroups' => 0, 'totalUsers' => 0,
+                'usingExternal' => true, 'systemType' => 'Unavailable — could not reach the Minecraft server API',
+            ]),
+            'groups' => $this->safe(fn () => $this->mc->permissionGroups(), []),
+            'users' => $this->safe(fn () => $this->mc->permissionUsers(), []),
+            'aliases' => $this->safe(fn () => $this->mc->permissionAliases(), []),
         ]);
     }
 
     public function reload(): RedirectResponse
     {
-        $this->mc->reloadPermissions();
-
-        return back()->with('success', 'Permissions reloaded.');
+        return $this->attempt(fn () => $this->mc->reloadPermissions(), 'Permissions reloaded.');
     }
 
     public function storeGroup(Request $request): RedirectResponse
@@ -40,14 +44,12 @@ class PermissionsController extends Controller
             'isDefault' => ['nullable', 'boolean'],
         ]);
 
-        $this->mc->createPermissionGroup(
+        return $this->attempt(fn () => $this->mc->createPermissionGroup(
             $data['name'],
             $data['prefix'] ?? '',
             $data['suffix'] ?? '',
             $data['isDefault'] ?? false,
-        );
-
-        return back()->with('success', "Group '{$data['name']}' created.");
+        ), "Group '{$data['name']}' created.");
     }
 
     public function updateGroup(Request $request, string $name): RedirectResponse
@@ -58,54 +60,46 @@ class PermissionsController extends Controller
             'isDefault' => ['nullable', 'boolean'],
         ]);
 
-        $this->mc->updatePermissionGroup($name, $data);
-
-        return back()->with('success', "Group '{$name}' updated.");
+        return $this->attempt(fn () => $this->mc->updatePermissionGroup($name, $data), "Group '{$name}' updated.");
     }
 
     public function destroyGroup(string $name): RedirectResponse
     {
-        $this->mc->deletePermissionGroup($name);
-
-        return back()->with('success', "Group '{$name}' deleted.");
+        return $this->attempt(fn () => $this->mc->deletePermissionGroup($name), "Group '{$name}' deleted.");
     }
 
     public function addGroupPermission(Request $request, string $name): RedirectResponse
     {
         $data = $request->validate(['permission' => ['required', 'string']]);
-        $this->mc->addGroupPermission($name, $data['permission']);
 
-        return back()->with('success', 'Permission added.');
+        return $this->attempt(fn () => $this->mc->addGroupPermission($name, $data['permission']), 'Permission added.');
     }
 
     public function removeGroupPermission(string $name, string $permission): RedirectResponse
     {
-        $this->mc->removeGroupPermission($name, $permission);
-
-        return back()->with('success', 'Permission removed.');
+        return $this->attempt(fn () => $this->mc->removeGroupPermission($name, $permission), 'Permission removed.');
     }
 
     public function setUserGroup(Request $request, string $username): RedirectResponse
     {
         $data = $request->validate(['group' => ['required', 'string']]);
-        $this->mc->setUserGroup($username, $data['group']);
 
-        return back()->with('success', "{$username} moved to group '{$data['group']}'.");
+        return $this->attempt(
+            fn () => $this->mc->setUserGroup($username, $data['group']),
+            "{$username} moved to group '{$data['group']}'.",
+        );
     }
 
     public function addUserPermission(Request $request, string $username): RedirectResponse
     {
         $data = $request->validate(['permission' => ['required', 'string']]);
-        $this->mc->addUserPermission($username, $data['permission']);
 
-        return back()->with('success', 'Permission added.');
+        return $this->attempt(fn () => $this->mc->addUserPermission($username, $data['permission']), 'Permission added.');
     }
 
     public function removeUserPermission(string $username, string $permission): RedirectResponse
     {
-        $this->mc->removeUserPermission($username, $permission);
-
-        return back()->with('success', 'Permission removed.');
+        return $this->attempt(fn () => $this->mc->removeUserPermission($username, $permission), 'Permission removed.');
     }
 
     public function storeAlias(Request $request): RedirectResponse
@@ -115,15 +109,14 @@ class PermissionsController extends Controller
             'canonical' => ['required', 'string'],
         ]);
 
-        $this->mc->addPermissionAlias($data['alias'], $data['canonical']);
-
-        return back()->with('success', "Alias '{$data['alias']}' added.");
+        return $this->attempt(
+            fn () => $this->mc->addPermissionAlias($data['alias'], $data['canonical']),
+            "Alias '{$data['alias']}' added.",
+        );
     }
 
     public function destroyAlias(string $alias): RedirectResponse
     {
-        $this->mc->removePermissionAlias($alias);
-
-        return back()->with('success', "Alias '{$alias}' removed.");
+        return $this->attempt(fn () => $this->mc->removePermissionAlias($alias), "Alias '{$alias}' removed.");
     }
 }

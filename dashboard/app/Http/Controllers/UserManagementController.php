@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ use Inertia\Response;
  */
 class UserManagementController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -23,8 +26,8 @@ class UserManagementController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Users', [
-            'users' => $this->mc->modUsers(),
-            'sessions' => $this->mc->modUserSessions(),
+            'users' => $this->safe(fn () => $this->mc->modUsers(), []),
+            'sessions' => $this->safe(fn () => $this->mc->modUserSessions(), []),
         ]);
     }
 
@@ -37,23 +40,27 @@ class UserManagementController extends Controller
             'role' => ['required', 'in:ADMIN,MODERATOR,VIEWER'],
         ]);
 
-        $this->mc->createModUser($data['username'], $data['password'], $data['email'] ?? '', $data['role']);
-
-        return back()->with('success', "Account '{$data['username']}' created.");
+        return $this->attempt(
+            fn () => $this->mc->createModUser($data['username'], $data['password'], $data['email'] ?? '', $data['role']),
+            "Account '{$data['username']}' created.",
+        );
     }
 
     public function setRole(Request $request, string $id): RedirectResponse
     {
         $data = $request->validate(['role' => ['required', 'in:ADMIN,MODERATOR,VIEWER']]);
 
-        $this->mc->setModUserRole($id, $data['role']);
-
-        return back()->with('success', 'Role updated.');
+        return $this->attempt(fn () => $this->mc->setModUserRole($id, $data['role']), 'Role updated.');
     }
 
     public function resetPassword(string $id): RedirectResponse
     {
-        $result = $this->mc->setModUserPassword($id);
+        try {
+            $result = $this->mc->setModUserPassword($id);
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
         $temp = $result['tempPassword'] ?? null;
 
         return back()->with('success', $temp
@@ -63,29 +70,21 @@ class UserManagementController extends Controller
 
     public function enable(string $id): RedirectResponse
     {
-        $this->mc->enableModUser($id);
-
-        return back()->with('success', 'Account enabled.');
+        return $this->attempt(fn () => $this->mc->enableModUser($id), 'Account enabled.');
     }
 
     public function disable(string $id): RedirectResponse
     {
-        $this->mc->disableModUser($id);
-
-        return back()->with('success', 'Account disabled.');
+        return $this->attempt(fn () => $this->mc->disableModUser($id), 'Account disabled.');
     }
 
     public function destroy(string $id): RedirectResponse
     {
-        $this->mc->deleteModUser($id);
-
-        return back()->with('success', 'Account deleted.');
+        return $this->attempt(fn () => $this->mc->deleteModUser($id), 'Account deleted.');
     }
 
     public function revokeSession(string $sessionId): RedirectResponse
     {
-        $this->mc->revokeModUserSession($sessionId);
-
-        return back()->with('success', 'Session revoked.');
+        return $this->attempt(fn () => $this->mc->revokeModUserSession($sessionId), 'Session revoked.');
     }
 }

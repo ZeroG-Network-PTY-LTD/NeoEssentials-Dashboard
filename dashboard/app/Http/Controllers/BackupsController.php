@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,19 +12,31 @@ use Inertia\Response;
 
 class BackupsController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
 
     public function index(): Response
     {
+        $fallbackStatus = [
+            'count' => 0, 'totalSizeMb' => '0.00', 'totalSizeBytes' => 0, 'lastBackup' => null,
+            'maxSnapshots' => 0, 'backupDir' => '', 'availableTargets' => [],
+        ];
+        $fallbackCloudStatus = ['providers' => ['dropbox' => ['configured' => false], 'googleDrive' => ['configured' => false]]];
+        $fallbackCloudConfig = [
+            'dropbox' => ['configured' => false, 'tokenMasked' => '', 'uploadPath' => ''],
+            'googleDrive' => ['configured' => false, 'clientId' => '', 'folderId' => '', 'refreshTokenMasked' => ''],
+        ];
+
         return Inertia::render('Dashboard/Backups', [
-            'status' => $this->mc->backupStatus(),
-            'snapshots' => $this->mc->backupList(),
-            'cloudStatus' => $this->mc->cloudStatus(),
-            'cloudConfig' => $this->mc->cloudConfig(),
-            'dropboxFiles' => $this->mc->cloudDropboxFiles(),
-            'googleFiles' => $this->mc->cloudGoogleFiles(),
+            'status' => $this->safe(fn () => $this->mc->backupStatus(), $fallbackStatus),
+            'snapshots' => $this->safe(fn () => $this->mc->backupList(), []),
+            'cloudStatus' => $this->safe(fn () => $this->mc->cloudStatus(), $fallbackCloudStatus),
+            'cloudConfig' => $this->safe(fn () => $this->mc->cloudConfig(), $fallbackCloudConfig),
+            'dropboxFiles' => $this->safe(fn () => $this->mc->cloudDropboxFiles(), []),
+            'googleFiles' => $this->safe(fn () => $this->mc->cloudGoogleFiles(), []),
         ]);
     }
 
@@ -35,29 +48,34 @@ class BackupsController extends Controller
             'targets.*' => ['string'],
         ]);
 
-        $this->mc->createBackup($data['name'] ?? ('backup-' . now()->timestamp), $data['targets']);
-
-        return back()->with('success', 'Backup created.');
+        return $this->attempt(
+            fn () => $this->mc->createBackup($data['name'] ?? ('backup-' . now()->timestamp), $data['targets']),
+            'Backup created.',
+        );
     }
 
     public function restore(Request $request): RedirectResponse
     {
         $data = $request->validate(['name' => ['required', 'string']]);
-        $this->mc->restoreBackup($data['name']);
 
-        return back()->with('success', "Snapshot '{$data['name']}' restored (a pre-restore backup was made automatically).");
+        return $this->attempt(
+            fn () => $this->mc->restoreBackup($data['name']),
+            "Snapshot '{$data['name']}' restored (a pre-restore backup was made automatically).",
+        );
     }
 
     public function destroy(string $name): RedirectResponse
     {
-        $this->mc->deleteBackup($name);
-
-        return back()->with('success', "Snapshot '{$name}' deleted.");
+        return $this->attempt(fn () => $this->mc->deleteBackup($name), "Snapshot '{$name}' deleted.");
     }
 
     public function download(string $name): HttpResponse
     {
-        $mcResponse = $this->mc->downloadBackup($name);
+        try {
+            $mcResponse = $this->mc->downloadBackup($name);
+        } catch (\Throwable $e) {
+            return response($e->getMessage(), 502);
+        }
 
         return response($mcResponse->body(), 200, [
             'Content-Type' => 'application/zip',
@@ -72,9 +90,10 @@ class BackupsController extends Controller
             'uploadPath' => ['nullable', 'string'],
         ]);
 
-        $this->mc->configureDropbox($data['accessToken'], $data['uploadPath'] ?? '/NeoEssentials-Backups');
-
-        return back()->with('success', 'Dropbox configuration saved.');
+        return $this->attempt(
+            fn () => $this->mc->configureDropbox($data['accessToken'], $data['uploadPath'] ?? '/NeoEssentials-Backups'),
+            'Dropbox configuration saved.',
+        );
     }
 
     public function configureGoogle(Request $request): RedirectResponse
@@ -86,56 +105,55 @@ class BackupsController extends Controller
             'folderId' => ['nullable', 'string'],
         ]);
 
-        $this->mc->configureGoogleDrive(
+        return $this->attempt(fn () => $this->mc->configureGoogleDrive(
             $data['refreshToken'] ?? '',
             $data['clientId'] ?? '',
             $data['clientSecret'] ?? '',
             $data['folderId'] ?? '',
-        );
-
-        return back()->with('success', 'Google Drive configuration saved.');
+        ), 'Google Drive configuration saved.');
     }
 
     public function testDropbox(): RedirectResponse
     {
-        $result = $this->mc->testDropbox();
+        try {
+            $result = $this->mc->testDropbox();
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', $result['message'] ?? 'Dropbox connection OK.');
     }
 
     public function testGoogle(): RedirectResponse
     {
-        $result = $this->mc->testGoogleDrive();
+        try {
+            $result = $this->mc->testGoogleDrive();
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', $result['message'] ?? 'Google Drive connection OK.');
     }
 
     public function uploadDropbox(string $backupId): RedirectResponse
     {
-        $this->mc->uploadBackupToDropbox($backupId);
-
-        return back()->with('success', "Uploaded '{$backupId}' to Dropbox.");
+        return $this->attempt(fn () => $this->mc->uploadBackupToDropbox($backupId), "Uploaded '{$backupId}' to Dropbox.");
     }
 
     public function uploadGoogle(string $backupId): RedirectResponse
     {
-        $this->mc->uploadBackupToGoogleDrive($backupId);
-
-        return back()->with('success', "Uploaded '{$backupId}' to Google Drive.");
+        return $this->attempt(fn () => $this->mc->uploadBackupToGoogleDrive($backupId), "Uploaded '{$backupId}' to Google Drive.");
     }
 
     public function deleteDropboxFile(Request $request): RedirectResponse
     {
         $data = $request->validate(['path' => ['required', 'string']]);
-        $this->mc->deleteDropboxFile($data['path']);
 
-        return back()->with('success', 'Deleted from Dropbox.');
+        return $this->attempt(fn () => $this->mc->deleteDropboxFile($data['path']), 'Deleted from Dropbox.');
     }
 
     public function deleteGoogleFile(string $fileId): RedirectResponse
     {
-        $this->mc->deleteGoogleDriveFile($fileId);
-
-        return back()->with('success', 'Deleted from Google Drive.');
+        return $this->attempt(fn () => $this->mc->deleteGoogleDriveFile($fileId), 'Deleted from Google Drive.');
     }
 }

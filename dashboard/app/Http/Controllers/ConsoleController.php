@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Inertia\Response;
 
 class ConsoleController extends Controller
 {
+    use InteractsWithMinecraftApi;
+
     public function __construct(private MinecraftApiService $mc)
     {
     }
@@ -30,7 +33,11 @@ class ConsoleController extends Controller
             return back()->withErrors(['command' => 'Only a single command is allowed.']);
         }
 
-        $result = $this->mc->runCommand(ltrim($data['command'], '/'));
+        try {
+            $result = $this->mc->runCommand(ltrim($data['command'], '/'));
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', $result['output'] ?? 'Command sent.');
     }
@@ -40,7 +47,7 @@ class ConsoleController extends Controller
         $since = $request->integer('since') ?: null;
 
         return Inertia::render('Dashboard/Logs', [
-            'entries' => $this->mc->logs($since),
+            'entries' => $this->safe(fn () => $this->mc->logs($since), []),
         ]);
     }
 }

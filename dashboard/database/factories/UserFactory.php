@@ -30,6 +30,11 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Belt-and-braces alongside User::booted()'s creating() hook, which is
+            // the actual fix (see its docblock) for Eloquent inserting an empty
+            // string instead of leaving 'role' to the DB's default on this
+            // Laravel version.
+            'role' => 'moderator',
         ];
     }
 
@@ -40,6 +45,16 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user has the 'admin' role (default is 'moderator').
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
         ]);
     }
 }

@@ -29,4 +29,32 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * 'role' is deliberately NOT in the #[Fillable] list above — it must only ever
+     * be set via direct assignment (e.g. RegisteredUserController, or manually by
+     * an existing admin), never through a mass-assigned request payload.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * The users table's `role` column has a DB-level default of 'moderator', but
+     * on this Laravel version Eloquent inserts an explicit empty string for any
+     * unset attribute instead of omitting the column — which silently defeats
+     * that DB default for every User::create() call site (registration, seeders,
+     * factories, etc.), leaving new users with role === '' rather than
+     * 'moderator'. Enforced here instead, in one place, rather than trusting
+     * every call site to remember to pass 'role' explicitly.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            if (empty($user->role)) {
+                $user->role = 'moderator';
+            }
+        });
+    }
 }

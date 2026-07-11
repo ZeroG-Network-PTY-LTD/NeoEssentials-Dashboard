@@ -52,6 +52,24 @@ app needs its own dashboard user account on the mod side to authenticate as:
 See `config/minecraft.php` for the full list of tunable options (timeouts,
 cache TTLs).
 
+## Roles and permissions (this app's own users, not the mod's)
+
+Two roles: `admin` (full access) and `moderator` (can view everything and mute
+players, but not kick/ban, adjust economy balances, or run console commands).
+**The first account ever registered becomes `admin` automatically** — every
+account after that defaults to `moderator`.
+
+To promote/demote someone later:
+
+```bash
+php artisan dashboard:set-role someone@example.com admin
+```
+
+The `can:players.kick` / `players.ban` / `players.mute` / `economy.manage` /
+`console.run` gates backing this live in `AppServiceProvider::registerDashboardGates()`
+— adjust the logic there if the two-role split doesn't match how your team
+actually wants to split responsibilities.
+
 ## Docker
 
 ```bash
@@ -81,11 +99,8 @@ frontend page exists here yet:
 - Warps / homes management UI
 - Discord account linking status
 
-Also missing right now: a real authorization system. The ported routes use
-`can:players.kick` / `can:players.ban` / `can:players.mute` / `can:economy.manage` /
-`can:console.run` gates that **aren't defined yet** — those specific actions
-will throw an authorization error until a role/permission system is wired up
-(everything else — viewing players/economy/logs, teleport, heal — works today).
+Authorization is now wired up (see "Roles and permissions" below) — the
+`can:*` gates the ported routes reference are defined and tested.
 
 ## Known rough edges
 

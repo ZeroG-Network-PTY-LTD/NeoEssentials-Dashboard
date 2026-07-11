@@ -43,6 +43,15 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // The very first account on a fresh install becomes admin automatically —
+        // otherwise a brand-new self-hoster would have no way to grant themselves
+        // kick/ban/economy/console access without dropping into `php artisan
+        // tinker` by hand. Every account after that defaults to 'moderator'
+        // (see the migration) and must be promoted by an existing admin.
+        if (User::count() === 1) {
+            $user->forceFill(['role' => 'admin'])->save();
+        }
+
         event(new Registered($user));
 
         Auth::login($user);

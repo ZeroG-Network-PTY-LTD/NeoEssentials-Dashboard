@@ -46,6 +46,9 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
         Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
         Route::post('/players/{uuid}/teleport', [PlayerController::class, 'teleport'])->name('players.teleport');
         Route::post('/players/{uuid}/heal', [PlayerController::class, 'heal'])->name('players.heal');
+        // Read-only — no gate, mirrors the mod's own homes lookup imposing no
+        // admin requirement beyond being logged in.
+        Route::get('/players/{uuid}/homes', [PlayerController::class, 'homes'])->name('players.homes');
         Route::post('/players/{uuid}/kick', [PlayerController::class, 'kick'])
             ->middleware('can:players.kick')->name('players.kick');
         Route::post('/players/{uuid}/ban', [PlayerController::class, 'ban'])

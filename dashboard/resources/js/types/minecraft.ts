@@ -269,3 +269,20 @@ export interface CloudConfig {
   dropbox: { configured: boolean; tokenMasked: string; uploadPath: string };
   googleDrive: { configured: boolean; clientId: string; folderId: string; refreshTokenMasked: string };
 }
+
+/**
+ * The mod only exposes a read-only per-player homes lookup, and only for
+ * players who are currently online (it resolves via the live player object,
+ * not a stored profile) — there's no create/delete/rename route to wire up.
+ */
+export interface Home {
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  dimension: string;
+  createdBy: string;
+  timestamp: number;
+}

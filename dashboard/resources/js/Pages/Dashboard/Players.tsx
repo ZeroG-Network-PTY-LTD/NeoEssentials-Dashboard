@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import type { McPlayer } from '@/types/minecraft';
+import type { Home, McPlayer } from '@/types/minecraft';
 
 interface Props {
   players: McPlayer[];
@@ -34,8 +34,28 @@ export default function Players({ players }: Props) {
   const [reason, setReason] = useState('');
   const [duration, setDuration] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [homesFor, setHomesFor] = useState<McPlayer | null>(null);
+  const [homes, setHomes] = useState<Home[] | null>(null);
+  const [homesError, setHomesError] = useState<string | null>(null);
 
   const heal = (uuid: string) => router.post(route('dashboard.players.heal', uuid));
+
+  const viewHomes = async (player: McPlayer) => {
+    setSelected(null);
+    setHomesFor(player);
+    setHomes(null);
+    setHomesError(null);
+    try {
+      const res = await fetch(route('dashboard.players.homes', player.uuid), {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = await res.json();
+      setHomes(data.homes ?? []);
+    } catch (e) {
+      setHomesError(e instanceof Error ? e.message : 'Failed to load homes.');
+    }
+  };
 
   const openConfirm = (type: ActionType, player: McPlayer) => {
     setSelected(null);
@@ -145,6 +165,12 @@ export default function Players({ players }: Props) {
                 Heal and feed
               </button>
               <button
+                onClick={() => viewHomes(selected)}
+                className="text-[13px] px-3 py-2 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] text-left"
+              >
+                View homes
+              </button>
+              <button
                 onClick={() => openConfirm('mute', selected)}
                 className="text-[13px] px-3 py-2 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] text-left"
               >
@@ -236,6 +262,51 @@ export default function Players({ players }: Props) {
                 {submitting ? 'Working…' : `Confirm ${ACTION_LABEL[pending.type]}`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Homes viewer — read-only, the mod has no create/delete route to manage these */}
+      {homesFor && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-20"
+          onClick={() => setHomesFor(null)}
+        >
+          <div
+            className="bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] rounded-[var(--radius-lg)] p-5 w-96 max-h-[70vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="font-display text-[15px] font-semibold mb-3">
+              {homesFor.username}'s homes
+            </div>
+            {homesError && <div className="text-[13px] text-[var(--mc-ember-500)]">{homesError}</div>}
+            {!homesError && homes === null && (
+              <div className="text-[13px] text-[var(--mc-text-muted)]">Loading…</div>
+            )}
+            {homes !== null && homes.length === 0 && (
+              <div className="text-[13px] text-[var(--mc-text-muted)]">No homes set.</div>
+            )}
+            {homes && homes.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {homes.map((h) => (
+                  <div
+                    key={h.name}
+                    className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)]"
+                  >
+                    <div className="font-medium mb-0.5">{h.name}</div>
+                    <div className="font-data text-[12px] text-[var(--mc-text-muted)]">
+                      {h.dimension.replace('minecraft:', '')} · {Math.round(h.x)}, {Math.round(h.y)}, {Math.round(h.z)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setHomesFor(null)}
+              className="mt-4 w-full text-[13px] px-3 py-2 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)]"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

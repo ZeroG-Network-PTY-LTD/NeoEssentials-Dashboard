@@ -123,15 +123,16 @@ Implemented:
   everything that mutates state is gated behind `can:backups.manage`
   (admin-only), matching `BackupEndpoint`/`CloudStorageEndpoint`'s own
   admin-only write routes.
+- Homes — a read-only "View homes" action on the Players page. The mod only
+  exposes a per-player homes lookup that resolves live off the online player
+  object (`MinecraftApiService::homes()`), so there's no create/rename/delete
+  route to wire up, and it only works for online players.
 - Full auth (login/register/password reset/email verification) via Breeze
 - `MinecraftApiService` — the actual integration layer calling the mod's API
 - Authorization (see "Roles and permissions" above) — the `can:*` gates every
   route above references are defined and tested
 
-Not yet implemented — the mod's dashboard API supports this, but no frontend
-page exists here yet:
-- Homes — the mod's dashboard API only exposes a read-only per-player homes
-  lookup (`MinecraftApiService::homes()`), no home management UI yet
+Every dashboard feature area the mod's API supports now has a page here.
 
 ## Known rough edges
 

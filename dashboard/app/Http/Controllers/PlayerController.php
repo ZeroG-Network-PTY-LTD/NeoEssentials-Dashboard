@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\MinecraftApiService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,6 +77,16 @@ class PlayerController extends Controller
         $data = $request->validate(['duration' => ['nullable', 'string']]);
         $this->mc->mutePlayer($this->resolveUsername($uuid), $data['duration'] ?? null);
         return back()->with('success', 'Player muted.');
+    }
+
+    /**
+     * Read-only — the mod's homes lookup only works for online players (it
+     * resolves live off the player object, not a stored profile), so this
+     * mirrors that same online-only constraint via resolveUsername().
+     */
+    public function homes(string $uuid): JsonResponse
+    {
+        return response()->json(['homes' => $this->mc->homes($this->resolveUsername($uuid))]);
     }
 
     /**

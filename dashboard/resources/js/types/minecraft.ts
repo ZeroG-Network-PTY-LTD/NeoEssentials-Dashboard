@@ -178,3 +178,94 @@ export interface DiscordAuthConfig {
   sdlinkAvailable: boolean;
   oauth2: DiscordOAuth2Config;
 }
+
+/**
+ * Matches PermissionEndpoint's shapes. The mod's internal permission system is
+ * only active when `usingExternal` is false (LuckPerms/FTB Ranks otherwise
+ * take over) — pages should treat group/user management as read-only when
+ * an external adapter is in charge.
+ */
+export interface PermissionOverview {
+  success: boolean;
+  totalGroups: number;
+  totalUsers: number;
+  usingExternal: boolean;
+  systemType: string;
+}
+
+export interface PermissionGroup {
+  name: string;
+  prefix: string;
+  suffix: string;
+  weight: number;
+  isDefault: boolean;
+  permissionCount: number;
+  permissions: string[];
+}
+
+/** Only online players are exposed — the mod resolves permissions live off the player object. */
+export interface PermissionUser {
+  username: string;
+  uuid: string;
+  online: boolean;
+  group: string;
+  prefix: string;
+  suffix: string;
+  permissions?: string[];
+}
+
+export interface BackupSnapshot {
+  filename: string;
+  name: string;
+  created: string;
+  sizeBytes: number;
+  sizeMb?: string;
+}
+
+export interface BackupTarget {
+  key: string;
+  path: string;
+  exists: boolean;
+}
+
+export interface BackupStatus {
+  count: number;
+  totalSizeMb: string;
+  totalSizeBytes: number;
+  lastBackup: string | null;
+  maxSnapshots: number;
+  backupDir: string;
+  availableTargets: BackupTarget[];
+}
+
+export interface CloudProviderStatus {
+  configured: boolean;
+  connected?: boolean;
+  quotaUsedMB?: number;
+  quotaTotalMB?: number;
+  error?: string;
+  uploadPath?: string;
+  tokenMasked?: string;
+  folderId?: string;
+  clientId?: string;
+}
+
+export interface CloudStatus {
+  providers: {
+    dropbox: CloudProviderStatus;
+    googleDrive: CloudProviderStatus;
+  };
+}
+
+export interface CloudFile {
+  name: string;
+  path?: string;
+  id?: string;
+  size?: number;
+  [key: string]: unknown;
+}
+
+export interface CloudConfig {
+  dropbox: { configured: boolean; tokenMasked: string; uploadPath: string };
+  googleDrive: { configured: boolean; clientId: string; folderId: string; refreshTokenMasked: string };
+}

@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\BackupsController;
 use App\Http\Controllers\ConsoleController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscordController;
 use App\Http\Controllers\EconomyController;
 use App\Http\Controllers\HologramsController;
 use App\Http\Controllers\KitsController;
+use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserManagementController;
@@ -94,6 +96,48 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             Route::delete('/discord/events', [DiscordController::class, 'clearEvents'])->name('discord.events.clear');
             Route::post('/discord/test', [DiscordController::class, 'test'])->name('discord.test');
             Route::post('/discord/auth-config', [DiscordController::class, 'updateAuthConfig'])->name('discord.auth-config.update');
+        });
+
+        // GET routes are open to any logged-in account (mirrors PermissionEndpoint's
+        // own GET-is-open rule); every write requires can:permissions.manage since a
+        // self-escalation risk exists otherwise (a moderator granting themselves an
+        // admin-equivalent node).
+        Route::get('/permissions', [PermissionsController::class, 'index'])->name('permissions.index');
+        Route::middleware('can:permissions.manage')->group(function () {
+            Route::post('/permissions/reload', [PermissionsController::class, 'reload'])->name('permissions.reload');
+            Route::post('/permissions/groups', [PermissionsController::class, 'storeGroup'])->name('permissions.groups.store');
+            Route::put('/permissions/groups/{name}', [PermissionsController::class, 'updateGroup'])->name('permissions.groups.update');
+            Route::delete('/permissions/groups/{name}', [PermissionsController::class, 'destroyGroup'])->name('permissions.groups.destroy');
+            Route::post('/permissions/groups/{name}/permissions', [PermissionsController::class, 'addGroupPermission'])->name('permissions.groups.permissions.add');
+            Route::delete('/permissions/groups/{name}/permissions/{permission}', [PermissionsController::class, 'removeGroupPermission'])->name('permissions.groups.permissions.remove');
+            Route::post('/permissions/users/{username}/group', [PermissionsController::class, 'setUserGroup'])->name('permissions.users.group');
+            Route::post('/permissions/users/{username}/permissions', [PermissionsController::class, 'addUserPermission'])->name('permissions.users.permissions.add');
+            Route::delete('/permissions/users/{username}/permissions/{permission}', [PermissionsController::class, 'removeUserPermission'])->name('permissions.users.permissions.remove');
+            Route::post('/permissions/aliases', [PermissionsController::class, 'storeAlias'])->name('permissions.aliases.store');
+            Route::delete('/permissions/aliases/{alias}', [PermissionsController::class, 'destroyAlias'])->name('permissions.aliases.destroy');
+        });
+
+        // Status/list/file-browsing readable by any logged-in account; every write
+        // (create/restore/delete/cloud config/upload) requires can:backups.manage,
+        // mirroring BackupEndpoint/CloudStorageEndpoint's own admin-only mutations.
+        Route::get('/backups', [BackupsController::class, 'index'])->name('backups.index');
+        Route::get('/backups/{name}/download', [BackupsController::class, 'download'])->name('backups.download');
+        Route::middleware('can:backups.manage')->group(function () {
+            Route::post('/backups', [BackupsController::class, 'store'])->name('backups.store');
+            Route::post('/backups/restore', [BackupsController::class, 'restore'])->name('backups.restore');
+            Route::post('/backups/cloud/dropbox/config', [BackupsController::class, 'configureDropbox'])->name('backups.cloud.dropbox.config');
+            Route::post('/backups/cloud/google/config', [BackupsController::class, 'configureGoogle'])->name('backups.cloud.google.config');
+            Route::post('/backups/cloud/dropbox/test', [BackupsController::class, 'testDropbox'])->name('backups.cloud.dropbox.test');
+            Route::post('/backups/cloud/google/test', [BackupsController::class, 'testGoogle'])->name('backups.cloud.google.test');
+            Route::post('/backups/cloud/dropbox/upload/{backupId}', [BackupsController::class, 'uploadDropbox'])->name('backups.cloud.dropbox.upload');
+            Route::post('/backups/cloud/google/upload/{backupId}', [BackupsController::class, 'uploadGoogle'])->name('backups.cloud.google.upload');
+            Route::delete('/backups/cloud/dropbox/file', [BackupsController::class, 'deleteDropboxFile'])->name('backups.cloud.dropbox.file.delete');
+            Route::delete('/backups/cloud/google/file/{fileId}', [BackupsController::class, 'deleteGoogleFile'])->name('backups.cloud.google.file.delete');
+            // Grouped after the cloud DELETE routes for readability — {name} only
+            // matches a single path segment by default, so it can't actually shadow
+            // the multi-segment cloud/* routes above, but keeping specific-before-
+            // generic here avoids having to re-verify that fact later.
+            Route::delete('/backups/{name}', [BackupsController::class, 'destroy'])->name('backups.destroy');
         });
 
         // Mod dashboard accounts — admin-only in this app, mirroring the mod's

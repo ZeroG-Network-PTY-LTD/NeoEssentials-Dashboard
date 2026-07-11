@@ -21,6 +21,8 @@ class DashboardGatesTest extends TestCase
         $this->assertTrue($admin->can('console.run'));
         $this->assertTrue($admin->can('mod-users.manage'));
         $this->assertTrue($admin->can('discord.manage'));
+        $this->assertTrue($admin->can('permissions.manage'));
+        $this->assertTrue($admin->can('backups.manage'));
     }
 
     public function test_moderator_can_only_mute(): void
@@ -34,5 +36,7 @@ class DashboardGatesTest extends TestCase
         $this->assertFalse($moderator->can('console.run'));
         $this->assertFalse($moderator->can('mod-users.manage'));
         $this->assertFalse($moderator->can('discord.manage'));
+        $this->assertFalse($moderator->can('permissions.manage'));
+        $this->assertFalse($moderator->can('backups.manage'));
     }
 }

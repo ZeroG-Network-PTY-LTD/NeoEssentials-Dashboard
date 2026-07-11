@@ -109,15 +109,27 @@ Implemented:
   in this app (`can:discord.manage`) and on the mod side (`DiscordEndpoint`).
   This is admin *configuration* of the linking feature, not a per-user "link
   my Discord" flow (that lives elsewhere in the mod, outside this endpoint).
+- Permissions (`/dashboard/permissions`) — group/user permission node management,
+  group create/delete, group and (online) user permission add/remove, group
+  membership changes, and permission aliases. Read-only for everyone when the
+  mod is using an external permission plugin (LuckPerms/FTB Ranks) — mutations
+  are gated behind `can:permissions.manage` (admin-only), matching the mod's
+  own self-escalation protection on every non-GET `PermissionEndpoint` route.
+  Contextual and temporary (timed) permission overrides aren't exposed in this
+  UI yet, only permanent group/user nodes.
+- Backups / cloud storage (`/dashboard/backups`) — create/restore/delete local
+  snapshots, download a snapshot ZIP, and configure + upload to Dropbox/Google
+  Drive. Status/list/file-browsing is readable by any logged-in account;
+  everything that mutates state is gated behind `can:backups.manage`
+  (admin-only), matching `BackupEndpoint`/`CloudStorageEndpoint`'s own
+  admin-only write routes.
 - Full auth (login/register/password reset/email verification) via Breeze
 - `MinecraftApiService` — the actual integration layer calling the mod's API
 - Authorization (see "Roles and permissions" above) — the `can:*` gates every
   route above references are defined and tested
 
-Not yet implemented — the mod's dashboard API supports all of these, but no
-frontend page exists here yet:
-- Permissions — group/user permission node management (`PermissionEndpoint`)
-- Backups / cloud storage (`BackupEndpoint`, `CloudStorageEndpoint`)
+Not yet implemented — the mod's dashboard API supports this, but no frontend
+page exists here yet:
 - Homes — the mod's dashboard API only exposes a read-only per-player homes
   lookup (`MinecraftApiService::homes()`), no home management UI yet
 

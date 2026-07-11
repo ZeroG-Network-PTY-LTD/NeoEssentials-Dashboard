@@ -12,6 +12,8 @@ import {
   UserCog,
   Sparkles,
   MessageCircle,
+  ShieldCheck,
+  DatabaseBackup,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 
@@ -30,6 +32,8 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { label: 'Kits', href: route('dashboard.kits.index'), icon: Package },
     { label: 'Holograms', href: route('dashboard.holograms.index'), icon: Sparkles },
     { label: 'Discord', href: route('dashboard.discord.index'), icon: MessageCircle },
+    { label: 'Permissions', href: route('dashboard.permissions.index'), icon: ShieldCheck },
+    { label: 'Backups', href: route('dashboard.backups.index'), icon: DatabaseBackup },
     { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
     { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },
     // Mod dashboard account management is admin-only (mirrors the mod's own

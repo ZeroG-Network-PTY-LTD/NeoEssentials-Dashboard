@@ -278,6 +278,199 @@ class MinecraftApiService
         return $this->post('api/discord/auth-config', $config);
     }
 
+    // --- Permissions (PermissionEndpoint — GET is open to any logged-in
+    // account, every write requires the mod's own admin session, so all
+    // mutation methods here are only ever called from gated controller
+    // actions) ------------------------------------------------------------
+
+    public function permissionOverview(): array
+    {
+        return $this->get('api/permissions/overview');
+    }
+
+    public function permissionGroups(): array
+    {
+        return $this->get('api/permissions/groups')['groups'] ?? [];
+    }
+
+    public function permissionUsers(): array
+    {
+        return $this->get('api/permissions/users')['users'] ?? [];
+    }
+
+    public function permissionAliases(): array
+    {
+        $data = $this->get('api/permissions/aliases');
+
+        return $data['aliases'] ?? [];
+    }
+
+    public function reloadPermissions(): array
+    {
+        return $this->post('api/permissions/reload', []);
+    }
+
+    public function createPermissionGroup(string $name, string $prefix = '', string $suffix = '', bool $isDefault = false): array
+    {
+        return $this->post('api/permissions/group/create', [
+            'name' => $name,
+            'prefix' => $prefix,
+            'suffix' => $suffix,
+            'isDefault' => $isDefault,
+        ]);
+    }
+
+    public function updatePermissionGroup(string $name, array $data): array
+    {
+        return $this->put("api/permissions/group/{$name}/update", $data);
+    }
+
+    public function deletePermissionGroup(string $name): array
+    {
+        return $this->delete("api/permissions/group/{$name}");
+    }
+
+    public function addGroupPermission(string $group, string $permission): array
+    {
+        return $this->post("api/permissions/group/{$group}/permission/add", ['permission' => $permission]);
+    }
+
+    public function removeGroupPermission(string $group, string $permission): array
+    {
+        return $this->delete("api/permissions/group/{$group}/permission/remove/{$permission}");
+    }
+
+    public function setUserGroup(string $username, string $group): array
+    {
+        return $this->post("api/permissions/user/{$username}/group/set", ['group' => $group]);
+    }
+
+    public function addUserPermission(string $username, string $permission): array
+    {
+        return $this->post("api/permissions/user/{$username}/permission/add", ['permission' => $permission]);
+    }
+
+    public function removeUserPermission(string $username, string $permission): array
+    {
+        return $this->delete("api/permissions/user/{$username}/permission/remove/{$permission}");
+    }
+
+    public function addPermissionAlias(string $alias, string $canonical): array
+    {
+        return $this->post('api/permissions/aliases', ['alias' => $alias, 'canonical' => $canonical]);
+    }
+
+    public function removePermissionAlias(string $alias): array
+    {
+        return $this->delete("api/permissions/aliases/{$alias}");
+    }
+
+    // --- Backups (BackupEndpoint — status/list are readable by any logged-in
+    // account, create/restore/delete require the mod's own admin session) -----
+
+    public function backupStatus(): array
+    {
+        return $this->get('api/backup/status');
+    }
+
+    public function backupList(): array
+    {
+        $result = $this->get('api/backup/list');
+
+        // The mod returns a bare JSON array for this endpoint, not an object —
+        // Http::json() decodes that as a numerically-indexed array already.
+        return array_is_list($result) ? $result : ($result['snapshots'] ?? []);
+    }
+
+    public function createBackup(string $name, array $targets): array
+    {
+        return $this->post('api/backup/create', ['name' => $name, 'targets' => $targets]);
+    }
+
+    public function restoreBackup(string $name): array
+    {
+        return $this->post('api/backup/restore', ['name' => $name]);
+    }
+
+    public function deleteBackup(string $name): array
+    {
+        return $this->delete('api/backup/delete?name=' . urlencode($name));
+    }
+
+    /** Streams the raw ZIP response back — callers pipe this straight to the browser. */
+    public function downloadBackup(string $name): \Illuminate\Http\Client\Response
+    {
+        return $this->rawGet('api/backup/download?name=' . urlencode($name));
+    }
+
+    // --- Cloud storage (CloudStorageEndpoint — status/config/file-listing are
+    // readable by any logged-in account, everything else is admin-only) -------
+
+    public function cloudStatus(): array
+    {
+        return $this->get('api/cloud/status');
+    }
+
+    public function cloudConfig(): array
+    {
+        return $this->get('api/cloud/config');
+    }
+
+    public function configureDropbox(string $accessToken, string $uploadPath): array
+    {
+        return $this->post('api/cloud/config/dropbox', ['accessToken' => $accessToken, 'uploadPath' => $uploadPath]);
+    }
+
+    public function configureGoogleDrive(string $refreshToken, string $clientId, string $clientSecret, string $folderId): array
+    {
+        return $this->post('api/cloud/config/google', [
+            'refreshToken' => $refreshToken,
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'folderId' => $folderId,
+        ]);
+    }
+
+    public function testDropbox(): array
+    {
+        return $this->post('api/cloud/test/dropbox', []);
+    }
+
+    public function testGoogleDrive(): array
+    {
+        return $this->post('api/cloud/test/google', []);
+    }
+
+    public function cloudDropboxFiles(): array
+    {
+        return $this->get('api/cloud/files/dropbox')['files'] ?? [];
+    }
+
+    public function cloudGoogleFiles(): array
+    {
+        return $this->get('api/cloud/files/google')['files'] ?? [];
+    }
+
+    public function uploadBackupToDropbox(string $backupId): array
+    {
+        return $this->post("api/cloud/upload/dropbox/{$backupId}", []);
+    }
+
+    public function uploadBackupToGoogleDrive(string $backupId): array
+    {
+        return $this->post("api/cloud/upload/google/{$backupId}", []);
+    }
+
+    public function deleteDropboxFile(string $filePath): array
+    {
+        return $this->delete('api/cloud/files/dropbox/' . rawurlencode($filePath));
+    }
+
+    public function deleteGoogleDriveFile(string $fileId): array
+    {
+        return $this->delete("api/cloud/files/google/{$fileId}");
+    }
+
     // --- Mod dashboard accounts (UserManagementEndpoint — entirely admin-only
     // on the mod side; distinct from THIS app's own users table/roles) ---------
 
@@ -460,6 +653,31 @@ class MinecraftApiService
         }
 
         return $response->json() ?? [];
+    }
+
+    /** Like request(), but returns the raw response for binary payloads (backup ZIP downloads). */
+    private function rawGet(string $path, bool $isRetry = false): \Illuminate\Http\Client\Response
+    {
+        $sessionId = $this->sessionId();
+
+        try {
+            $response = Http::withToken($sessionId)->timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
+        } catch (\Throwable $e) {
+            Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
+            throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
+        }
+
+        if ($response->status() === 401 && !$isRetry) {
+            Cache::forget('mc_api:session_id');
+            return $this->rawGet($path, true);
+        }
+
+        if ($response->failed()) {
+            Log::warning('Minecraft API error', ['path' => $path, 'status' => $response->status()]);
+            throw new RuntimeException("Minecraft API returned an error ({$response->status()}).");
+        }
+
+        return $response;
     }
 
     /** Returns a cached session id, logging in fresh if none is cached or valid. */

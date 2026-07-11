@@ -55,5 +55,14 @@ class AppServiceProvider extends ServiceProvider
         // account-linking auth config are admin-only on the mod side
         // (DiscordEndpoint) — mirror that here.
         Gate::define('discord.manage', fn (User $user) => $user->isAdmin());
+
+        // Every write in PermissionEndpoint requires the mod's own admin
+        // session (self-escalation risk otherwise) — mirror that here too.
+        Gate::define('permissions.manage', fn (User $user) => $user->isAdmin());
+
+        // BackupEndpoint/CloudStorageEndpoint gate every mutating route behind
+        // admin on the mod side; status/list/file-browsing stay readable by
+        // any logged-in account.
+        Gate::define('backups.manage', fn (User $user) => $user->isAdmin());
     }
 }

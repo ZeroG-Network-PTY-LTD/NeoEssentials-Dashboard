@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\ConsoleController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DiscordController;
 use App\Http\Controllers\EconomyController;
+use App\Http\Controllers\HologramsController;
 use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\ProfileController;
@@ -72,6 +74,27 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
 
         // Read-only — the mod has no create/update/delete/give routes for kits.
         Route::get('/kits', [KitsController::class, 'index'])->name('kits.index');
+
+        // No gate — same rule as Warps: the mod's HologramEndpoint imposes no
+        // admin requirement beyond being logged in.
+        Route::get('/holograms', [HologramsController::class, 'index'])->name('holograms.index');
+        Route::post('/holograms', [HologramsController::class, 'store'])->name('holograms.store');
+        Route::put('/holograms/{id}', [HologramsController::class, 'update'])->name('holograms.update');
+        Route::delete('/holograms/{id}', [HologramsController::class, 'destroy'])->name('holograms.destroy');
+        Route::post('/holograms/{id}/spawn', [HologramsController::class, 'spawn'])->name('holograms.spawn');
+        Route::post('/holograms/{id}/despawn', [HologramsController::class, 'despawn'])->name('holograms.despawn');
+        Route::post('/holograms/{id}/visible', [HologramsController::class, 'toggleVisibility'])->name('holograms.visible');
+
+        // Status/events are readable by any logged-in account; clearing the
+        // event log, sending a test message, and the auth-config form are
+        // gated behind can:discord.manage (admin-only), mirroring the mod's
+        // own DiscordEndpoint restrictions.
+        Route::get('/discord', [DiscordController::class, 'index'])->name('discord.index');
+        Route::middleware('can:discord.manage')->group(function () {
+            Route::delete('/discord/events', [DiscordController::class, 'clearEvents'])->name('discord.events.clear');
+            Route::post('/discord/test', [DiscordController::class, 'test'])->name('discord.test');
+            Route::post('/discord/auth-config', [DiscordController::class, 'updateAuthConfig'])->name('discord.auth-config.update');
+        });
 
         // Mod dashboard accounts — admin-only in this app, mirroring the mod's
         // own UserManagementEndpoint being entirely admin-only.

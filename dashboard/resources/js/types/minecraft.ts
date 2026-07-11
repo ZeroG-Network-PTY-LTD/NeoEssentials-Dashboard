@@ -95,3 +95,86 @@ export interface ModUserSession {
   createdAt: number;
   lastAccessAt: number;
 }
+
+/** One line of hologram text, with optional per-line animation frames. */
+export interface HologramLine {
+  lineId: string;
+  text: string;
+  animFrameIntervalTicks: number;
+  frames: string[];
+}
+
+/**
+ * Matches HologramEndpoint's hologramJson. The dashboard UI only exposes the
+ * common placement/visibility/text fields for create/edit — the animation
+ * knobs (spin/hover/billboard/per-line frames) are round-tripped but not
+ * editable here yet, so existing values survive an edit made through this UI.
+ */
+export interface Hologram {
+  id: string;
+  world: string;
+  x: number;
+  y: number;
+  z: number;
+  visible: boolean;
+  refreshInterval: number;
+  lineCount: number;
+  scale: number;
+  lineSpacing: number;
+  textShadow: boolean;
+  textOpacity: number;
+  backgroundColorArgb: number;
+  billboardMode: string;
+  spinEnabled: boolean;
+  spinSpeedDegrees: number;
+  spinAxis: string;
+  hoverEnabled: boolean;
+  hoverAmplitude: number;
+  hoverSpeedDegrees: number;
+  lines: HologramLine[];
+}
+
+export interface HologramStats {
+  total: number;
+  visible: number;
+  animated: number;
+  shopHolograms: number;
+}
+
+export interface DiscordAdapterStatus {
+  name: string;
+  enabled: boolean;
+}
+
+export interface DiscordStatus {
+  anyActive: boolean;
+  adapterCount: number;
+  eventCount: number;
+  adapters: DiscordAdapterStatus[];
+}
+
+export interface DiscordEvent {
+  type: string;
+  actor: string | null;
+  target: string | null;
+  channel: string | null;
+  message: string | null;
+  timestamp: number;
+}
+
+export interface DiscordOAuth2Config {
+  configured: boolean;
+  clientId: string | null;
+  clientSecretSet: boolean;
+  redirectUri: string | null;
+  scopes: string[];
+}
+
+export interface DiscordAuthConfig {
+  enabled: boolean;
+  requireLinkedAccount: boolean;
+  allowAutoRegistration: boolean;
+  defaultRole: ModUserRole;
+  sdlinkAvailable: boolean;
+  oauth2: DiscordOAuth2Config;
+}

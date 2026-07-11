@@ -99,6 +99,16 @@ Implemented:
   logins for the **mod's own** embedded dashboard, including the service
   account this app itself authenticates as — distinct from this app's own
   `admin`/`moderator` accounts.
+- Holograms (full CRUD — same no-extra-gate rule as Warps. The edit form only
+  exposes placement/text/visibility; animation knobs like spin/hover/billboard
+  and per-line frames round-trip untouched rather than being editable here)
+- Discord integration (`/dashboard/discord`) — status and recent event log are
+  visible to any logged-in account; clearing the event log, sending a test
+  message, and editing the account-linking auth config (OAuth2 client id/
+  secret/redirect URI, auto-registration, default role) are admin-only, both
+  in this app (`can:discord.manage`) and on the mod side (`DiscordEndpoint`).
+  This is admin *configuration* of the linking feature, not a per-user "link
+  my Discord" flow (that lives elsewhere in the mod, outside this endpoint).
 - Full auth (login/register/password reset/email verification) via Breeze
 - `MinecraftApiService` — the actual integration layer calling the mod's API
 - Authorization (see "Roles and permissions" above) — the `can:*` gates every
@@ -107,11 +117,7 @@ Implemented:
 Not yet implemented — the mod's dashboard API supports all of these, but no
 frontend page exists here yet:
 - Permissions — group/user permission node management (`PermissionEndpoint`)
-- Holograms — full CRUD exists mod-side (`HologramEndpoint`), no page yet
 - Backups / cloud storage (`BackupEndpoint`, `CloudStorageEndpoint`)
-- Discord account-linking configuration (`DiscordEndpoint`) — note this is
-  admin *configuration* of the linking feature, not a per-user "link my
-  Discord" flow (that lives elsewhere in the mod, outside this endpoint)
 - Homes — the mod's dashboard API only exposes a read-only per-player homes
   lookup (`MinecraftApiService::homes()`), no home management UI yet
 

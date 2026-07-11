@@ -189,6 +189,95 @@ class MinecraftApiService
         return Cache::remember('mc_api:kit_stats', $this->cacheTtl, fn () => $this->get('api/kits/stats'));
     }
 
+    // --- Holograms (full CRUD, no admin gate on the mod side — same rule as
+    // Warps: any logged-in dashboard account can manage them) ------------------
+
+    public function holograms(): array
+    {
+        $data = Cache::remember('mc_api:holograms', $this->cacheTtl, fn () => $this->get('api/holograms/list'));
+
+        return $data['holograms'] ?? [];
+    }
+
+    public function hologramStats(): array
+    {
+        return Cache::remember('mc_api:hologram_stats', $this->cacheTtl, fn () => $this->get('api/holograms/stats'));
+    }
+
+    public function hologram(string $id): array
+    {
+        return $this->get("api/holograms/{$id}")['hologram'] ?? [];
+    }
+
+    public function createHologram(array $hologram): array
+    {
+        return $this->post('api/holograms/create', $hologram);
+    }
+
+    public function updateHologram(string $id, array $hologram): array
+    {
+        return $this->put("api/holograms/{$id}", $hologram);
+    }
+
+    public function deleteHologram(string $id): array
+    {
+        return $this->delete("api/holograms/{$id}");
+    }
+
+    public function spawnHologram(string $id): array
+    {
+        return $this->post("api/holograms/{$id}/spawn", []);
+    }
+
+    public function despawnHologram(string $id): array
+    {
+        return $this->post("api/holograms/{$id}/despawn", []);
+    }
+
+    public function toggleHologramVisibility(string $id): array
+    {
+        return $this->post("api/holograms/{$id}/visible", []);
+    }
+
+    // --- Discord integration (status/events readable by any logged-in account;
+    // clearing events, sending a test message, and auth-config are admin-only,
+    // mirroring the mod's own DiscordEndpoint restrictions) ---------------------
+
+    public function discordStatus(): array
+    {
+        return Cache::remember('mc_api:discord_status', $this->cacheTtl, fn () => $this->get('api/discord/status'));
+    }
+
+    public function discordEvents(int $limit = 50): array
+    {
+        $data = $this->get('api/discord/events', ['limit' => $limit]);
+
+        return $data['events'] ?? [];
+    }
+
+    public function clearDiscordEvents(): array
+    {
+        return $this->delete('api/discord/events');
+    }
+
+    public function sendDiscordTestMessage(?string $channel, ?string $message): array
+    {
+        return $this->post('api/discord/test', array_filter([
+            'channel' => $channel,
+            'message' => $message,
+        ], fn ($v) => $v !== null && $v !== ''));
+    }
+
+    public function discordAuthConfig(): array
+    {
+        return $this->get('api/discord/auth-config');
+    }
+
+    public function updateDiscordAuthConfig(array $config): array
+    {
+        return $this->post('api/discord/auth-config', $config);
+    }
+
     // --- Mod dashboard accounts (UserManagementEndpoint — entirely admin-only
     // on the mod side; distinct from THIS app's own users table/roles) ---------
 
@@ -325,6 +414,13 @@ class MinecraftApiService
         return $result;
     }
 
+    private function put(string $path, array $payload): array
+    {
+        $result = $this->request('put', $path, $payload);
+        $this->bustCaches();
+        return $result;
+    }
+
     private function delete(string $path): array
     {
         $result = $this->request('delete', $path);
@@ -396,7 +492,7 @@ class MinecraftApiService
 
     private function bustCaches(): void
     {
-        foreach (['status', 'players', 'economy_leaderboard', 'warps'] as $key) {
+        foreach (['status', 'players', 'economy_leaderboard', 'warps', 'holograms', 'hologram_stats', 'discord_status'] as $key) {
             Cache::forget("mc_api:{$key}");
         }
     }

@@ -49,5 +49,11 @@ class AppServiceProvider extends ServiceProvider
         // moderator never even sees the option in this app, rather than letting
         // them hit it and get a 403 back from the mod itself.
         Gate::define('mod-users.manage', fn (User $user) => $user->isAdmin());
+
+        // Discord status/events are readable by any logged-in account, but
+        // clearing the event log, sending a test message, and editing the
+        // account-linking auth config are admin-only on the mod side
+        // (DiscordEndpoint) — mirror that here.
+        Gate::define('discord.manage', fn (User $user) => $user->isAdmin());
     }
 }

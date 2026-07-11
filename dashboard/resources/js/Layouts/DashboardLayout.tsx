@@ -10,6 +10,8 @@ import {
   MapPin,
   Package,
   UserCog,
+  Sparkles,
+  MessageCircle,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 
@@ -26,6 +28,8 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { label: 'Economy', href: route('dashboard.economy.index'), icon: Coins },
     { label: 'Warps', href: route('dashboard.warps.index'), icon: MapPin },
     { label: 'Kits', href: route('dashboard.kits.index'), icon: Package },
+    { label: 'Holograms', href: route('dashboard.holograms.index'), icon: Sparkles },
+    { label: 'Discord', href: route('dashboard.discord.index'), icon: MessageCircle },
     { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
     { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },
     // Mod dashboard account management is admin-only (mirrors the mod's own

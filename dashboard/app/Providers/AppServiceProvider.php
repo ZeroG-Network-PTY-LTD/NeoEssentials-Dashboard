@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +27,18 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
 
         $this->registerDashboardGates();
+        $this->registerRateLimiters();
+    }
+
+    /**
+     * Backs the throttle:commands-run middleware on POST /dashboard/commands/run
+     * (routes/web.php) — 20 commands/minute per authenticated user, not per-IP,
+     * so a compromised/careless session can't hammer the mod's console but
+     * multiple admins behind the same NAT/proxy don't throttle each other.
+     */
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('commands-run', fn ($request) => Limit::perMinute(20)->by($request->user()?->id));
     }
 
     /**

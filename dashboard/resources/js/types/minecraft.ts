@@ -167,7 +167,8 @@ export interface DiscordOAuth2Config {
   clientId: string | null;
   clientSecretSet: boolean;
   redirectUri: string | null;
-  scopes: string[];
+  /** Space-delimited, per OAuth2 convention (RFC 6749) — not an array. */
+  scopes: string;
 }
 
 export interface DiscordAuthConfig {

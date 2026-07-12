@@ -39,7 +39,15 @@ class ConsoleController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', $result['output'] ?? 'Command sent.');
+        // The mod's `output` field is an array of captured console output lines —
+        // often empty (e.g. for commands like /say that produce no feedback line).
+        // A bare `?? 'Command sent.'` only guards against a missing key, not an
+        // empty array, so an empty-but-present `output` was flashing `[]` as the
+        // literal success message instead of falling back.
+        $output = $result['output'] ?? [];
+        $message = !empty($output) ? implode("\n", $output) : 'Command sent.';
+
+        return back()->with('success', $message);
     }
 
     public function logs(Request $request): Response

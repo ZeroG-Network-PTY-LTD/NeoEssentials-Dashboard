@@ -1,0 +1,67 @@
+name: Mod API integration issue
+description: The dashboard's integration with the NeoEssentials mod API is broken, mismatched, or degrading incorrectly
+title: "[API]: "
+labels: ["api-integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for issues where the dashboard's data doesn't match what the mod/server actually reports,
+        or where the "API down" degraded-state handling isn't behaving correctly.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What's mismatched or broken?
+      description: Describe the discrepancy between dashboard and mod/server, or the integration failure.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: endpoint
+    attributes:
+      label: Affected endpoint/feature
+      options:
+        - Players list / online status
+        - Homes
+        - Kits
+        - Warps
+        - Economy/balances
+        - Server status / heartbeat
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected-response
+    attributes:
+      label: Expected API response/behavior
+      description: What should the mod API return or how should the dashboard behave?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-response
+    attributes:
+      label: Actual API response/behavior
+      description: Paste the actual response payload, error, or observed dashboard behavior.
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: NeoEssentials mod version / Minecraft version
+      placeholder: e.g. NeoEssentials 1.4.2 on NeoForge 1.20.1
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: server-online
+    attributes:
+      label: Server state at time of issue
+      options:
+        - label: Mod server was online and reachable
+        - label: Mod server was offline/unreachable
+        - label: Unsure

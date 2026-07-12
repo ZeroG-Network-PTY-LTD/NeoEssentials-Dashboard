@@ -1,0 +1,58 @@
+name: Feature request
+description: Suggest an improvement or new capability for the dashboard
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! Please describe the feature and the problem it solves.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What's the current limitation or pain point?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to see happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: page
+    attributes:
+      label: Dashboard page/area
+      options:
+        - Home / Overview
+        - Players
+        - Kits
+        - Warps/Homes
+        - Economy
+        - Auth / Login
+        - Mod API integration
+        - New page/section
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about?
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Mockups, links, or related issues.
+    validations:
+      required: false

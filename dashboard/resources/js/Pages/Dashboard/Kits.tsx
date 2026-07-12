@@ -39,6 +39,11 @@ export default function Kits({ kits, stats }: Props) {
         <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
           {kits.length} kit{kits.length === 1 ? '' : 's'}
         </div>
+        {kits.length === 0 && (
+          <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+            No kits configured yet.
+          </div>
+        )}
         {kits.map((kit) => (
           <div
             key={kit.name}
@@ -50,7 +55,9 @@ export default function Kits({ kits, stats }: Props) {
             />
             <span className="flex-1">
               <span className="font-medium">{kit.displayName}</span>
-              <span className="text-[var(--mc-text-muted)] font-data text-[12px] ml-2">{kit.name}</span>
+              {kit.displayName !== kit.name && (
+                <span className="text-[var(--mc-text-muted)] font-data text-[12px] ml-2">{kit.name}</span>
+              )}
             </span>
             <span className="text-[12px] text-[var(--mc-text-muted)] mr-3">{kit.itemCount} items</span>
             <span className="text-[12px] text-[var(--mc-text-muted)] mr-3">{kit.cooldownDisplay}</span>

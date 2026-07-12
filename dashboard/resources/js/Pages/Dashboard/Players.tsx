@@ -144,6 +144,11 @@ export default function Players({ players }: Props) {
             ))}
           </tbody>
         </table>
+        {players.length === 0 && (
+          <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+            Nobody's online right now.
+          </div>
+        )}
       </div>
 
       {/* Action menu — pick which action to take on this player */}

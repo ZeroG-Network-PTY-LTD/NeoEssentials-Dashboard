@@ -59,6 +59,11 @@ export default function Users({ users, sessions }: Props) {
           <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
             {users.length} account{users.length === 1 ? '' : 's'}
           </div>
+          {users.length === 0 && (
+            <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+              No accounts found.
+            </div>
+          )}
           {users.map((u) => (
             <div
               key={u.id}
@@ -68,7 +73,14 @@ export default function Users({ users, sessions }: Props) {
                 className={`w-2 h-2 rounded-full ${u.enabled ? 'bg-[var(--mc-moss-500)]' : 'bg-[var(--mc-text-muted)]'}`}
                 title={u.enabled ? 'Enabled' : 'Disabled'}
               />
-              <span className="flex-1 font-medium">{u.username}</span>
+              <div className="flex-1">
+                <div className="font-medium">{u.username}</div>
+                <div className="text-[11px] text-[var(--mc-text-muted)]">
+                  {typeof u.lastLoginAt === 'number' && u.lastLoginAt > 0
+                    ? `Last login ${new Date(u.lastLoginAt).toLocaleString()}`
+                    : 'Never logged in'}
+                </div>
+              </div>
               <select
                 value={u.role}
                 onChange={(e) => setRole(u.id, e.target.value as ModUserRole)}
@@ -172,7 +184,12 @@ export default function Users({ users, sessions }: Props) {
             key={s.sessionId}
             className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]"
           >
-            <span className="flex-1">{s.username} <span className="text-[var(--mc-text-muted)]">({s.role})</span></span>
+            <div className="flex-1">
+              <div>{s.username} <span className="text-[var(--mc-text-muted)]">({s.role})</span></div>
+              <div className="text-[11px] text-[var(--mc-text-muted)]">
+                last active {new Date(s.lastAccessAt).toLocaleString()}
+              </div>
+            </div>
             <span className="font-data text-[12px] text-[var(--mc-text-muted)] mr-3">{s.ipAddress}</span>
             <button
               onClick={() => revokeSession(s.sessionId)}

@@ -82,7 +82,8 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
       <Head title="Backups" />
       <h1 className="font-display text-[20px] font-semibold mb-1">Backups</h1>
       <p className="text-[13px] text-[var(--mc-text-muted)] mb-5">
-        {status.count}/{status.maxSnapshots} snapshots · {status.totalSizeMb} MB · last backup: {status.lastBackup ?? 'never'}
+        {status.count}/{status.maxSnapshots} snapshots · {status.totalSizeMb} MB · last backup:{' '}
+        {status.lastBackup ? new Date(status.lastBackup).toLocaleString() : 'never'}
       </p>
 
       <div className="grid grid-cols-[1fr_320px] gap-5 mb-5">
@@ -98,7 +99,8 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
               <div className="flex items-center gap-3">
                 <span className="flex-1 font-medium">{s.name}</span>
                 <span className="font-data text-[12px] text-[var(--mc-text-muted)]">
-                  {s.sizeMb ?? (s.sizeBytes / 1_048_576).toFixed(2)} MB · {s.created}
+                  {s.sizeMb ?? (s.sizeBytes / 1_048_576).toFixed(2)} MB ·{' '}
+                  {s.created === 'unknown' ? 'unknown' : new Date(s.created).toLocaleString()}
                 </span>
               </div>
               <div className="flex gap-1.5 mt-1.5">

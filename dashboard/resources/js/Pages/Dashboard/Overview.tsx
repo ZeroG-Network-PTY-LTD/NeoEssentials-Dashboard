@@ -29,8 +29,9 @@ export default function Overview({ status, players, apiReachable }: Props) {
           </div>
           <p className="text-[13px] text-[var(--mc-text-secondary)] mt-1">
             The dashboard couldn't connect to the mod's API. Check that the Minecraft
-            server is running and that MC_API_URL / MC_API_TOKEN in your .env match
-            the mod's config.
+            server is running and that MC_API_URL / MC_SERVICE_USERNAME /
+            MC_SERVICE_PASSWORD in your .env match the mod's config and a valid
+            dashboard service account.
           </p>
         </div>
       </DashboardLayout>

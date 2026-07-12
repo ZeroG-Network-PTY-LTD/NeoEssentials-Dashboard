@@ -28,6 +28,11 @@ export default function Economy({ leaderboard }: Props) {
           <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
             Balance leaderboard
           </div>
+          {leaderboard.length === 0 && (
+            <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+              No balances tracked yet.
+            </div>
+          )}
           {leaderboard.map((entry, i) => (
             <div
               key={entry.uuid}

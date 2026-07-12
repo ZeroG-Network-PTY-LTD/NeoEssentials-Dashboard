@@ -84,6 +84,8 @@ export interface ModUser {
   email?: string;
   role: ModUserRole;
   enabled: boolean;
+  createdAt: number;
+  lastLoginAt: number;
   [key: string]: unknown;
 }
 

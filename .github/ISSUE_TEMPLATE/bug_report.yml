@@ -1,7 +1,8 @@
-name: Bug report
+name: 🐛 Bug Report
 description: Something in the dashboard is broken or behaving incorrectly
 title: "[Bug]: "
 labels: ["bug"]
+assignees: []
 body:
   - type: markdown
     attributes:
@@ -87,3 +88,13 @@ body:
       placeholder: e.g. dashboard-bootstrap @ 90cf4ef
     validations:
       required: false
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I am using the latest deployed version of the dashboard.
+          required: true
+        - label: I have searched existing issues to avoid duplicates.
+          required: true

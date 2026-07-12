@@ -1,7 +1,8 @@
-name: Mod API integration issue
+name: ⚙️ Mod API Integration Issue
 description: The dashboard's integration with the NeoEssentials mod API is broken, mismatched, or degrading incorrectly
 title: "[API]: "
 labels: ["api-integration"]
+assignees: []
 body:
   - type: markdown
     attributes:

@@ -1,0 +1,20 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Point at your NeoEssentials server's dashboard API. Use host.docker.internal
+      # if the mod runs on the same machine as Docker (Linux: add
+      # "extra_hosts: - host.docker.internal:host-gateway" below).
+      MC_API_URL: "http://host.docker.internal:8642"
+      MC_SERVICE_USERNAME: ""
+      MC_SERVICE_PASSWORD: ""
+    volumes:
+      # Persist the SQLite DB and app key across container restarts/rebuilds.
+      - dashboard-data:/app/database
+      - dashboard-storage:/app/storage
+
+volumes:
+  dashboard-data:
+  dashboard-storage:

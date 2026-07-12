@@ -1,0 +1,89 @@
+name: Bug report
+description: Something in the dashboard is broken or behaving incorrectly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the details below so it can be reproduced quickly.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: Tell us what went wrong
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: page
+    attributes:
+      label: Dashboard page/area
+      description: Where in the dashboard did this occur?
+      options:
+        - Home / Overview
+        - Players
+        - Kits
+        - Warps/Homes
+        - Economy
+        - Auth / Login
+        - API connectivity (mod server unreachable/degraded)
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: server-state
+    attributes:
+      label: Minecraft server / mod API state
+      description: Was the mod server online? Any relevant server logs, mod version, or API error responses?
+      placeholder: e.g. Server offline, dashboard should show empty state but shows a crash instead
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste any relevant browser console errors, Laravel logs (storage/logs/laravel.log), or screenshots.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser/OS
+      placeholder: e.g. Chrome 126 on Windows 11
+    validations:
+      required: false
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit / branch
+      placeholder: e.g. dashboard-bootstrap @ 90cf4ef
+    validations:
+      required: false

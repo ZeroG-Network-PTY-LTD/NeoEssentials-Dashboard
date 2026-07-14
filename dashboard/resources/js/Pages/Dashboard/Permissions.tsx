@@ -120,7 +120,7 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
                     )}
                   </div>
                   <div className="flex flex-wrap gap-1.5 mb-1.5">
-                    {g.permissions.map((p) => (
+                    {(g.permissions ?? []).map((p) => (
                       <span
                         key={p}
                         className="font-data text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"

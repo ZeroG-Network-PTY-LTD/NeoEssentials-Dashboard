@@ -20,9 +20,9 @@ export default function Discord({ status, events, authConfig }: Props) {
     allowAutoRegistration: authConfig?.allowAutoRegistration ?? false,
     defaultRole: authConfig?.defaultRole ?? 'VIEWER',
     oauth2: {
-      clientId: authConfig?.oauth2.clientId ?? '',
+      clientId: authConfig?.oauth2?.clientId ?? '',
       clientSecret: '',
-      redirectUri: authConfig?.oauth2.redirectUri ?? '',
+      redirectUri: authConfig?.oauth2?.redirectUri ?? '',
     },
   });
 
@@ -58,7 +58,7 @@ export default function Discord({ status, events, authConfig }: Props) {
               <span className="text-[var(--mc-text-muted)]">{status.eventCount} events logged</span>
             </div>
             <div className="flex flex-col gap-1 mt-3">
-              {status.adapters.map((a) => (
+              {(status.adapters ?? []).map((a) => (
                 <div key={a.name} className="flex items-center gap-2 text-[12px]">
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${a.enabled ? 'bg-[var(--mc-moss-500)]' : 'bg-[var(--mc-text-muted)]'}`}
@@ -177,7 +177,7 @@ export default function Discord({ status, events, authConfig }: Props) {
                 OAuth2 client secret
                 <input
                   type="password"
-                  placeholder={authConfig.oauth2.clientSecretSet ? '(unchanged)' : ''}
+                  placeholder={authConfig.oauth2?.clientSecretSet ? '(unchanged)' : ''}
                   value={configForm.data.oauth2.clientSecret}
                   onChange={(e) => configForm.setData('oauth2', { ...configForm.data.oauth2, clientSecret: e.target.value })}
                   className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"

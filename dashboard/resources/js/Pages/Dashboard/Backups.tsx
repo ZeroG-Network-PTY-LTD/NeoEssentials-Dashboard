@@ -22,7 +22,7 @@ interface Props {
 export default function Backups({ status, snapshots, cloudStatus, cloudConfig, dropboxFiles, googleFiles }: Props) {
   const { props } = usePage<PageProps>();
   const isAdmin = props.auth.user.role === 'admin';
-  const [targets, setTargets] = useState<string[]>(status.availableTargets.map((t) => t.key));
+  const [targets, setTargets] = useState<string[]>((status.availableTargets ?? []).map((t) => t.key));
 
   const createForm = useForm({ name: '' });
   const dropboxForm = useForm({ accessToken: '', uploadPath: '/NeoEssentials-Backups' });
@@ -163,7 +163,7 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
             </label>
             <div className="flex flex-col gap-1.5">
               <span className="text-[12px] text-[var(--mc-text-secondary)]">Targets</span>
-              {status.availableTargets.map((t) => (
+              {(status.availableTargets ?? []).map((t) => (
                 <label key={t.key} className="flex items-center gap-2 text-[12px]">
                   <input type="checkbox" checked={targets.includes(t.key)} onChange={() => toggleTarget(t.key)} />
                   {t.key} {!t.exists && <span className="text-[var(--mc-text-muted)]">(missing)</span>}

@@ -36,7 +36,7 @@ export default function Holograms({ holograms, stats }: Props) {
       y: String(h.y),
       z: String(h.z),
       visible: h.visible,
-      lines: h.lines.length > 0 ? h.lines.map((l) => l.text) : ['Line 1'],
+      lines: h.lines && h.lines.length > 0 ? h.lines.map((l) => l.text) : ['Line 1'],
     });
   };
 
@@ -91,7 +91,7 @@ export default function Holograms({ holograms, stats }: Props) {
             >
               <span className="flex-1 font-medium">{h.id}</span>
               <span className="font-data text-[12px] text-[var(--mc-text-muted)] mr-3">
-                {h.world.replace('minecraft:', '')} · {Math.round(h.x)}, {Math.round(h.y)}, {Math.round(h.z)}
+                {(h.world ?? '').replace('minecraft:', '')} · {Math.round(h.x)}, {Math.round(h.y)}, {Math.round(h.z)}
               </span>
               <span
                 className={`text-[12px] mr-3 ${h.visible ? 'text-[var(--mc-moss-500)]' : 'text-[var(--mc-text-muted)]'}`}

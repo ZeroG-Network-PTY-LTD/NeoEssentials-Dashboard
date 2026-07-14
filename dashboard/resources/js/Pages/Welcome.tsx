@@ -81,6 +81,12 @@ export default function Welcome({ auth }: PageProps) {
                         </div>
 
                         <nav className="flex items-center gap-2">
+                            <Link
+                                href={route('lookup')}
+                                className="rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"
+                            >
+                                Player Lookup
+                            </Link>
                             {auth.user ? (
                                 <Link
                                     href={route('dashboard')}

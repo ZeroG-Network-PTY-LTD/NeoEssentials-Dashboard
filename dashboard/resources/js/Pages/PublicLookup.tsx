@@ -1,0 +1,345 @@
+import { PageProps } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
+import { FormEventHandler, useState } from 'react';
+import { Search, ShieldBan, VolumeX, LogOut, TriangleAlert } from 'lucide-react';
+
+interface PunishmentBase {
+    id: string;
+    reason: string | null;
+    active: boolean;
+    permanent: boolean;
+}
+
+interface BanRecord extends PunishmentBase {
+    playerName: string;
+    playerId: string;
+    bannedBy: string;
+    banTime: number;
+    expireTime: number;
+    unbannedBy: string | null;
+    unbannedAt: number;
+}
+
+interface MuteRecord extends PunishmentBase {
+    target: string;
+    mutedBy: string;
+    muteTime: number;
+    expireTime: number;
+    unmutedBy: string | null;
+    unmutedAt: number;
+}
+
+interface KickRecord {
+    id: string;
+    playerName: string;
+    reason: string | null;
+    kickedBy: string;
+    kickTime: number;
+}
+
+interface WarnRecord {
+    id: string;
+    targetName: string;
+    warnedBy: string;
+    reason: string | null;
+    timestamp: number;
+}
+
+interface LookupResult {
+    success: boolean;
+    playerName: string;
+    playerId: string | null;
+    bans: BanRecord[];
+    mutes: MuteRecord[];
+    kicks: KickRecord[];
+    warns: WarnRecord[];
+}
+
+type RecentEntry =
+    | (BanRecord & { type: 'ban' })
+    | (MuteRecord & { type: 'mute' });
+
+function formatDate(ms: number) {
+    return ms ? new Date(ms).toLocaleString() : '—';
+}
+
+function StatusPill({ active, permanent }: { active: boolean; permanent: boolean }) {
+    if (!active) {
+        return (
+            <span className="rounded-full bg-[var(--mc-bg-surface-raised)] px-2 py-0.5 text-xs text-[var(--mc-text-muted)]">
+                lifted
+            </span>
+        );
+    }
+    return (
+        <span className="rounded-full bg-[var(--mc-ember-50)] px-2 py-0.5 text-xs text-[var(--mc-ember-500)]">
+            {permanent ? 'active · permanent' : 'active'}
+        </span>
+    );
+}
+
+function SectionCard({
+    icon: Icon,
+    title,
+    count,
+    children,
+}: {
+    icon: typeof ShieldBan;
+    title: string;
+    count: number;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5">
+            <div className="flex items-center gap-2">
+                <Icon size={16} strokeWidth={1.75} className="text-[var(--mc-copper-500)]" />
+                <h2 className="font-display text-sm font-semibold">{title}</h2>
+                <span className="ml-auto text-xs text-[var(--mc-text-muted)]">{count}</span>
+            </div>
+            <div className="mt-3 space-y-2">
+                {count === 0 ? (
+                    <p className="text-sm text-[var(--mc-text-muted)]">No records.</p>
+                ) : (
+                    children
+                )}
+            </div>
+        </div>
+    );
+}
+
+export default function PublicLookup({
+    auth,
+    query,
+    result,
+    recent,
+}: PageProps<{
+    query: string | null;
+    result: LookupResult | null;
+    recent: RecentEntry[];
+}>) {
+    const [name, setName] = useState(query ?? '');
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        router.get(route('lookup'), name.trim() ? { player: name.trim() } : {}, {
+            preserveState: true,
+        });
+    };
+
+    return (
+        <>
+            <Head title="Player Lookup" />
+            <div className="min-h-screen bg-[var(--mc-bg-base)] text-[var(--mc-text-primary)]">
+                <div className="mx-auto max-w-3xl px-6">
+                    <header className="flex items-center justify-between py-8">
+                        <Link href="/" className="flex items-center gap-2">
+                            <svg
+                                className="h-7 w-7 text-[var(--mc-copper-500)]"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    d="M12 2 3 6.5v11L12 22l9-4.5v-11L12 2Z"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    d="M3 6.5 12 11l9-4.5M12 11v11"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            <span className="font-display text-lg font-semibold tracking-tight">
+                                ZeroG Network
+                            </span>
+                        </Link>
+
+                        <Link
+                            href={auth.user ? route('dashboard') : route('login')}
+                            className="rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"
+                        >
+                            {auth.user ? 'Dashboard' : 'Staff log in'}
+                        </Link>
+                    </header>
+
+                    <main className="pb-20">
+                        <h1 className="font-display text-2xl font-semibold">Player Lookup</h1>
+                        <p className="mt-1 text-sm text-[var(--mc-text-secondary)]">
+                            Search any player to see their public moderation record — bans,
+                            mutes, kicks, and warnings, with full history.
+                        </p>
+
+                        <form onSubmit={submit} className="mt-6 flex gap-2">
+                            <div className="relative flex-1">
+                                <Search
+                                    size={16}
+                                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mc-text-muted)]"
+                                />
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Player name"
+                                    className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-copper-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-copper-500)]"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="rounded-[var(--radius)] bg-[var(--mc-copper-500)] px-5 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-copper-400)]"
+                            >
+                                Search
+                            </button>
+                        </form>
+
+                        {query && (
+                            <div className="mt-8">
+                                {!result ? (
+                                    <div className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5 text-sm text-[var(--mc-text-secondary)]">
+                                        Couldn't reach the moderation lookup service. Try again
+                                        shortly.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <h2 className="font-display text-lg font-semibold">
+                                            {result.playerName}
+                                        </h2>
+
+                                        <SectionCard icon={ShieldBan} title="Bans" count={result.bans.length}>
+                                            {result.bans.map((b) => (
+                                                <div
+                                                    key={b.id}
+                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-[var(--mc-text-secondary)]">
+                                                            {b.reason || 'No reason given'}
+                                                        </span>
+                                                        <StatusPill active={b.active} permanent={b.permanent} />
+                                                    </div>
+                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
+                                                        Banned by {b.bannedBy} · {formatDate(b.banTime)}
+                                                        {!b.active && b.unbannedBy && (
+                                                            <> · Unbanned by {b.unbannedBy}</>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </SectionCard>
+
+                                        <SectionCard icon={VolumeX} title="Mutes" count={result.mutes.length}>
+                                            {result.mutes.map((m) => (
+                                                <div
+                                                    key={m.id}
+                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-[var(--mc-text-secondary)]">
+                                                            {m.reason || 'No reason given'}
+                                                        </span>
+                                                        <StatusPill active={m.active} permanent={m.permanent} />
+                                                    </div>
+                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
+                                                        Muted by {m.mutedBy} · {formatDate(m.muteTime)}
+                                                        {!m.active && m.unmutedBy && (
+                                                            <> · Unmuted by {m.unmutedBy}</>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </SectionCard>
+
+                                        <SectionCard icon={LogOut} title="Kicks" count={result.kicks.length}>
+                                            {result.kicks.map((k) => (
+                                                <div
+                                                    key={k.id}
+                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                >
+                                                    <span className="text-[var(--mc-text-secondary)]">
+                                                        {k.reason || 'No reason given'}
+                                                    </span>
+                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
+                                                        Kicked by {k.kickedBy} · {formatDate(k.kickTime)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </SectionCard>
+
+                                        <SectionCard icon={TriangleAlert} title="Warnings" count={result.warns.length}>
+                                            {result.warns.map((w) => (
+                                                <div
+                                                    key={w.id}
+                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                >
+                                                    <span className="text-[var(--mc-text-secondary)]">
+                                                        {w.reason || 'No reason given'}
+                                                    </span>
+                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
+                                                        Warned by {w.warnedBy} · {formatDate(w.timestamp)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </SectionCard>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="mt-10">
+                            <h2 className="font-display text-sm font-semibold text-[var(--mc-text-secondary)]">
+                                Recent activity
+                            </h2>
+                            <div className="mt-3 divide-y divide-[var(--mc-border)] rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)]">
+                                {recent.length === 0 ? (
+                                    <p className="p-4 text-sm text-[var(--mc-text-muted)]">
+                                        Nothing recent.
+                                    </p>
+                                ) : (
+                                    recent.map((entry) => (
+                                        <div
+                                            key={`${entry.type}-${entry.id}`}
+                                            className="flex items-center gap-3 p-3 text-sm"
+                                        >
+                                            {entry.type === 'ban' ? (
+                                                <ShieldBan size={15} className="text-[var(--mc-ember-500)]" />
+                                            ) : (
+                                                <VolumeX size={15} className="text-[var(--mc-copper-500)]" />
+                                            )}
+                                            <button
+                                                onClick={() =>
+                                                    router.get(
+                                                        route('lookup'),
+                                                        {
+                                                            player:
+                                                                entry.type === 'ban'
+                                                                    ? entry.playerName
+                                                                    : entry.target,
+                                                        },
+                                                        { preserveState: true },
+                                                    )
+                                                }
+                                                className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-copper-500)]"
+                                            >
+                                                {entry.type === 'ban' ? entry.playerName : entry.target}
+                                            </button>
+                                            <span className="text-[var(--mc-text-muted)]">
+                                                {entry.reason || 'No reason given'}
+                                            </span>
+                                            <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
+                                                {formatDate(
+                                                    entry.type === 'ban' ? entry.banTime : entry.muteTime,
+                                                )}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </>
+    );
+}

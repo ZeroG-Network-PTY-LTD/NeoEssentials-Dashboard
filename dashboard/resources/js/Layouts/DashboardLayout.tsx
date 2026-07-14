@@ -16,6 +16,7 @@ import {
   DatabaseBackup,
   CheckCircle2,
   XCircle,
+  Search,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 
@@ -111,6 +112,16 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             );
           })}
         </nav>
+
+        <div className="px-2 py-2 border-t border-[var(--mc-border)]">
+          <Link
+            href={route('lookup')}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius)] text-[13px] text-[var(--mc-text-secondary)] hover:bg-[var(--mc-bg-surface-raised)] hover:text-[var(--mc-text-primary)] transition-colors"
+          >
+            <Search size={16} strokeWidth={1.75} />
+            Player Lookup
+          </Link>
+        </div>
 
         <div className="px-4 py-4 border-t border-[var(--mc-border)] flex items-center gap-2 text-[12px]">
           <Radio

@@ -120,6 +120,42 @@ class MinecraftApiService
         ]);
     }
 
+    // --- Public moderation lookup (no dashboard login required on either side —
+    // the mod's /api/public/moderation/* routes are registered without the
+    // Bearer-token check, so these deliberately skip the service-account session
+    // machinery entirely rather than calling request()/get()) -------------------
+
+    /** Bans/mutes/kicks/warns for one player, by name. Never includes IP bans/mutes. */
+    public function publicLookup(string $username): array
+    {
+        return $this->publicGet("api/public/moderation/lookup/{$username}");
+    }
+
+    /** Recent active bans + mutes across all players, newest first. */
+    public function publicRecent(): array
+    {
+        $data = $this->publicGet('api/public/moderation/recent');
+
+        return $data['recent'] ?? [];
+    }
+
+    private function publicGet(string $path): array
+    {
+        try {
+            $response = Http::timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
+        } catch (\Throwable $e) {
+            Log::warning('Minecraft public API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
+            throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
+        }
+
+        if ($response->failed()) {
+            Log::warning('Minecraft public API error', ['path' => $path, 'status' => $response->status()]);
+            throw new RuntimeException("Minecraft API returned an error ({$response->status()}).");
+        }
+
+        return $response->json() ?? [];
+    }
+
     // --- Economy -----------------------------------------------------------
 
     /** Balance leaderboard, shaped to match LeaderboardEntry[]. Cached briefly. */

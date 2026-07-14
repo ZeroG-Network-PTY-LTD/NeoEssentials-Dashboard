@@ -9,6 +9,7 @@ use App\Http\Controllers\HologramsController;
 use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
+use App\Http\Controllers\PublicLookupController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WarpsController;
@@ -24,6 +25,10 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+// Public player moderation lookup — no login required, reachable whether or not
+// a dashboard account is signed in (also linked from the staff sidebar nav).
+Route::get('/lookup', [PublicLookupController::class, 'index'])->name('lookup');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

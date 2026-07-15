@@ -19,11 +19,6 @@ export default function Discord({ status, events, authConfig }: Props) {
     requireLinkedAccount: authConfig?.requireLinkedAccount ?? false,
     allowAutoRegistration: authConfig?.allowAutoRegistration ?? false,
     defaultRole: authConfig?.defaultRole ?? 'VIEWER',
-    oauth2: {
-      clientId: authConfig?.oauth2?.clientId ?? '',
-      clientSecret: '',
-      redirectUri: authConfig?.oauth2?.redirectUri ?? '',
-    },
   });
 
   const sendTest = (e: React.FormEvent) => {
@@ -61,9 +56,12 @@ export default function Discord({ status, events, authConfig }: Props) {
               {(status.adapters ?? []).map((a) => (
                 <div key={a.name} className="flex items-center gap-2 text-[12px]">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${a.enabled ? 'bg-[var(--mc-moss-500)]' : 'bg-[var(--mc-text-muted)]'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${a.ready ? 'bg-[var(--mc-moss-500)]' : a.enabled ? 'bg-[var(--mc-copper-500)]' : 'bg-[var(--mc-text-muted)]'}`}
                   />
                   {a.name}
+                  <span className="text-[var(--mc-text-muted)]">
+                    {a.ready ? 'connected' : a.enabled ? 'installed, not connected' : 'not installed'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -139,6 +137,16 @@ export default function Discord({ status, events, authConfig }: Props) {
               className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 flex flex-col gap-3"
             >
               <div className="font-display text-[14px] font-semibold mb-1">Account-linking config</div>
+              <p className="text-[12px] text-[var(--mc-text-muted)] -mt-2 mb-1">
+                Players link their Discord account in-game via Simple Discord Link or Mc2Discord's own
+                commands. NeoEssentials never contacts Discord directly — it only reads the link once
+                one of those mods reports it.
+                {!authConfig?.linkAdapterAvailable && (
+                  <span className="block mt-1 text-[var(--mc-ember-500)]">
+                    No Discord companion mod is currently installed/connected.
+                  </span>
+                )}
+              </p>
 
               {(['enabled', 'requireLinkedAccount', 'allowAutoRegistration'] as const).map((field) => (
                 <label key={field} className="flex items-center gap-2 text-[12px] text-[var(--mc-text-secondary)]">
@@ -162,35 +170,6 @@ export default function Discord({ status, events, authConfig }: Props) {
                   <option value="MODERATOR">MODERATOR</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
-              </label>
-
-              <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                OAuth2 client ID
-                <input
-                  value={configForm.data.oauth2.clientId ?? ''}
-                  onChange={(e) => configForm.setData('oauth2', { ...configForm.data.oauth2, clientId: e.target.value })}
-                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                OAuth2 client secret
-                <input
-                  type="password"
-                  placeholder={authConfig.oauth2?.clientSecretSet ? '(unchanged)' : ''}
-                  value={configForm.data.oauth2.clientSecret}
-                  onChange={(e) => configForm.setData('oauth2', { ...configForm.data.oauth2, clientSecret: e.target.value })}
-                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                Redirect URI
-                <input
-                  value={configForm.data.oauth2.redirectUri ?? ''}
-                  onChange={(e) => configForm.setData('oauth2', { ...configForm.data.oauth2, redirectUri: e.target.value })}
-                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                />
               </label>
 
               <button

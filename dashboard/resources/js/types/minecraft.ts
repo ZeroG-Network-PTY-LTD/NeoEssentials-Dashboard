@@ -146,6 +146,8 @@ export interface HologramStats {
 export interface DiscordAdapterStatus {
   name: string;
   enabled: boolean;
+  /** Whether the underlying Discord bot connection is actually up, not just installed. */
+  ready: boolean;
 }
 
 export interface DiscordStatus {
@@ -164,22 +166,13 @@ export interface DiscordEvent {
   timestamp: number;
 }
 
-export interface DiscordOAuth2Config {
-  configured: boolean;
-  clientId: string | null;
-  clientSecretSet: boolean;
-  redirectUri: string | null;
-  /** Space-delimited, per OAuth2 convention (RFC 6749) — not an array. */
-  scopes: string;
-}
-
 export interface DiscordAuthConfig {
   enabled: boolean;
   requireLinkedAccount: boolean;
   allowAutoRegistration: boolean;
   defaultRole: ModUserRole;
-  sdlinkAvailable: boolean;
-  oauth2: DiscordOAuth2Config;
+  /** A Discord companion mod (Simple Discord Link or Mc2Discord) is installed and ready. */
+  linkAdapterAvailable: boolean;
 }
 
 /**

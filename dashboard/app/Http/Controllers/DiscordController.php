@@ -58,17 +58,7 @@ class DiscordController extends Controller
             'requireLinkedAccount' => ['required', 'boolean'],
             'allowAutoRegistration' => ['required', 'boolean'],
             'defaultRole' => ['required', 'string', 'in:ADMIN,MODERATOR,VIEWER'],
-            'oauth2.clientId' => ['nullable', 'string'],
-            'oauth2.clientSecret' => ['nullable', 'string'],
-            'oauth2.redirectUri' => ['nullable', 'string'],
         ]);
-
-        // A blank secret field means "leave it unchanged" (the form only ever
-        // shows a placeholder, never the real value) — don't forward an empty
-        // string that would overwrite an already-configured secret.
-        if (empty($data['oauth2']['clientSecret'])) {
-            unset($data['oauth2']['clientSecret']);
-        }
 
         return $this->attempt(
             fn () => $this->mc->updateDiscordAuthConfig($data),

@@ -1,10 +1,12 @@
 import Checkbox from '@/Components/Checkbox';
+import DiscordAuthButton from '@/Components/DiscordAuthButton';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { PageProps } from '@/types';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 export default function Login({
@@ -14,8 +16,9 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
+    const { props } = usePage<PageProps>();
     const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
+        login: '',
         password: '',
         remember: false as boolean,
     });
@@ -45,22 +48,28 @@ export default function Login({
                 </div>
             )}
 
+            {props.flash?.error && (
+                <div className="mb-4 mt-4 rounded-[var(--radius)] border border-[var(--mc-ember-400)] bg-[var(--mc-ember-50)] px-3 py-2 text-sm font-medium text-[var(--mc-ember-500)]">
+                    {props.flash.error}
+                </div>
+            )}
+
             <form onSubmit={submit} className="mt-6">
                 <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                    <InputLabel htmlFor="login" value="Email or Minecraft username" />
 
                     <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
+                        id="login"
+                        type="text"
+                        name="login"
+                        value={data.login}
                         className="mt-1 block w-full"
                         autoComplete="username"
                         isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e) => setData('login', e.target.value)}
                     />
 
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.login} className="mt-2" />
                 </div>
 
                 <div className="mt-4">
@@ -101,7 +110,7 @@ export default function Login({
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="rounded-md text-sm text-[var(--mc-text-secondary)] underline hover:text-[var(--mc-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--mc-copper-500)] focus:ring-offset-2 focus:ring-offset-[var(--mc-bg-surface)]"
+                            className="rounded-md text-sm text-[var(--mc-text-secondary)] underline hover:text-[var(--mc-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--mc-cyan-500)] focus:ring-offset-2 focus:ring-offset-[var(--mc-bg-surface)]"
                         >
                             Forgot your password?
                         </Link>
@@ -112,6 +121,8 @@ export default function Login({
                     </PrimaryButton>
                 </div>
             </form>
+
+            <DiscordAuthButton label="Log in with Discord" />
         </GuestLayout>
     );
 }

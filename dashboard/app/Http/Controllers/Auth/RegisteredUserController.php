@@ -38,7 +38,11 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            // Unique because 'name' doubles as the player's Minecraft username
+            // throughout this app (see createModUser() below, and LoginRequest's
+            // login-by-username fallback) — two accounts sharing a name would make
+            // that lookup ambiguous.
+            'name' => 'required|string|max:255|unique:'.User::class,
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);

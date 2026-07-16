@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,13 +29,19 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
+     * Attempt to authenticate the request's credentials. The 'login' field accepts
+     * either the account email or a Minecraft username — the latter matches either
+     * 'name' (self-registered accounts, where the mod-account-mirroring flow in
+     * RegisteredUserController already assumes 'name' IS the player's MC username)
+     * or 'mc_username' (accounts linked via Discord OAuth, see DiscordAuthController).
+     * This exists as a fallback for admins who haven't configured a Discord OAuth2
+     * app yet — email/password and Discord login both still work unchanged.
      *
      * @throws ValidationException
      */
@@ -42,11 +49,22 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = trim($this->string('login')->toString());
+
+        $user = str_contains($login, '@')
+            ? User::whereRaw('LOWER(email) = ?', [Str::lower($login)])->first()
+            : User::whereRaw('LOWER(name) = ?', [Str::lower($login)])
+                ->orWhereRaw('LOWER(mc_username) = ?', [Str::lower($login)])
+                ->first();
+
+        if (! $user || ! Auth::attempt(
+            ['id' => $user->id, 'password' => $this->string('password')->toString()],
+            $this->boolean('remember'),
+        )) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'login' => trans('auth.failed'),
             ]);
         }
 
@@ -81,6 +99,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
     }
 }

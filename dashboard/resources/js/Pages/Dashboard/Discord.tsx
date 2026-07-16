@@ -56,7 +56,7 @@ export default function Discord({ status, events, authConfig }: Props) {
               {(status.adapters ?? []).map((a) => (
                 <div key={a.name} className="flex items-center gap-2 text-[12px]">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${a.ready ? 'bg-[var(--mc-moss-500)]' : a.enabled ? 'bg-[var(--mc-copper-500)]' : 'bg-[var(--mc-text-muted)]'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${a.ready ? 'bg-[var(--mc-moss-500)]' : a.enabled ? 'bg-[var(--mc-cyan-500)]' : 'bg-[var(--mc-text-muted)]'}`}
                   />
                   {a.name}
                   <span className="text-[var(--mc-text-muted)]">
@@ -124,7 +124,7 @@ export default function Discord({ status, events, authConfig }: Props) {
               <button
                 type="submit"
                 disabled={testForm.processing}
-                className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+                className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
               >
                 Send
               </button>
@@ -138,9 +138,9 @@ export default function Discord({ status, events, authConfig }: Props) {
             >
               <div className="font-display text-[14px] font-semibold mb-1">Account-linking config</div>
               <p className="text-[12px] text-[var(--mc-text-muted)] -mt-2 mb-1">
-                Players link their Discord account in-game via Simple Discord Link or Mc2Discord's own
-                commands. NeoEssentials never contacts Discord directly — it only reads the link once
-                one of those mods reports it.
+                Players link their Discord account in-game via Simple Discord Link, Mc2Discord, or
+                DCIntegration's own commands. NeoEssentials never contacts Discord directly — it only
+                reads the link once one of those mods reports it.
                 {!authConfig?.linkAdapterAvailable && (
                   <span className="block mt-1 text-[var(--mc-ember-500)]">
                     No Discord companion mod is currently installed/connected.
@@ -175,7 +175,7 @@ export default function Discord({ status, events, authConfig }: Props) {
               <button
                 type="submit"
                 disabled={configForm.processing}
-                className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+                className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
               >
                 Save
               </button>

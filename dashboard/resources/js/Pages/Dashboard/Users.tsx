@@ -165,7 +165,7 @@ export default function Users({ users, sessions }: Props) {
           <button
             type="submit"
             disabled={processing}
-            className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+            className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
           >
             Create
           </button>

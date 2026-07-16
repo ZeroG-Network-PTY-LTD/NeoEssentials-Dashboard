@@ -92,7 +92,7 @@ function SectionCard({
     return (
         <div className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5">
             <div className="flex items-center gap-2">
-                <Icon size={16} strokeWidth={1.75} className="text-[var(--mc-copper-500)]" />
+                <Icon size={16} strokeWidth={1.75} className="text-[var(--mc-cyan-500)]" />
                 <h2 className="font-display text-sm font-semibold">{title}</h2>
                 <span className="ml-auto text-xs text-[var(--mc-text-muted)]">{count}</span>
             </div>
@@ -134,7 +134,7 @@ export default function PublicLookup({
                     <header className="flex items-center justify-between py-8">
                         <Link href="/" className="flex items-center gap-2">
                             <svg
-                                className="h-7 w-7 text-[var(--mc-copper-500)]"
+                                className="h-7 w-7 text-[var(--mc-cyan-500)]"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -183,12 +183,12 @@ export default function PublicLookup({
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Player name"
-                                    className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-copper-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-copper-500)]"
+                                    className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-cyan-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-cyan-500)]"
                                 />
                             </div>
                             <button
                                 type="submit"
-                                className="rounded-[var(--radius)] bg-[var(--mc-copper-500)] px-5 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-copper-400)]"
+                                className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-5 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                             >
                                 Search
                             </button>
@@ -305,7 +305,7 @@ export default function PublicLookup({
                                             {entry.type === 'ban' ? (
                                                 <ShieldBan size={15} className="text-[var(--mc-ember-500)]" />
                                             ) : (
-                                                <VolumeX size={15} className="text-[var(--mc-copper-500)]" />
+                                                <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
                                             )}
                                             <button
                                                 onClick={() =>
@@ -320,7 +320,7 @@ export default function PublicLookup({
                                                         { preserveState: true },
                                                     )
                                                 }
-                                                className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-copper-500)]"
+                                                className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-cyan-500)]"
                                             >
                                                 {entry.type === 'ban' ? entry.playerName : entry.target}
                                             </button>

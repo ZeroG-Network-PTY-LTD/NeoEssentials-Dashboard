@@ -171,7 +171,7 @@ export interface DiscordAuthConfig {
   requireLinkedAccount: boolean;
   allowAutoRegistration: boolean;
   defaultRole: ModUserRole;
-  /** A Discord companion mod (Simple Discord Link or Mc2Discord) is installed and ready. */
+  /** A Discord companion mod (Simple Discord Link, Mc2Discord, or DCIntegration) is installed and ready. */
   linkAdapterAvailable: boolean;
 }
 

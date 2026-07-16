@@ -57,7 +57,7 @@ export default function Welcome({ auth }: PageProps) {
                     <header className="flex items-center justify-between py-8">
                         <div className="flex items-center gap-2">
                             <svg
-                                className="h-7 w-7 text-[var(--mc-copper-500)]"
+                                className="h-7 w-7 text-[var(--mc-cyan-500)]"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -90,7 +90,7 @@ export default function Welcome({ auth }: PageProps) {
                             {auth.user ? (
                                 <Link
                                     href={route('dashboard')}
-                                    className="rounded-[var(--radius)] bg-[var(--mc-copper-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-copper-400)]"
+                                    className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                 >
                                     Dashboard
                                 </Link>
@@ -104,7 +104,7 @@ export default function Welcome({ auth }: PageProps) {
                                     </Link>
                                     <Link
                                         href={route('register')}
-                                        className="rounded-[var(--radius)] bg-[var(--mc-copper-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-copper-400)]"
+                                        className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                     >
                                         Register
                                     </Link>
@@ -118,7 +118,7 @@ export default function Welcome({ auth }: PageProps) {
                             <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
                                 Run your NeoEssentials server
                                 <br />
-                                <span className="text-[var(--mc-copper-500)]">
+                                <span className="bg-gradient-to-r from-[var(--mc-cyan-400)] to-[var(--mc-purple-400)] bg-clip-text text-transparent">
                                     from one dashboard
                                 </span>
                             </h1>
@@ -132,7 +132,7 @@ export default function Welcome({ auth }: PageProps) {
                                 {auth.user ? (
                                     <Link
                                         href={route('dashboard')}
-                                        className="rounded-[var(--radius)] bg-[var(--mc-copper-500)] px-6 py-3 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-copper-400)]"
+                                        className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-6 py-3 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                     >
                                         Open Dashboard
                                     </Link>
@@ -140,7 +140,7 @@ export default function Welcome({ auth }: PageProps) {
                                     <>
                                         <Link
                                             href={route('register')}
-                                            className="rounded-[var(--radius)] bg-[var(--mc-copper-500)] px-6 py-3 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-copper-400)]"
+                                            className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-6 py-3 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                         >
                                             Get Started
                                         </Link>
@@ -156,16 +156,20 @@ export default function Welcome({ auth }: PageProps) {
                         </div>
 
                         <div className="grid gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-3">
-                            {features.map(({ icon: Icon, title, description }) => (
+                            {features.map(({ icon: Icon, title, description }, i) => (
                                 <div
                                     key={title}
                                     className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-6 transition hover:border-[var(--mc-border-strong)]"
                                 >
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--mc-copper-50)]">
+                                    <div
+                                        className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius)] ${
+                                            i % 2 === 0 ? 'bg-[var(--mc-cyan-50)]' : 'bg-[var(--mc-purple-50)]'
+                                        }`}
+                                    >
                                         <Icon
                                             size={19}
                                             strokeWidth={1.75}
-                                            className="text-[var(--mc-copper-500)]"
+                                            className={i % 2 === 0 ? 'text-[var(--mc-cyan-400)]' : 'text-[var(--mc-purple-400)]'}
                                         />
                                     </div>
                                     <h2 className="font-display mt-4 text-base font-semibold">

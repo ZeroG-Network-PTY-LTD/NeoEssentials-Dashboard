@@ -173,7 +173,7 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
             <button
               type="submit"
               disabled={targets.length === 0}
-              className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+              className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
             >
               Create
             </button>
@@ -203,7 +203,7 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
                 className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
               />
               <div className="flex gap-2">
-                <button type="submit" className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium">
+                <button type="submit" className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium">
                   Save
                 </button>
                 <button type="button" onClick={testDropbox} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]">
@@ -258,7 +258,7 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
                 className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
               />
               <div className="flex gap-2">
-                <button type="submit" className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium">
+                <button type="submit" className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium">
                   Save
                 </button>
                 <button type="button" onClick={testGoogle} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]">

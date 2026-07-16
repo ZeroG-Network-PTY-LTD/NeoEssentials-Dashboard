@@ -198,7 +198,7 @@ export default function Holograms({ holograms, stats }: Props) {
             <button
               type="button"
               onClick={addLine}
-              className="self-start text-[12px] text-[var(--mc-copper-500)]"
+              className="self-start text-[12px] text-[var(--mc-cyan-500)]"
             >
               + Add line
             </button>
@@ -208,7 +208,7 @@ export default function Holograms({ holograms, stats }: Props) {
             <button
               type="submit"
               disabled={processing}
-              className="flex-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+              className="flex-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
             >
               {editingId ? 'Save' : 'Create'}
             </button>

@@ -9,7 +9,7 @@ interface Props {
 const TYPE_COLOR: Record<LogEntryType, string> = {
   join: 'text-[var(--mc-moss-500)]',
   leave: 'text-[var(--mc-ember-500)]',
-  command: 'text-[var(--mc-copper-500)]',
+  command: 'text-[var(--mc-cyan-500)]',
   chat: 'text-[var(--mc-text-primary)]',
 };
 

@@ -6,10 +6,10 @@ export default function Guest({ children }: PropsWithChildren) {
         <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--mc-bg-base)] px-4 py-10">
             <Link
                 href="/"
-                className="flex items-center gap-2 text-[var(--mc-text-primary)] transition hover:text-[var(--mc-copper-500)]"
+                className="flex items-center gap-2 text-[var(--mc-text-primary)] transition hover:text-[var(--mc-cyan-500)]"
             >
                 <svg
-                    className="h-8 w-8 text-[var(--mc-copper-500)]"
+                    className="h-8 w-8 text-[var(--mc-cyan-500)]"
                     viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"

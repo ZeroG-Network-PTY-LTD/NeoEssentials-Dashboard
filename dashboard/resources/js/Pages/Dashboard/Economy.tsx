@@ -38,8 +38,23 @@ export default function Economy({ leaderboard }: Props) {
               key={entry.uuid}
               className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]"
             >
-              <span className="w-6 text-[var(--mc-text-muted)] font-data">#{i + 1}</span>
-              <span className="flex-1 ml-2">{entry.username}</span>
+              <span
+                className={`w-6 font-data ${
+                  i === 0
+                    ? 'text-[var(--mc-cyan-400)]'
+                    : i === 1
+                    ? 'text-[var(--mc-purple-400)]'
+                    : 'text-[var(--mc-text-muted)]'
+                }`}
+              >
+                #{i + 1}
+              </span>
+              <img
+                src={`https://mc-heads.net/avatar/${entry.uuid}/32`}
+                alt=""
+                className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)] ml-1"
+              />
+              <span className="flex-1 ml-2.5">{entry.username}</span>
               <span className="font-data text-[13px]">${entry.balance.toLocaleString()}</span>
             </div>
           ))}
@@ -89,7 +104,7 @@ export default function Economy({ leaderboard }: Props) {
           <button
             type="submit"
             disabled={processing}
-            className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+            className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
           >
             Apply
           </button>

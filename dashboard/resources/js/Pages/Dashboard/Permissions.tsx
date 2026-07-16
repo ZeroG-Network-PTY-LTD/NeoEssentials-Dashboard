@@ -101,7 +101,7 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="font-medium">{g.name}</span>
                     {g.isDefault && (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-copper-50)] text-[var(--mc-copper-500)]">
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-cyan-50)] text-[var(--mc-cyan-500)]">
                         default
                       </span>
                     )}
@@ -144,7 +144,7 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
                       />
                       <button
                         onClick={() => addGroupPermission(g.name)}
-                        className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium"
+                        className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
                       >
                         Add
                       </button>
@@ -195,7 +195,7 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
                 <button
                   type="submit"
                   disabled={groupForm.processing}
-                  className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+                  className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
                 >
                   Create
                 </button>
@@ -213,6 +213,11 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
             {users.map((u) => (
               <div key={u.username} className="px-4 py-3 border-b border-[var(--mc-border)] last:border-0 text-[13px]">
                 <div className="flex items-center gap-2 mb-1.5">
+                  <img
+                    src={`https://mc-heads.net/avatar/${u.uuid}/32`}
+                    alt=""
+                    className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+                  />
                   <span className="font-medium">{u.username}</span>
                   {isAdmin ? (
                     <select
@@ -253,7 +258,7 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
                     />
                     <button
                       onClick={() => addUserPermission(u.username)}
-                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium"
+                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
                     >
                       Add
                     </button>
@@ -311,7 +316,7 @@ export default function Permissions({ overview, groups, users, aliases }: Props)
                 <button
                   type="submit"
                   disabled={aliasForm.processing}
-                  className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
+                  className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
                 >
                   Add
                 </button>

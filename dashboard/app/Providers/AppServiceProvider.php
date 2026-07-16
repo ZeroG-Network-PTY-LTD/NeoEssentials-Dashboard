@@ -4,10 +4,13 @@ namespace App\Providers;
 
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Discord\DiscordExtendSocialite;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->registerDashboardGates();
         $this->registerRateLimiters();
+
+        // Socialite has no built-in Discord driver — socialiteproviders/discord registers
+        // itself via this event, the standard wiring for every socialiteproviders/* package.
+        Event::listen(SocialiteWasCalled::class, DiscordExtendSocialite::class.'@handle');
     }
 
     /**

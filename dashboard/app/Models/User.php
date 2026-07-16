@@ -34,6 +34,9 @@ class User extends Authenticatable
      * 'role' is deliberately NOT in the #[Fillable] list above — it must only ever
      * be set via direct assignment (e.g. RegisteredUserController, or manually by
      * an existing admin), never through a mass-assigned request payload.
+     * Same reasoning for 'discord_id'/'mc_uuid'/'mc_username' — only DiscordAuthController
+     * sets these, from Socialite's verified response and the mod's own link-lookup, never
+     * from a request payload a visitor controls directly.
      */
     public function isAdmin(): bool
     {

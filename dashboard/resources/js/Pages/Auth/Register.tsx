@@ -1,3 +1,4 @@
+import DiscordAuthButton from '@/Components/DiscordAuthButton';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -113,7 +114,7 @@ export default function Register() {
                 <div className="mt-4 flex items-center justify-end">
                     <Link
                         href={route('login')}
-                        className="rounded-md text-sm text-[var(--mc-text-secondary)] underline hover:text-[var(--mc-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--mc-copper-500)] focus:ring-offset-2 focus:ring-offset-[var(--mc-bg-surface)]"
+                        className="rounded-md text-sm text-[var(--mc-text-secondary)] underline hover:text-[var(--mc-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--mc-cyan-500)] focus:ring-offset-2 focus:ring-offset-[var(--mc-bg-surface)]"
                     >
                         Already registered?
                     </Link>
@@ -123,6 +124,8 @@ export default function Register() {
                     </PrimaryButton>
                 </div>
             </form>
+
+            <DiscordAuthButton label="Sign up with Discord" />
         </GuestLayout>
     );
 }

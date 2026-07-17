@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Support\WritesEnvFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 use PDO;
 use PDOException;
 
@@ -183,26 +182,6 @@ class InstallService
             return ['success' => true, 'log' => Artisan::output()];
         } catch (\Throwable $e) {
             return ['success' => false, 'log' => $e->getMessage()];
-        }
-    }
-
-    // --- Minecraft mod API -----------------------------------------------
-
-    public function testMcApi(string $url, string $username, string $password): array
-    {
-        try {
-            $response = Http::timeout(6)->post(rtrim($url, '/').'/api/auth/login', [
-                'username' => $username,
-                'password' => $password,
-            ]);
-
-            if ($response->successful()) {
-                return ['success' => true, 'message' => 'Connected and authenticated successfully.'];
-            }
-
-            return ['success' => false, 'message' => "Server responded with {$response->status()}."];
-        } catch (\Throwable $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 

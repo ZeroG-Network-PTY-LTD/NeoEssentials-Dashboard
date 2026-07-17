@@ -8,8 +8,10 @@ services:
       # if the mod runs on the same machine as Docker (Linux: add
       # "extra_hosts: - host.docker.internal:host-gateway" below).
       MC_API_URL: "http://host.docker.internal:8642"
-      MC_SERVICE_USERNAME: ""
-      MC_SERVICE_PASSWORD: ""
+      # Populated automatically by pairing (Configuration -> "Minecraft Server
+      # Connection", or the /install wizard) — never hand-type these.
+      MC_SERVICE_API_KEY: ""
+      MOD_WEBHOOK_TOKEN: ""
     volumes:
       # Persist the SQLite DB and app key across container restarts/rebuilds.
       - dashboard-data:/app/database

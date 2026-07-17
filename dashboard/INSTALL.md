@@ -124,39 +124,34 @@ php artisan serve
 ```
 
 Then open `http://127.0.0.1:8000`, register an account (the first one
-becomes admin automatically), and log in. Edit `.env` for `MC_API_URL` /
-`MC_SERVICE_USERNAME` / `MC_SERVICE_PASSWORD` as described below.
+becomes admin automatically), and log in. Set `MC_API_URL` in `.env` and pair
+with the mod as described below.
 
 ---
 
 ## Pairing the dashboard with your Minecraft server
 
-The mod's dashboard API uses session-based auth (a username/password
-service account), not a static token — the dashboard logs in once, caches
-the session, and re-authenticates automatically if it expires. Both sides
-need to agree on the same username/password:
+Both sides authenticate with an API key, exchanged automatically via a
+one-time pairing code — nothing to type in by hand:
 
-1. **Generate a key.** In the install wizard's "Connect to the Minecraft
-   server" step (or on the dashboard's **Updates** page after setup), click
-   **Generate** next to the service account key — this produces a random,
-   cryptographically-strong secret client-side. Treat it like a password:
-   it's a one-time shared value, not something you need to remember.
-2. **Give it to the mod.** On the mod's own dashboard (or via its API),
-   create a matching account:
+1. **Generate a code.** In the install wizard's "Connect to the Minecraft
+   server" step (or on the dashboard's **Configuration** page after setup),
+   click **Generate pairing code**. It's valid for 10 minutes.
+2. **Run the command it shows** on the Minecraft server's console (or
+   in-game, if you're OP):
    ```
-   POST /api/auth/users
-   { "username": "dashboard-service", "password": "<the generated key>", "role": "ADMIN" }
+   /dashboard pair <dashboardUrl> <code>
    ```
-   Use `role: "MODERATOR"` instead if you don't want this dashboard able to
-   run raw console commands or adjust economy balances.
-3. **Save it on the dashboard side** — the wizard/Updates page writes
-   `MC_API_URL`, `MC_SERVICE_USERNAME`, and `MC_SERVICE_PASSWORD` into
-   `.env` for you. Neither value is ever sent to the browser after that —
-   only the server-side `MinecraftApiService` uses them.
+3. In that single round trip, the mod mints an API key for this app to use
+   (saved as `MC_SERVICE_API_KEY`) and this app mints a token back for the
+   mod's outbound account-sync webhook (`MOD_WEBHOOK_TOKEN`). Both are
+   written to `.env` automatically — neither is ever sent to the browser,
+   and there's nothing to keep in sync by hand.
 
-Don't reuse the mod's bootstrap `admin`/`admin123` account for this — always
-create a dedicated service account. See `config/minecraft.php` for other
-tunable options (timeouts, cache TTLs).
+Run `/dashboard unpair` on the mod's console (and click **Unpair** on the
+Configuration page) to disconnect, e.g. before re-pairing with a different
+dashboard instance. See `config/minecraft.php` for other tunable options
+(timeouts, cache TTLs).
 
 ---
 
@@ -216,8 +211,10 @@ if you have shell access, run `php artisan key:generate`.
 dashboard's server*, not just from your own browser (if the dashboard is on
 different hosting than the Minecraft server, `127.0.0.1` won't resolve to
 the game server — use its public address or a tunnel instead). Also confirm
-the service account exists on the mod side with the exact username/password
-you generated.
+pairing actually completed (Configuration page shows "Paired") — if it
+didn't, re-generate a code and make sure the mod can reach *this* dashboard's
+`MC_API_URL`-equivalent address (the URL you gave `/dashboard pair`) over
+the network, same reachability requirement in reverse.
 
 **Setup wizard won't go away after I already configured everything by
 hand** — it auto-detects an already-configured install (a working `APP_KEY`

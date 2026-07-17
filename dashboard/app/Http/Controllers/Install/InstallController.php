@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Install;
 
 use App\Http\Controllers\Controller;
+use App\Services\ConfigService;
 use App\Services\InstallService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,7 +19,7 @@ use Inertia\Response;
  */
 class InstallController extends Controller
 {
-    public function __construct(private InstallService $install)
+    public function __construct(private InstallService $install, private ConfigService $config)
     {
     }
 
@@ -170,7 +172,22 @@ class InstallController extends Controller
             return $redirect;
         }
 
-        return Inertia::render('Install/McApi');
+        return Inertia::render('Install/McApi', [
+            'mcApi' => $this->config->mcApiConfig(),
+        ]);
+    }
+
+    public function mcApiSaveUrl(Request $request): RedirectResponse
+    {
+        if ($redirect = $this->guard($request)) {
+            return $redirect;
+        }
+
+        $data = $request->validate(['url' => 'required|url']);
+
+        $this->config->updateMcApiUrl($data['url']);
+
+        return back()->with('success', 'Minecraft server address saved.');
     }
 
     public function mcApiTest(Request $request): RedirectResponse
@@ -179,35 +196,34 @@ class InstallController extends Controller
             return $redirect;
         }
 
-        $data = $request->validate([
-            'url' => 'required|url',
-            'username' => 'required|string',
-            'password' => 'required|string',
-        ]);
-
-        $result = $this->install->testMcApi($data['url'], $data['username'], $data['password']);
+        $result = $this->config->testMcApi();
 
         return back()->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
-    public function mcApiSave(Request $request): RedirectResponse
+    /** Generates a one-time pairing code and re-renders the page with it in props. */
+    public function mcApiPairingStart(Request $request): Response|RedirectResponse
     {
         if ($redirect = $this->guard($request)) {
             return $redirect;
         }
 
-        $data = $request->validate([
-            'url' => 'nullable|url',
-            'username' => 'nullable|string',
-            'password' => 'nullable|string',
+        return Inertia::render('Install/McApi', [
+            'mcApi' => $this->config->mcApiConfig(),
+            'pairing' => $this->config->startPairing(),
         ]);
+    }
 
-        if (! empty($data['url'])) {
-            $this->install->writeEnv([
-                'MC_API_URL' => $data['url'],
-                'MC_SERVICE_USERNAME' => $data['username'] ?? '',
-                'MC_SERVICE_PASSWORD' => $data['password'] ?? '',
-            ]);
+    /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */
+    public function mcApiPairingStatus(): JsonResponse
+    {
+        return response()->json(['paired' => (bool) config('minecraft.service_api_key')]);
+    }
+
+    public function mcApiContinue(Request $request): RedirectResponse
+    {
+        if ($redirect = $this->guard($request)) {
+            return $redirect;
         }
 
         return redirect()->route('install.finish');

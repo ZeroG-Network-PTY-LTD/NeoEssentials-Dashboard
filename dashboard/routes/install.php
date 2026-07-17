@@ -22,8 +22,11 @@ Route::prefix('install')->name('install.')->group(function () {
     Route::post('/migrate', [InstallController::class, 'migrateRun'])->name('migrate.run');
 
     Route::get('/mc-api', [InstallController::class, 'mcApiShow'])->name('mc-api');
+    Route::post('/mc-api/url', [InstallController::class, 'mcApiSaveUrl'])->name('mc-api.url');
     Route::post('/mc-api/test', [InstallController::class, 'mcApiTest'])->name('mc-api.test');
-    Route::post('/mc-api', [InstallController::class, 'mcApiSave'])->name('mc-api.save');
+    Route::post('/mc-api/pairing/start', [InstallController::class, 'mcApiPairingStart'])->name('mc-api.pairing.start');
+    Route::get('/mc-api/pairing/status', [InstallController::class, 'mcApiPairingStatus'])->name('mc-api.pairing.status');
+    Route::post('/mc-api/continue', [InstallController::class, 'mcApiContinue'])->name('mc-api.continue');
 
     Route::get('/finish', [InstallController::class, 'finishShow'])->name('finish');
     Route::post('/finish', [InstallController::class, 'finishRun'])->name('finish.run');

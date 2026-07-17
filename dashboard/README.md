@@ -30,28 +30,22 @@ Then open `http://127.0.0.1:8000`, register an account, and log in.
 
 ## Connecting to your Minecraft server
 
-Edit `.env`:
+Set `MC_API_URL` in `.env` to wherever the mod's API is reachable, then pair the
+two sides — no keys to copy by hand:
 
-```
-MC_API_URL=http://127.0.0.1:8642
-MC_SERVICE_USERNAME=dashboard-service
-MC_SERVICE_PASSWORD=a-strong-password-here
-```
+1. Log into this dashboard as an admin and open **Configuration → Minecraft
+   Server Connection**, then click **Generate Pairing Code**.
+2. Run the command it shows (`/dashboard pair <dashboardUrl> <code>`) on the
+   Minecraft server's console, or in-game if you're OP.
+3. That's it — in one round trip the mod mints an API key for this app to use
+   (stored as `MC_SERVICE_API_KEY`), and this app mints a token back for the
+   mod's outbound account-sync webhook (`MOD_WEBHOOK_TOKEN`). Neither value is
+   ever typed in by hand, and neither is sent to the browser.
 
-The mod's dashboard API uses session-based auth, not a static token, so this
-app needs its own dashboard user account on the mod side to authenticate as:
-
-1. Start the Minecraft server once so the mod bootstraps its default admin
-   account, then log in and change that password immediately.
-2. Create a dedicated service account for this app (don't reuse the default
-   admin for machine-to-machine calls):
-   ```
-   POST /api/auth/users   {"username": "dashboard-service", "password": "...", "role": "ADMIN"}
-   ```
-   Use `role: "MODERATOR"` instead if you don't want this app able to run raw
-   console commands or adjust economy balances.
-3. Put those credentials in `.env` above. They're never sent to the browser —
-   only the server-side `MinecraftApiService` uses them.
+The same flow is also the last step of the `/install` setup wizard on a fresh
+deploy. Run `/dashboard unpair` on the mod's console (and click **Unpair**
+here) if you ever need to disconnect and re-pair, e.g. after moving the
+dashboard to a new host.
 
 See `config/minecraft.php` for the full list of tunable options (timeouts,
 cache TTLs).

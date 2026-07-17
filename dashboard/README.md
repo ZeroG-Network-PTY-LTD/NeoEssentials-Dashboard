@@ -9,6 +9,10 @@ builds.** Point `MC_API_URL` at `http://127.0.0.1:8642` if this app runs on the
 same machine as your Minecraft server, or at a public address/tunnel if it's
 hosted elsewhere. Same app either way.
 
+**On shared/cPanel hosting with no shell access?** See [INSTALL.md](INSTALL.md)
+for the pre-built `*_installer.zip` + web setup wizard instead of the steps
+below.
+
 ## Quick start (no MySQL/Redis required)
 
 ```bash

@@ -53,14 +53,17 @@ Write-Host "    Staging: $StagingDir"
 Write-Host "    Output:  $ZipPath"
 
 # --- 1. Clean copy of the app, excluding dev-only / generated / secret paths ---
+# README.md and INSTALL.md aren't excluded below, so they're carried straight
+# into the package root — extracting the zip drops the install guide right
+# next to storage/app/install-token.txt, before the wizard is even opened.
 Write-Host "`n==> Copying source (excluding vendor/node_modules/.env/storage logs/tests)..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
 
 $RobocopyExcludeDirs = @(
     '.git', 'node_modules', 'vendor', 'dist', 'tests',
-    (Join-Path 'storage' 'framework' 'cache'),
-    (Join-Path 'storage' 'framework' 'sessions'),
-    (Join-Path 'storage' 'framework' 'views'),
+    (Join-Path (Join-Path 'storage' 'framework') 'cache'),
+    (Join-Path (Join-Path 'storage' 'framework') 'sessions'),
+    (Join-Path (Join-Path 'storage' 'framework') 'views'),
     (Join-Path 'storage' 'logs')
 )
 $RobocopyExcludeFiles = @('.env', '.env.backup', '.env.production', 'database.sqlite', 'installed.lock', 'install-token.txt', 'deployment.json', '*.log')
@@ -83,9 +86,14 @@ try {
     composer install --no-dev --optimize-autoloader --no-interaction
     if ($LASTEXITCODE -ne 0) { throw "composer install failed" }
 
-    Write-Host "`n==> npm ci && npm run build..." -ForegroundColor Cyan
-    npm ci
-    if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+    Write-Host "`n==> npm install && npm run build..." -ForegroundColor Cyan
+    # Not `npm ci` — package.json currently pins @vitejs/plugin-react@^4.2.0
+    # (peer-wants vite ^4-7) alongside vite@^8.0.0, a pre-existing mismatch
+    # that `ci`'s strict lockfile/peer enforcement rejects outright. The
+    # working dev node_modules already tolerates this; --legacy-peer-deps
+    # reproduces that same tolerance for a from-scratch install here.
+    npm install --no-audit --no-fund --legacy-peer-deps
+    if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
     npm run build
     if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
 
@@ -101,8 +109,11 @@ if ($Kind -eq 'installer') {
     # --- 3. Bundle a working .env (unique APP_KEY per build, safe defaults
     #        for a host that may not offer a queue worker / much DB headroom) ---
     Write-Host "`n==> Writing bundled .env..." -ForegroundColor Cyan
+    # RandomNumberGenerator::Fill() is .NET 5+ only — Windows PowerShell 5.1
+    # runs on .NET Framework, where RNGCryptoServiceProvider is what's available.
     $appKeyBytes = New-Object byte[] 32
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($appKeyBytes)
+    $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+    try { $rng.GetBytes($appKeyBytes) } finally { $rng.Dispose() }
     $appKey = 'base64:' + [Convert]::ToBase64String($appKeyBytes)
 
     $envExamplePath = Join-Path $StagingDir '.env.example'
@@ -128,7 +139,7 @@ if ($Kind -eq 'installer') {
     Set-Content -Path (Join-Path $StagingDir '.env') -Value $env -NoNewline
 
     # --- 4. Empty SQLite DB so the "Database" step's default path just works ---
-    New-Item -ItemType File -Path (Join-Path $StagingDir 'database' 'database.sqlite') -Force | Out-Null
+    New-Item -ItemType File -Path (Join-Path (Join-Path $StagingDir 'database') 'database.sqlite') -Force | Out-Null
 } else {
     # Updater packages overlay onto an existing, already-configured install —
     # SelfUpdateService::applyZipUpdate() skips .env/storage/the DB no matter

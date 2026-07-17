@@ -25,6 +25,7 @@
 /storage/app/deployment.json
 /storage/app/updates
 /vendor
+/dist
 _ide_helper.php
 Homestead.json
 Homestead.yaml

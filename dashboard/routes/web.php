@@ -115,6 +115,7 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             Route::post('/permissions/reload', [PermissionsController::class, 'reload'])->name('permissions.reload');
             Route::post('/permissions/groups', [PermissionsController::class, 'storeGroup'])->name('permissions.groups.store');
             Route::put('/permissions/groups/{name}', [PermissionsController::class, 'updateGroup'])->name('permissions.groups.update');
+            Route::post('/permissions/groups/{name}/rename', [PermissionsController::class, 'renameGroup'])->name('permissions.groups.rename');
             Route::delete('/permissions/groups/{name}', [PermissionsController::class, 'destroyGroup'])->name('permissions.groups.destroy');
             Route::post('/permissions/groups/{name}/permissions', [PermissionsController::class, 'addGroupPermission'])->name('permissions.groups.permissions.add');
             Route::delete('/permissions/groups/{name}/permissions/{permission}', [PermissionsController::class, 'removeGroupPermission'])->name('permissions.groups.permissions.remove');

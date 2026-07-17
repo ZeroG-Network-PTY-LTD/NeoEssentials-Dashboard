@@ -16,6 +16,22 @@ export interface McPlayer {
   balance: number;
 }
 
+/** A player who's played before but isn't online right now — no live stats, just identity. */
+export interface OfflinePlayer {
+  uuid: string;
+  username: string;
+  lastSeen: string;
+}
+
+export interface PlayerLookupResult {
+  success: boolean;
+  message?: string;
+  uuid?: string;
+  username?: string;
+  online?: boolean;
+  lastSeen?: string;
+}
+
 export interface ServerStatus {
   online: boolean;
   tps: number;
@@ -193,13 +209,18 @@ export interface PermissionGroup {
   name: string;
   prefix: string;
   suffix: string;
-  weight: number;
+  priority: number;
   isDefault: boolean;
   permissionCount: number;
   permissions: string[];
+  inherits: string[];
 }
 
-/** Only online players are exposed — the mod resolves permissions live off the player object. */
+/**
+ * The "Online users" list only contains currently-connected players — for anyone else, look
+ * them up by name via the "manage another player" search box, which resolves offline players
+ * too (profile cache / Mojang API fallback on the mod side).
+ */
 export interface PermissionUser {
   username: string;
   uuid: string;
@@ -208,6 +229,30 @@ export interface PermissionUser {
   prefix: string;
   suffix: string;
   permissions?: string[];
+}
+
+export interface PermissionUserLookupResult {
+  success: boolean;
+  message?: string;
+  username?: string;
+  uuid?: string;
+  online?: boolean;
+  group?: string;
+  prefix?: string;
+  suffix?: string;
+  permissions?: string[];
+}
+
+export interface PermissionNodeInfo {
+  node: string;
+  description: string;
+  defaultValue: boolean;
+}
+
+export interface PermissionNodeCategory {
+  category: string;
+  key: string;
+  permissions: PermissionNodeInfo[];
 }
 
 export interface BackupSnapshot {

@@ -40,13 +40,18 @@ class DiscordController extends Controller
 
     public function test(Request $request): RedirectResponse
     {
+        // The mod sends this via the companion Discord bot's own channel-ID lookup — it needs
+        // the actual numeric Discord channel snowflake, not a display name (Discord channel
+        // names aren't unique and the bot has no "search by name" concept here).
         $data = $request->validate([
-            'channel' => ['nullable', 'string'],
+            'channel' => ['required', 'string', 'regex:/^\d{15,25}$/'],
             'message' => ['nullable', 'string'],
+        ], [
+            'channel.regex' => 'This must be the channel\'s numeric ID (right-click the channel in Discord with Developer Mode on, then "Copy Channel ID") — not its name.',
         ]);
 
         return $this->attempt(
-            fn () => $this->mc->sendDiscordTestMessage($data['channel'] ?? null, $data['message'] ?? null),
+            fn () => $this->mc->sendDiscordTestMessage($data['channel'], $data['message'] ?? null),
             'Test message sent.',
         );
     }

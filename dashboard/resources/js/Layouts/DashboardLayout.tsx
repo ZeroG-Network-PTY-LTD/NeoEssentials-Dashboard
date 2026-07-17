@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { PageProps } from '@/types';
 
-type DashboardPageProps = PageProps<{ apiReachable?: boolean }>;
+type DashboardPageProps = PageProps<{ apiReachable?: boolean; permissionsUsingExternal?: boolean }>;
 
 function FlashToast() {
   const { props } = usePage<DashboardPageProps>();
@@ -66,6 +66,7 @@ function FlashToast() {
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const { url, props } = usePage<DashboardPageProps>();
   const reachable = props.apiReachable ?? true;
+  const permissionsUsingExternal = props.permissionsUsingExternal ?? false;
   const user = props.auth.user;
   const isAdmin = user.role === 'admin';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -82,7 +83,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { label: 'Kits', href: route('dashboard.kits.index'), icon: Package },
     { label: 'Holograms', href: route('dashboard.holograms.index'), icon: Sparkles },
     { label: 'Discord', href: route('dashboard.discord.index'), icon: MessageCircle },
-    { label: 'Permissions', href: route('dashboard.permissions.index'), icon: ShieldCheck },
+    // Hidden when the mod is deferring to an external permission plugin (LuckPerms, FTB
+    // Ranks, ...) — this dashboard's internal group/user editor would have nothing to manage
+    // and would just clash with whatever the external plugin is actually doing.
+    ...(permissionsUsingExternal ? [] : [{ label: 'Permissions', href: route('dashboard.permissions.index'), icon: ShieldCheck }]),
     { label: 'Backups', href: route('dashboard.backups.index'), icon: DatabaseBackup },
     { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
     { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },

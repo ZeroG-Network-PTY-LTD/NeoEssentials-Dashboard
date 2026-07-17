@@ -106,12 +106,22 @@ export default function Discord({ status, events, authConfig }: Props) {
             >
               <div className="font-display text-[14px] font-semibold mb-1">Send test message</div>
               <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                Channel (optional)
+                Channel ID
                 <input
                   value={testForm.data.channel}
                   onChange={(e) => testForm.setData('channel', e.target.value)}
+                  placeholder="e.g. 123456789012345678"
+                  pattern="\d{15,25}"
+                  title="The channel's numeric Discord ID, not its name"
+                  required
                   className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
                 />
+                {testForm.errors.channel && (
+                  <span className="text-[var(--mc-ember-500)]">{testForm.errors.channel}</span>
+                )}
+                <span className="text-[var(--mc-text-muted)]">
+                  Right-click the channel in Discord (Developer Mode on) → Copy Channel ID.
+                </span>
               </label>
               <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
                 Message

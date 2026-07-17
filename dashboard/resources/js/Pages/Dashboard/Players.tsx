@@ -1,10 +1,13 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import type { Home, McPlayer } from '@/types/minecraft';
+import type { Home, McPlayer, OfflinePlayer, PlayerLookupResult } from '@/types/minecraft';
 
 interface Props {
   players: McPlayer[];
+  offlinePlayers: OfflinePlayer[];
+  lookupQuery: string | null;
+  lookupResult: PlayerLookupResult | null;
 }
 
 const RANK_STYLE: Record<string, string> = {
@@ -28,7 +31,7 @@ const ACTION_LABEL: Record<ActionType, string> = {
   mute: 'Mute',
 };
 
-export default function Players({ players }: Props) {
+export default function Players({ players, offlinePlayers, lookupQuery, lookupResult }: Props) {
   const [selected, setSelected] = useState<McPlayer | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [reason, setReason] = useState('');
@@ -37,6 +40,18 @@ export default function Players({ players }: Props) {
   const [homesFor, setHomesFor] = useState<McPlayer | null>(null);
   const [homes, setHomes] = useState<Home[] | null>(null);
   const [homesError, setHomesError] = useState<string | null>(null);
+  const [lookupInput, setLookupInput] = useState(lookupQuery ?? '');
+
+  const runLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = lookupInput.trim();
+    if (!q) return;
+    router.get(route('dashboard.players.index'), { lookup: q }, {
+      preserveState: true,
+      preserveScroll: true,
+      only: ['lookupQuery', 'lookupResult'],
+    });
+  };
 
   const heal = (uuid: string) => router.post(route('dashboard.players.heal', uuid));
 
@@ -156,6 +171,76 @@ export default function Players({ players }: Props) {
         {players.length === 0 && (
           <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
             Nobody's online right now.
+          </div>
+        )}
+      </div>
+
+      {/* Recently-active offline players — shown by default, no lookup needed for the common case */}
+      <div className="mt-6 rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold flex items-center justify-between">
+          <span>Recently offline <span className="text-[var(--mc-text-muted)] font-data text-[12px]">({offlinePlayers.length})</span></span>
+        </div>
+        {offlinePlayers.length === 0 && (
+          <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+            No recently-active offline players on file.
+          </div>
+        )}
+        {offlinePlayers.map((p) => (
+          <div key={p.uuid} className="flex items-center gap-2.5 px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]">
+            <img
+              src={`https://mc-heads.net/avatar/${p.uuid}/28`}
+              alt=""
+              className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+            />
+            <span className="font-medium">{p.username}</span>
+            <span className="ml-auto text-[12px] text-[var(--mc-text-muted)]">Last seen {p.lastSeen}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Lookup — for servers with more players than the offline roster's cap above */}
+      <div className="mt-6 rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
+          Look up a player
+        </div>
+        <div className="px-4 py-3 border-b border-[var(--mc-border)]">
+          <form onSubmit={runLookup} className="flex gap-1.5">
+            <input
+              value={lookupInput}
+              onChange={(e) => setLookupInput(e.target.value)}
+              placeholder="Username (online, offline, or never joined)"
+              className="flex-1 font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
+            />
+            <button
+              type="submit"
+              className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
+            >
+              Look up
+            </button>
+          </form>
+        </div>
+        {lookupQuery && (
+          <div className="px-4 py-3 text-[13px]">
+            {!lookupResult?.success ? (
+              <div className="text-[var(--mc-ember-500)]">
+                {lookupResult?.message ?? `Could not find a player named '${lookupQuery}'.`}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={`https://mc-heads.net/avatar/${lookupResult.uuid}/32`}
+                  alt=""
+                  className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+                />
+                <span className="font-medium">{lookupResult.username}</span>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded ${lookupResult.online ? 'bg-[var(--mc-moss-50)] text-[var(--mc-moss-500)]' : 'bg-[var(--mc-bg-surface-raised)] text-[var(--mc-text-muted)]'}`}>
+                  {lookupResult.online ? 'online' : 'offline'}
+                </span>
+                {!lookupResult.online && lookupResult.lastSeen && (
+                  <span className="text-[12px] text-[var(--mc-text-muted)]">Last seen {lookupResult.lastSeen}</span>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

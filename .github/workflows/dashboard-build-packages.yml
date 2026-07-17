@@ -34,7 +34,9 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          # Matches composer.json's require.php — composer.lock is actually
+          # resolved against Symfony 8.0.x, which needs PHP >=8.4.
+          php-version: '8.4'
           extensions: mbstring, pdo, pdo_sqlite, curl, fileinfo, zip, ctype, json, tokenizer, openssl
           tools: composer:v2
 

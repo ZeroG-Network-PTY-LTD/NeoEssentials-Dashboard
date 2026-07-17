@@ -19,10 +19,21 @@ class PlayerController extends Controller
     {
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $lookupUsername = trim((string) $request->query('lookup', ''));
+
         return Inertia::render('Dashboard/Players', [
             'players' => $this->safe(fn () => $this->mc->players(), []),
+            // Recently-active offline players (mod-side cap of 50) — shown by default so most
+            // servers never need the lookup box below at all.
+            'offlinePlayers' => $this->safe(fn () => $this->mc->offlinePlayers(), []),
+            // Only for servers with more players than that cap, or anyone who hasn't played
+            // recently enough to still be in it.
+            'lookupQuery' => $lookupUsername ?: null,
+            'lookupResult' => $lookupUsername !== ''
+                ? $this->safe(fn () => $this->mc->lookupPlayer($lookupUsername), ['success' => false, 'message' => "Could not find a player named '{$lookupUsername}', or the Minecraft server API is unreachable."])
+                : null,
         ]);
     }
 

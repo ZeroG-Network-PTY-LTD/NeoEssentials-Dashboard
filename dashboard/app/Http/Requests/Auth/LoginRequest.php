@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
+use App\Services\MinecraftApiService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,13 +30,27 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
+     * Authenticate against the mod's own /api/auth/login first — that's the
+     * source of truth for dashboard accounts (admin, dashboard-service, any user
+     * created via the mod's user-management UI). A successful API check mirrors
+     * the credentials into this app's local `users` table (hashed copy, current
+     * role) so login keeps working if the mod's API goes offline afterward —
+     * live server data just won't populate again until the API is reachable.
+     *
+     * Only when the API itself can't be reached at all do we fall back to that
+     * locally-cached copy. If the API IS reachable but rejects the credentials,
+     * that rejection is authoritative — we do not fall back to a stale local
+     * copy in that case.
+     *
+     * The 'login' field also accepts a Minecraft username for accounts linked via
+     * Discord OAuth (see DiscordAuthController), matched against 'name' or
+     * 'mc_username', which never touch the mod's own dashboard-account API.
      *
      * @throws ValidationException
      */
@@ -42,15 +58,87 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = trim($this->string('login')->toString());
+        $password = $this->string('password')->toString();
+        $remember = $this->boolean('remember');
+
+        $localUser = str_contains($login, '@')
+            ? User::whereRaw('LOWER(email) = ?', [Str::lower($login)])->first()
+            : User::whereRaw('LOWER(name) = ?', [Str::lower($login)])
+                ->orWhereRaw('LOWER(mc_username) = ?', [Str::lower($login)])
+                ->orWhereRaw('LOWER(mod_username) = ?', [Str::lower($login)])
+                ->first();
+
+        $apiResult = null;
+        $apiReachable = true;
+
+        try {
+            $apiResult = app(MinecraftApiService::class)->authenticateUser($login, $password);
+        } catch (\Throwable $e) {
+            $apiReachable = false;
+        }
+
+        if ($apiReachable && ($apiResult['success'] ?? false) && isset($apiResult['user'])) {
+            $localUser = $this->mirrorModUser($apiResult['user'], $password);
+            Auth::login($localUser, $remember);
+            RateLimiter::clear($this->throttleKey());
+
+            return;
+        }
+
+        if ($apiReachable) {
+            // The mod API is up and explicitly rejected these credentials —
+            // authoritative, don't fall back to a possibly-stale local copy.
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'login' => trans('auth.failed'),
+            ]);
+        }
+
+        // API unreachable — fall back to the locally-cached credential copy.
+        if (! $localUser || ! Auth::attempt(
+            ['id' => $localUser->id, 'password' => $password],
+            $remember,
+        )) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'login' => trans('auth.failed'),
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    /**
+     * Create or update the local mirror of a mod dashboard account after a
+     * successful API login. Stores a local bcrypt copy of the just-verified
+     * password (not the mod's own hash, which uses a different scheme) purely so
+     * Auth::attempt() can succeed locally later if the API is down.
+     */
+    private function mirrorModUser(array $modUser, string $password): User
+    {
+        $role = match ($modUser['role'] ?? 'VIEWER') {
+            'ADMIN' => 'admin',
+            'MODERATOR' => 'moderator',
+            default => 'moderator',
+        };
+
+        // Mass assignment ($fillable) deliberately excludes 'mod_username' and 'role' —
+        // same reasoning as the class doc comment on User: only ever set directly by
+        // trusted server-side code, never from a request payload. updateOrCreate()'s
+        // create()/update() calls go through fill(), which would silently drop both, so
+        // set them by direct property assignment instead.
+        $user = User::where('mod_username', $modUser['username'])->first() ?? new User();
+        $user->mod_username = $modUser['username'];
+        $user->name = $modUser['username'];
+        $user->email = $modUser['email'] ?: $modUser['username'].'@mod.local';
+        $user->password = bcrypt($password);
+        $user->role = $role;
+        $user->save();
+
+        return $user;
     }
 
     /**
@@ -81,6 +169,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
     }
 }

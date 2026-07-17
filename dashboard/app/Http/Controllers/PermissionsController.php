@@ -17,8 +17,10 @@ class PermissionsController extends Controller
     {
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $lookupUsername = trim((string) $request->query('lookup', ''));
+
         return Inertia::render('Dashboard/Permissions', [
             'overview' => $this->safe(fn () => $this->mc->permissionOverview(), [
                 'success' => false, 'totalGroups' => 0, 'totalUsers' => 0,
@@ -27,6 +29,13 @@ class PermissionsController extends Controller
             'groups' => $this->safe(fn () => $this->mc->permissionGroups(), []),
             'users' => $this->safe(fn () => $this->mc->permissionUsers(), []),
             'aliases' => $this->safe(fn () => $this->mc->permissionAliases(), []),
+            'nodeCatalog' => $this->safe(fn () => $this->mc->permissionNodeCatalog(), []),
+            // Result of searching for a specific player by name (online or not) via the
+            // "manage another player" box — null until a search has actually been made.
+            'lookupQuery' => $lookupUsername ?: null,
+            'lookupResult' => $lookupUsername !== ''
+                ? $this->safe(fn () => $this->mc->permissionUserLookup($lookupUsername), ['success' => false, 'message' => 'Could not reach the Minecraft server API.'])
+                : null,
         ]);
     }
 
@@ -42,6 +51,9 @@ class PermissionsController extends Controller
             'prefix' => ['nullable', 'string'],
             'suffix' => ['nullable', 'string'],
             'isDefault' => ['nullable', 'boolean'],
+            'priority' => ['nullable', 'integer'],
+            'inherits' => ['nullable', 'array'],
+            'inherits.*' => ['string'],
         ]);
 
         return $this->attempt(fn () => $this->mc->createPermissionGroup(
@@ -49,6 +61,8 @@ class PermissionsController extends Controller
             $data['prefix'] ?? '',
             $data['suffix'] ?? '',
             $data['isDefault'] ?? false,
+            $data['priority'] ?? null,
+            $data['inherits'] ?? [],
         ), "Group '{$data['name']}' created.");
     }
 
@@ -58,9 +72,22 @@ class PermissionsController extends Controller
             'prefix' => ['nullable', 'string'],
             'suffix' => ['nullable', 'string'],
             'isDefault' => ['nullable', 'boolean'],
+            'priority' => ['nullable', 'integer'],
+            'inherits' => ['nullable', 'array'],
+            'inherits.*' => ['string'],
         ]);
 
         return $this->attempt(fn () => $this->mc->updatePermissionGroup($name, $data), "Group '{$name}' updated.");
+    }
+
+    public function renameGroup(Request $request, string $name): RedirectResponse
+    {
+        $data = $request->validate(['newName' => ['required', 'string', 'max:32']]);
+
+        return $this->attempt(
+            fn () => $this->mc->renamePermissionGroup($name, $data['newName']),
+            "Group '{$name}' renamed to '{$data['newName']}'.",
+        );
     }
 
     public function destroyGroup(string $name): RedirectResponse

@@ -55,6 +55,25 @@ class HandleInertiaRequests extends Middleware
                     return true;
                 }
             },
+            // Drives whether the sidebar shows the "Permissions" link at all. When the mod is
+            // using an external plugin (LuckPerms, FTB Ranks, ...) instead of its own internal
+            // groups, the internal permission API is inert — showing the nav item would just
+            // lead to a page with nothing to manage, and could confuse an operator into thinking
+            // this dashboard controls permissions when LuckPerms actually does. Defaults to false
+            // (show the link) on any failure/uncertainty, so a transient API outage doesn't make
+            // navigation flicker — the Permissions page itself already shows its own
+            // unavailable/external-system state once you're on it.
+            'permissionsUsingExternal' => function () use ($request) {
+                if (!$request->user()) {
+                    return false;
+                }
+
+                try {
+                    return (bool) (app(MinecraftApiService::class)->permissionOverview()['usingExternal'] ?? false);
+                } catch (\Throwable $e) {
+                    return false;
+                }
+            },
         ];
     }
 }

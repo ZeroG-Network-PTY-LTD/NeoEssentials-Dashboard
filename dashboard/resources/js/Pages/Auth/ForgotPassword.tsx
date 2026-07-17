@@ -20,14 +20,17 @@ export default function ForgotPassword({ status }: { status?: string }) {
         <GuestLayout>
             <Head title="Forgot Password" />
 
-            <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                Forgot your password? No problem. Just let us know your email
-                address and we will email you a password reset link that will
-                allow you to choose a new one.
+            <h1 className="font-display text-xl font-semibold text-[var(--mc-text-primary)]">
+                Forgot your password?
+            </h1>
+            <div className="mb-4 mt-1 text-sm text-[var(--mc-text-secondary)]">
+                No problem. Just let us know your email address and we will
+                email you a password reset link that will allow you to choose
+                a new one.
             </div>
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600 dark:text-green-400">
+                <div className="mb-4 rounded-[var(--radius)] border border-[var(--mc-moss-400)] bg-[var(--mc-moss-50)] px-3 py-2 text-sm font-medium text-[var(--mc-moss-500)]">
                     {status}
                 </div>
             )}

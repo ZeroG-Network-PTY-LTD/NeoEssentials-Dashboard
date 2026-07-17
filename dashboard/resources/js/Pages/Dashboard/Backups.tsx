@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import Card from '@/Components/Dashboard/Card';
+import PageHeading from '@/Components/Dashboard/PageHeading';
+import Badge from '@/Components/Dashboard/Badge';
 import type {
   BackupSnapshot,
   BackupStatus,
@@ -9,6 +12,7 @@ import type {
   CloudStatus,
 } from '@/types/minecraft';
 import type { PageProps } from '@/types';
+import { Database, Plus, Cloud, CloudUpload, Trash2, Download, RotateCcw, HardDrive } from 'lucide-react';
 
 interface Props {
   status: BackupStatus;
@@ -22,7 +26,7 @@ interface Props {
 export default function Backups({ status, snapshots, cloudStatus, cloudConfig, dropboxFiles, googleFiles }: Props) {
   const { props } = usePage<PageProps>();
   const isAdmin = props.auth.user.role === 'admin';
-  const [targets, setTargets] = useState<string[]>(status.availableTargets.map((t) => t.key));
+  const [targets, setTargets] = useState<string[]>((status.availableTargets ?? []).map((t) => t.key));
 
   const createForm = useForm({ name: '' });
   const dropboxForm = useForm({ accessToken: '', uploadPath: '/NeoEssentials-Backups' });
@@ -80,22 +84,20 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
   return (
     <DashboardLayout>
       <Head title="Backups" />
-      <h1 className="font-display text-[20px] font-semibold mb-1">Backups</h1>
-      <p className="text-[13px] text-[var(--mc-text-muted)] mb-5">
-        {status.count}/{status.maxSnapshots} snapshots · {status.totalSizeMb} MB · last backup:{' '}
-        {status.lastBackup ? new Date(status.lastBackup).toLocaleString() : 'never'}
-      </p>
+
+      <PageHeading
+        title="Backups"
+        icon={Database}
+        subtitle={`${status.count}/${status.maxSnapshots} snapshots · ${status.totalSizeMb} MB · last backup: ${status.lastBackup ? new Date(status.lastBackup).toLocaleString() : 'never'}`}
+      />
 
       <div className="grid grid-cols-[1fr_320px] gap-5 mb-5">
-        <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-            {snapshots.length} snapshot{snapshots.length === 1 ? '' : 's'}
-          </div>
+        <Card title={`${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}`} icon={HardDrive} accent="cyan">
           {snapshots.length === 0 && (
-            <div className="px-4 py-6 text-[13px] text-[var(--mc-text-muted)]">No snapshots yet.</div>
+            <div className="text-center py-8 text-[13px] text-[var(--mc-text-muted)]">No snapshots yet.</div>
           )}
           {snapshots.map((s) => (
-            <div key={s.filename} className="px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]">
+            <div key={s.filename} className="px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
               <div className="flex items-center gap-3">
                 <span className="flex-1 font-medium">{s.name}</span>
                 <span className="font-data text-[12px] text-[var(--mc-text-muted)]">
@@ -106,8 +108,9 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
               <div className="flex gap-1.5 mt-1.5">
                 <a
                   href={route('dashboard.backups.download', s.name)}
-                  className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]"
+                  className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]"
                 >
+                  <Download size={12} strokeWidth={2} />
                   Download
                 </a>
                 {isAdmin && (
@@ -115,29 +118,33 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
                     {cloudStatus.providers.dropbox.configured && (
                       <button
                         onClick={() => uploadDropbox(s.name)}
-                        className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]"
+                        className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]"
                       >
-                        &uarr; Dropbox
+                        <CloudUpload size={12} strokeWidth={2} />
+                        Dropbox
                       </button>
                     )}
                     {cloudStatus.providers.googleDrive.configured && (
                       <button
                         onClick={() => uploadGoogle(s.name)}
-                        className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]"
+                        className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]"
                       >
-                        &uarr; Drive
+                        <CloudUpload size={12} strokeWidth={2} />
+                        Drive
                       </button>
                     )}
                     <button
                       onClick={() => restoreBackup(s.name)}
-                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-moss-500)] text-white"
+                      className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-moss-500)] text-white transition-colors hover:bg-[var(--mc-moss-600,var(--mc-moss-500))]"
                     >
+                      <RotateCcw size={12} strokeWidth={2} />
                       Restore
                     </button>
                     <button
                       onClick={() => deleteBackup(s.name)}
-                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white"
+                      className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white transition-colors hover:bg-[var(--mc-ember-600,var(--mc-ember-500))]"
                     >
+                      <Trash2 size={12} strokeWidth={2} />
                       Delete
                     </button>
                   </>
@@ -145,140 +152,140 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
               </div>
             </div>
           ))}
-        </div>
+        </Card>
 
         {isAdmin && (
-          <form
-            onSubmit={createBackup}
-            className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 h-fit flex flex-col gap-3"
-          >
-            <div className="font-display text-[14px] font-semibold mb-1">Create backup</div>
-            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-              Name (optional)
-              <input
-                value={createForm.data.name}
-                onChange={(e) => createForm.setData('name', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-            </label>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[12px] text-[var(--mc-text-secondary)]">Targets</span>
-              {status.availableTargets.map((t) => (
-                <label key={t.key} className="flex items-center gap-2 text-[12px]">
-                  <input type="checkbox" checked={targets.includes(t.key)} onChange={() => toggleTarget(t.key)} />
-                  {t.key} {!t.exists && <span className="text-[var(--mc-text-muted)]">(missing)</span>}
-                </label>
-              ))}
-            </div>
-            <button
-              type="submit"
-              disabled={targets.length === 0}
-              className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium disabled:opacity-50"
-            >
-              Create
-            </button>
-          </form>
+          <Card title="Create backup" icon={Plus} accent="purple" padded className="h-fit">
+            <form onSubmit={createBackup} className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                Name (optional)
+                <input
+                  value={createForm.data.name}
+                  onChange={(e) => createForm.setData('name', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+              </label>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[12px] text-[var(--mc-text-secondary)]">Targets</span>
+                {(status.availableTargets ?? []).map((t) => (
+                  <label key={t.key} className="flex items-center gap-2 text-[12px]">
+                    <input type="checkbox" checked={targets.includes(t.key)} onChange={() => toggleTarget(t.key)} className="accent-[var(--mc-cyan-500)]" />
+                    {t.key} {!t.exists && <span className="text-[var(--mc-text-muted)]">(missing)</span>}
+                  </label>
+                ))}
+              </div>
+              <button
+                type="submit"
+                disabled={targets.length === 0}
+                className="btn-pop text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)] disabled:opacity-50"
+              >
+                Create
+              </button>
+            </form>
+          </Card>
         )}
       </div>
 
       {isAdmin && (
         <div className="grid grid-cols-2 gap-5">
-          <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 flex flex-col gap-3">
-            <div className="font-display text-[14px] font-semibold">Dropbox</div>
-            <p className="text-[12px] text-[var(--mc-text-muted)]">
-              {cloudConfig.dropbox.configured ? `Configured (${cloudConfig.dropbox.tokenMasked})` : 'Not configured'}
-            </p>
-            <form onSubmit={saveDropbox} className="flex flex-col gap-2">
-              <input
-                type="password"
-                placeholder="Access token"
-                value={dropboxForm.data.accessToken}
-                onChange={(e) => dropboxForm.setData('accessToken', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-              <input
-                placeholder="Upload path"
-                value={dropboxForm.data.uploadPath}
-                onChange={(e) => dropboxForm.setData('uploadPath', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-              <div className="flex gap-2">
-                <button type="submit" className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium">
-                  Save
-                </button>
-                <button type="button" onClick={testDropbox} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]">
-                  Test
-                </button>
-              </div>
-            </form>
-            {dropboxFiles.length > 0 && (
-              <div className="flex flex-col gap-1 mt-1">
-                {dropboxFiles.map((f) => (
-                  <div key={f.path ?? f.name} className="flex items-center text-[12px] font-data">
-                    <span className="flex-1 truncate">{f.name}</span>
-                    <button onClick={() => deleteDropboxFile(f.path ?? f.name)} className="text-[var(--mc-ember-500)]">
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <Card title="Dropbox" icon={Cloud} accent="cyan" padded>
+            <div className="flex flex-col gap-3">
+              <Badge variant={cloudConfig.dropbox.configured ? 'moss' : 'neutral'} className="w-fit">
+                {cloudConfig.dropbox.configured ? `Configured (${cloudConfig.dropbox.tokenMasked})` : 'Not configured'}
+              </Badge>
+              <form onSubmit={saveDropbox} className="flex flex-col gap-2">
+                <input
+                  type="password"
+                  placeholder="Access token"
+                  value={dropboxForm.data.accessToken}
+                  onChange={(e) => dropboxForm.setData('accessToken', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  placeholder="Upload path"
+                  value={dropboxForm.data.uploadPath}
+                  onChange={(e) => dropboxForm.setData('uploadPath', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" className="btn-pop text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]">
+                    Save
+                  </button>
+                  <button type="button" onClick={testDropbox} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]">
+                    Test
+                  </button>
+                </div>
+              </form>
+              {dropboxFiles.length > 0 && (
+                <div className="flex flex-col gap-1 mt-1">
+                  {dropboxFiles.map((f) => (
+                    <div key={f.path ?? f.name} className="flex items-center text-[12px] font-data rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <button onClick={() => deleteDropboxFile(f.path ?? f.name)} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
 
-          <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 flex flex-col gap-3">
-            <div className="font-display text-[14px] font-semibold">Google Drive</div>
-            <p className="text-[12px] text-[var(--mc-text-muted)]">
-              {cloudConfig.googleDrive.configured ? `Configured (folder ${cloudConfig.googleDrive.folderId})` : 'Not configured'}
-            </p>
-            <form onSubmit={saveGoogle} className="flex flex-col gap-2">
-              <input
-                placeholder="Client ID"
-                value={googleForm.data.clientId}
-                onChange={(e) => googleForm.setData('clientId', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-              <input
-                type="password"
-                placeholder="Client secret"
-                value={googleForm.data.clientSecret}
-                onChange={(e) => googleForm.setData('clientSecret', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-              <input
-                type="password"
-                placeholder="Refresh token"
-                value={googleForm.data.refreshToken}
-                onChange={(e) => googleForm.setData('refreshToken', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-              <input
-                placeholder="Folder ID"
-                value={googleForm.data.folderId}
-                onChange={(e) => googleForm.setData('folderId', e.target.value)}
-                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-              />
-              <div className="flex gap-2">
-                <button type="submit" className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-copper-500)] text-[#1a1410] font-medium">
-                  Save
-                </button>
-                <button type="button" onClick={testGoogle} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]">
-                  Test
-                </button>
-              </div>
-            </form>
-            {googleFiles.length > 0 && (
-              <div className="flex flex-col gap-1 mt-1">
-                {googleFiles.map((f) => (
-                  <div key={f.id ?? f.name} className="flex items-center text-[12px] font-data">
-                    <span className="flex-1 truncate">{f.name}</span>
-                    <button onClick={() => deleteGoogleFile(f.id ?? '')} className="text-[var(--mc-ember-500)]">
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <Card title="Google Drive" icon={Cloud} accent="purple" padded>
+            <div className="flex flex-col gap-3">
+              <Badge variant={cloudConfig.googleDrive.configured ? 'moss' : 'neutral'} className="w-fit">
+                {cloudConfig.googleDrive.configured ? `Configured (folder ${cloudConfig.googleDrive.folderId})` : 'Not configured'}
+              </Badge>
+              <form onSubmit={saveGoogle} className="flex flex-col gap-2">
+                <input
+                  placeholder="Client ID"
+                  value={googleForm.data.clientId}
+                  onChange={(e) => googleForm.setData('clientId', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  type="password"
+                  placeholder="Client secret"
+                  value={googleForm.data.clientSecret}
+                  onChange={(e) => googleForm.setData('clientSecret', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  type="password"
+                  placeholder="Refresh token"
+                  value={googleForm.data.refreshToken}
+                  onChange={(e) => googleForm.setData('refreshToken', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  placeholder="Folder ID"
+                  value={googleForm.data.folderId}
+                  onChange={(e) => googleForm.setData('folderId', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" className="btn-pop text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]">
+                    Save
+                  </button>
+                  <button type="button" onClick={testGoogle} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]">
+                    Test
+                  </button>
+                </div>
+              </form>
+              {googleFiles.length > 0 && (
+                <div className="flex flex-col gap-1 mt-1">
+                  {googleFiles.map((f) => (
+                    <div key={f.id ?? f.name} className="flex items-center text-[12px] font-data rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <button onClick={() => deleteGoogleFile(f.id ?? '')} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
     </DashboardLayout>

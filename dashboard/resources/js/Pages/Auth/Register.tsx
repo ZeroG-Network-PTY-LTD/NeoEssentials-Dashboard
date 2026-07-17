@@ -1,3 +1,4 @@
+import DiscordAuthButton from '@/Components/DiscordAuthButton';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -26,7 +27,14 @@ export default function Register() {
         <GuestLayout>
             <Head title="Register" />
 
-            <form onSubmit={submit}>
+            <h1 className="font-display text-xl font-semibold text-[var(--mc-text-primary)]">
+                Create your account
+            </h1>
+            <p className="mt-1 text-sm text-[var(--mc-text-secondary)]">
+                Get access to your server's dashboard.
+            </p>
+
+            <form onSubmit={submit} className="mt-6">
                 <div>
                     <InputLabel htmlFor="name" value="Name" />
 
@@ -106,7 +114,7 @@ export default function Register() {
                 <div className="mt-4 flex items-center justify-end">
                     <Link
                         href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
+                        className="rounded-md text-sm text-[var(--mc-text-secondary)] underline hover:text-[var(--mc-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--mc-cyan-500)] focus:ring-offset-2 focus:ring-offset-[var(--mc-bg-surface)]"
                     >
                         Already registered?
                     </Link>
@@ -116,6 +124,8 @@ export default function Register() {
                     </PrimaryButton>
                 </div>
             </form>
+
+            <DiscordAuthButton label="Sign up with Discord" />
         </GuestLayout>
     );
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\HologramsController;
 use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
+use App\Http\Controllers\PublicLookupController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WarpsController;
@@ -24,6 +25,10 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+// Public player moderation lookup — no login required, reachable whether or not
+// a dashboard account is signed in (also linked from the staff sidebar nav).
+Route::get('/lookup', [PublicLookupController::class, 'index'])->name('lookup');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -110,6 +115,7 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             Route::post('/permissions/reload', [PermissionsController::class, 'reload'])->name('permissions.reload');
             Route::post('/permissions/groups', [PermissionsController::class, 'storeGroup'])->name('permissions.groups.store');
             Route::put('/permissions/groups/{name}', [PermissionsController::class, 'updateGroup'])->name('permissions.groups.update');
+            Route::post('/permissions/groups/{name}/rename', [PermissionsController::class, 'renameGroup'])->name('permissions.groups.rename');
             Route::delete('/permissions/groups/{name}', [PermissionsController::class, 'destroyGroup'])->name('permissions.groups.destroy');
             Route::post('/permissions/groups/{name}/permissions', [PermissionsController::class, 'addGroupPermission'])->name('permissions.groups.permissions.add');
             Route::delete('/permissions/groups/{name}/permissions/{permission}', [PermissionsController::class, 'removeGroupPermission'])->name('permissions.groups.permissions.remove');

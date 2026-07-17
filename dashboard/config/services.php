@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // Discord OAuth2 app for "Login with Discord" — a separate Discord Developer Portal
+    // application from any Minecraft-side bot (SDLink/Mc2Discord/DCIntegration). This app
+    // performs a normal web OAuth2 login; it never touches Minecraft directly. The linked
+    // Minecraft account is resolved afterward via the mod's own /api/discord/link-lookup.
+    'discord' => [
+        'client_id' => env('DISCORD_CLIENT_ID'),
+        'client_secret' => env('DISCORD_CLIENT_SECRET'),
+        'redirect' => env('DISCORD_REDIRECT_URI'),
+    ],
+
 ];

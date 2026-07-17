@@ -58,11 +58,24 @@ class MinecraftApiService
         });
     }
 
-    /** Online players, shaped to match the McPlayer type. Cached briefly. */
+    /** Raw /api/player/online payload — {players: [...online], offlinePlayers: [...]}. Cached briefly. */
+    private function rawPlayerData(): array
+    {
+        return Cache::remember('mc_api:players', $this->cacheTtl, fn () => $this->get('api/player/online'));
+    }
+
+    /**
+     * Online players, shaped to match the McPlayer type. Cached briefly.
+     *
+     * The mod's response key here is 'players', not 'online' — a stale read of a key that
+     * never existed used to silently return an empty list unconditionally, meaning every
+     * player-targeting action on the dashboard (kick/ban/mute/teleport/heal, all of which
+     * resolve a UUID back to a username via this same list) failed with "player not online"
+     * regardless of who was actually connected.
+     */
     public function players(): array
     {
-        $data = Cache::remember('mc_api:players', $this->cacheTtl, fn () => $this->get('api/player/online'));
-        $online = $data['online'] ?? [];
+        $online = $this->rawPlayerData()['players'] ?? [];
 
         return array_map(fn (array $p) => [
             'uuid' => $p['uuid'],
@@ -82,6 +95,32 @@ class MinecraftApiService
             'playtimeMinutes' => 0, // not exposed by the mod's online-player list
             'balance' => 0,          // fetch via economyLeaderboard() if needed
         ], $online);
+    }
+
+    /**
+     * Recently-active offline players (up to the mod's own cap, currently 50 — anyone beyond
+     * that needs the explicit lookup instead). Lets the Players page show a real roster by
+     * default without requiring a search, while `lookupPlayer()` covers anyone not in this list.
+     */
+    public function offlinePlayers(): array
+    {
+        $offline = $this->rawPlayerData()['offlinePlayers'] ?? [];
+
+        return array_map(fn (array $p) => [
+            'uuid' => $p['uuid'],
+            'username' => $p['username'],
+            'lastSeen' => $p['lastSeen'] ?? 'Unknown',
+        ], $offline);
+    }
+
+    /**
+     * Look up a single player by name whether or not they're online or in the recent-offline
+     * roster above — resolves via the mod's profile cache / Mojang API fallback, for servers
+     * with more players than the roster's cap.
+     */
+    public function lookupPlayer(string $username): array
+    {
+        return $this->get("api/player/lookup/{$username}");
     }
 
     // --- Player actions (identifier is a username, per the mod's contract) --
@@ -118,6 +157,42 @@ class MinecraftApiService
             'targetName' => $username,
             'duration' => $duration ? (int) $duration : null, // seconds; omit = indefinite
         ]);
+    }
+
+    // --- Public moderation lookup (no dashboard login required on either side —
+    // the mod's /api/public/moderation/* routes are registered without the
+    // Bearer-token check, so these deliberately skip the service-account session
+    // machinery entirely rather than calling request()/get()) -------------------
+
+    /** Bans/mutes/kicks/warns for one player, by name. Never includes IP bans/mutes. */
+    public function publicLookup(string $username): array
+    {
+        return $this->publicGet("api/public/moderation/lookup/{$username}");
+    }
+
+    /** Recent active bans + mutes across all players, newest first. */
+    public function publicRecent(): array
+    {
+        $data = $this->publicGet('api/public/moderation/recent');
+
+        return $data['recent'] ?? [];
+    }
+
+    private function publicGet(string $path): array
+    {
+        try {
+            $response = Http::timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
+        } catch (\Throwable $e) {
+            Log::warning('Minecraft public API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
+            throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
+        }
+
+        if ($response->failed()) {
+            Log::warning('Minecraft public API error', ['path' => $path, 'status' => $response->status()]);
+            throw new RuntimeException("Minecraft API returned an error ({$response->status()}).");
+        }
+
+        return $response->json() ?? [];
     }
 
     // --- Economy -----------------------------------------------------------
@@ -278,6 +353,17 @@ class MinecraftApiService
         return $this->post('api/discord/auth-config', $config);
     }
 
+    /**
+     * Resolve a real Discord ID (from this app's own Socialite OAuth2 login) to its linked
+     * Minecraft account, via the mod's SDLink/Mc2Discord/DCIntegration adapters. The mod never
+     * performs Discord OAuth2 itself — this app does that, then asks "who is this account
+     * linked to" afterward. Returns ['linked' => false] if no companion mod has that link.
+     */
+    public function discordLinkLookup(string $discordId): array
+    {
+        return $this->get('api/discord/link-lookup', ['discordId' => $discordId]);
+    }
+
     // --- Permissions (PermissionEndpoint — GET is open to any logged-in
     // account, every write requires the mod's own admin session, so all
     // mutation methods here are only ever called from gated controller
@@ -285,7 +371,7 @@ class MinecraftApiService
 
     public function permissionOverview(): array
     {
-        return $this->get('api/permissions/overview');
+        return Cache::remember('mc_api:permission_overview', $this->cacheTtl, fn () => $this->get('api/permissions/overview'));
     }
 
     public function permissionGroups(): array
@@ -298,6 +384,16 @@ class MinecraftApiService
         return $this->get('api/permissions/users')['users'] ?? [];
     }
 
+    /**
+     * Look up a single player by username whether or not they're currently online — the mod's
+     * PermissionEndpoint resolves offline players via its profile cache / Mojang API fallback.
+     * Returns ['success' => false, 'message' => ...] if the name can't be resolved at all.
+     */
+    public function permissionUserLookup(string $username): array
+    {
+        return $this->get("api/permissions/user/{$username}");
+    }
+
     public function permissionAliases(): array
     {
         $data = $this->get('api/permissions/aliases');
@@ -305,24 +401,49 @@ class MinecraftApiService
         return $data['aliases'] ?? [];
     }
 
+    /**
+     * Real permission-node catalog (node/description/defaultValue, grouped by category),
+     * sourced from the mod's own PermissionRegistry — powers the node search/picker when
+     * adding a permission to a group or user instead of requiring the raw string from memory.
+     * Cached longer than the live-data endpoints since this basically never changes at runtime.
+     */
+    public function permissionNodeCatalog(): array
+    {
+        return Cache::remember('mc_api:permission_catalog', 300, fn () => $this->get('api/permissions/permissions/all')['categories'] ?? []);
+    }
+
     public function reloadPermissions(): array
     {
         return $this->post('api/permissions/reload', []);
     }
 
-    public function createPermissionGroup(string $name, string $prefix = '', string $suffix = '', bool $isDefault = false): array
-    {
-        return $this->post('api/permissions/group/create', [
+    public function createPermissionGroup(
+        string $name,
+        string $prefix = '',
+        string $suffix = '',
+        bool $isDefault = false,
+        ?int $priority = null,
+        array $inherits = [],
+    ): array {
+        return $this->post('api/permissions/group/create', array_filter([
             'name' => $name,
             'prefix' => $prefix,
             'suffix' => $suffix,
             'isDefault' => $isDefault,
-        ]);
+            'priority' => $priority,
+            'inherits' => $inherits,
+        ], fn ($v) => $v !== null && $v !== []));
     }
 
+    /** $data may include prefix/suffix/priority/inherits (full replace)/isDefault. */
     public function updatePermissionGroup(string $name, array $data): array
     {
         return $this->put("api/permissions/group/{$name}/update", $data);
+    }
+
+    public function renamePermissionGroup(string $name, string $newName): array
+    {
+        return $this->post("api/permissions/group/{$name}/rename", ['newName' => $newName]);
     }
 
     public function deletePermissionGroup(string $name): array
@@ -588,6 +709,33 @@ class MinecraftApiService
         return $entries;
     }
 
+    /**
+     * Authenticate a real dashboard visitor directly against the mod's own
+     * /api/auth/login — NOT the service account used by sessionId() above.
+     * Returns the mod's raw response (success/user/sessionId) for both accepted and
+     * rejected credentials; only throws when the mod's API couldn't be reached at
+     * all, which LoginRequest uses to decide whether to fall back to this user's
+     * locally-cached credential copy instead of hard-failing the login.
+     */
+    public function authenticateUser(string $username, string $password): array
+    {
+        try {
+            $response = Http::timeout($this->timeout)
+                ->post("{$this->baseUrl}/api/auth/login", [
+                    'username' => $username,
+                    'password' => $password,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('Minecraft API unreachable during user login', ['username' => $username, 'error' => $e->getMessage()]);
+            $this->markReachable(false);
+            throw new RuntimeException('Could not reach the Minecraft server API to log in.');
+        }
+
+        $this->markReachable(true);
+
+        return $response->json() ?? ['success' => false];
+    }
+
     // --- internals ---------------------------------------------------
 
     private function cachedGet(string $cacheKey, string $path): array
@@ -720,7 +868,7 @@ class MinecraftApiService
 
     private function bustCaches(): void
     {
-        foreach (['status', 'players', 'economy_leaderboard', 'warps', 'holograms', 'hologram_stats', 'discord_status'] as $key) {
+        foreach (['status', 'players', 'economy_leaderboard', 'warps', 'holograms', 'hologram_stats', 'discord_status', 'permission_overview'] as $key) {
             Cache::forget("mc_api:{$key}");
         }
     }

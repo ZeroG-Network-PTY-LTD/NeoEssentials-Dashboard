@@ -72,11 +72,12 @@ class UpdatesController extends Controller
 
     private function summarize(array $result): string
     {
-        // The full log is genuinely long (composer/npm output) — flash a
-        // short verdict, and let the page re-fetch currentVersion()/log tail
-        // rather than stuffing kilobytes into the session flash.
+        // The full command output is flashed separately as 'updateLog' (see
+        // applyGit()/upload() above) and rendered in the "Last run output"
+        // card on the Updates page itself — this is just the short verdict
+        // for the toast.
         return $result['success']
             ? 'Update applied successfully.'
-            : 'Update failed — see storage/logs/laravel.log for the full command output.';
+            : 'Update failed — see the log below for details.';
     }
 }

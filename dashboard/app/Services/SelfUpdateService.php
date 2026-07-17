@@ -115,7 +115,11 @@ class SelfUpdateService
             $branch = config('selfupdate.branch');
             $log = '';
 
-            $status = $this->run(['git', 'status', '--porcelain'], $this->repoRoot);
+            // --untracked-files=no — stray untracked files (a personal notes
+            // file, a scratch clone sitting in the repo, ...) don't block a
+            // `git merge --ff-only` and shouldn't block this either; only
+            // actual modifications to tracked files should.
+            $status = $this->run(['git', 'status', '--porcelain', '--untracked-files=no'], $this->repoRoot);
             $log .= $status['log'];
             if (trim($status['output']) !== '') {
                 return ['success' => false, 'log' => $log."\nAborted: the repo checkout has uncommitted changes — resolve those manually before updating."];

@@ -20,6 +20,10 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/installed.lock
+/storage/app/install-token.txt
+/storage/app/deployment.json
+/storage/app/updates
 /vendor
 _ide_helper.php
 Homestead.json

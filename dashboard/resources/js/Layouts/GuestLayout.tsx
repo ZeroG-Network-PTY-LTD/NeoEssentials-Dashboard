@@ -1,7 +1,10 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
+import type { PageProps } from '@/types';
 
 export default function Guest({ children }: PropsWithChildren) {
+    const { props } = usePage<PageProps>();
+
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--mc-bg-base)] px-4 py-10">
             <Link
@@ -32,7 +35,13 @@ export default function Guest({ children }: PropsWithChildren) {
                 </span>
             </Link>
 
-            <div className="mt-8 w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] px-6 py-8 shadow-2xl shadow-black/40 sm:max-w-md">
+            {props.flash?.success && (
+                <div className="mt-8 w-full rounded-[var(--radius-lg)] border border-[var(--mc-moss-400,var(--mc-moss-500))] bg-[var(--mc-moss-50)] px-4 py-3 text-[13px] text-[var(--mc-moss-500)] sm:max-w-md">
+                    {props.flash.success}
+                </div>
+            )}
+
+            <div className={`w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] px-6 py-8 shadow-2xl shadow-black/40 sm:max-w-md ${props.flash?.success ? 'mt-4' : 'mt-8'}`}>
                 {children}
             </div>
 

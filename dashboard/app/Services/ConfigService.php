@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Support\WritesEnvFile;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
@@ -52,64 +52,84 @@ class ConfigService
         $this->writeEnv($updates);
     }
 
-    // --- Minecraft mod API connection ---------------------------------------
+    // --- Minecraft mod API connection (paired via /api/pair/complete, see
+    // PairingController) -----------------------------------------------------
 
     public function mcApiConfig(): array
     {
         return [
             'url' => config('minecraft.api_url'),
-            'username' => config('minecraft.service_username'),
-            'passwordSet' => (bool) config('minecraft.service_password'),
-            'passwordMasked' => $this->maskSecret(config('minecraft.service_password')),
+            'paired' => (bool) config('minecraft.service_api_key'),
         ];
     }
 
-    public function updateMcApiConfig(string $url, string $username, ?string $password): void
+    public function updateMcApiUrl(string $url): void
     {
-        $updates = [
-            'MC_API_URL' => $url,
-            'MC_SERVICE_USERNAME' => $username,
-        ];
+        $this->writeEnv(['MC_API_URL' => $url]);
+    }
 
-        if (filled($password)) {
-            $updates['MC_SERVICE_PASSWORD'] = $password;
+    /** Generates a one-time pairing code the admin pastes into `/dashboard pair` in-game. */
+    public function startPairing(): array
+    {
+        $code = Str::upper(Str::random(8));
+        Cache::put("pairing_code:{$code}", true, now()->addMinutes(10));
+
+        $dashboardUrl = rtrim(config('app.url'), '/');
+
+        return [
+            'code' => $code,
+            'dashboardUrl' => $dashboardUrl,
+            'command' => "/dashboard pair {$dashboardUrl} {$code}",
+            'expiresInSeconds' => 600,
+        ];
+    }
+
+    /**
+     * Called by PairingController (public route, hit by the mod's /dashboard pair command) once
+     * the admin has run the printed command. Mints our own token for the mod to use on its
+     * outbound user-sync webhook, and stores the mod's token for our own outbound REST calls —
+     * both directions connected in one round trip, nothing hand-copied between config files.
+     */
+    public function completePairing(string $code, string $modToken, ?string $serverName): array
+    {
+        if (! Cache::pull("pairing_code:{$code}")) {
+            return ['success' => false, 'message' => 'Invalid or expired pairing code.'];
         }
 
-        $this->writeEnv($updates);
+        $dashboardToken = Str::random(40);
+
+        $this->writeEnv([
+            'MC_SERVICE_API_KEY' => $modToken,
+            'MOD_WEBHOOK_TOKEN' => $dashboardToken,
+        ]);
+
+        return [
+            'success' => true,
+            'dashboardToken' => $dashboardToken,
+        ];
     }
 
-    public function testMcApi(string $url, string $username, string $password): array
+    public function unpair(): void
     {
-        try {
-            $response = Http::timeout(6)
-                ->post(rtrim($url, '/').'/api/auth/login', ['username' => $username, 'password' => $password]);
+        $this->writeEnv([
+            'MC_SERVICE_API_KEY' => '',
+            'MOD_WEBHOOK_TOKEN' => '',
+        ]);
+    }
 
-            return $response->successful()
-                ? ['success' => true, 'message' => 'Connected and authenticated successfully.']
-                : ['success' => false, 'message' => "Server responded with {$response->status()}."];
+    public function testMcApi(): array
+    {
+        if (empty(config('minecraft.service_api_key'))) {
+            return ['success' => false, 'message' => 'Not paired with a Minecraft server yet.'];
+        }
+
+        try {
+            $status = $this->mc->status();
+
+            return ['success' => true, 'message' => 'Connected — server reports '.($status['onlineCount'] ?? 0).' player(s) online.'];
         } catch (\Throwable $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
-    }
-
-    // --- Webhook secret (for the mod's optional DashboardUserSyncWebhook —
-    // see routes/webhooks.php / WebhookController) --------------------------
-
-    public function webhookConfig(): array
-    {
-        return [
-            'url' => url('/webhooks/mod/user-sync'),
-            'secretSet' => (bool) config('services.mod_sync.webhook_secret'),
-            'secretMasked' => $this->maskSecret(config('services.mod_sync.webhook_secret')),
-        ];
-    }
-
-    public function regenerateWebhookSecret(): string
-    {
-        $secret = Str::random(40);
-        $this->writeEnv(['MOD_SYNC_WEBHOOK_SECRET' => $secret]);
-
-        return $secret;
     }
 
     // --- Pull-based reconciliation: mod → Laravel ---------------------------

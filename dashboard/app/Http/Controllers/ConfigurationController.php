@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ConfigService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,7 +12,8 @@ use Inertia\Response;
 /**
  * Admin-only runtime config: this app's own Discord OAuth app credentials
  * (separate from the mod-owned auth-config editor on the Discord page), the
- * MC API connection, and manually triggering the mod-account pull-sync (see
+ * MC API connection (paired via /api/pair/complete — see PairingController),
+ * and manually triggering the mod-account pull-sync (see
  * ConfigService::syncFromMod() / the scheduled `dashboard:sync-mod-users`).
  */
 class ConfigurationController extends Controller
@@ -25,7 +27,6 @@ class ConfigurationController extends Controller
         return Inertia::render('Dashboard/Configuration', [
             'discord' => $this->config->discordAppConfig(),
             'mcApi' => $this->config->mcApiConfig(),
-            'webhook' => $this->config->webhookConfig(),
         ]);
     }
 
@@ -42,37 +43,47 @@ class ConfigurationController extends Controller
         return back()->with('success', 'Discord OAuth app credentials saved.');
     }
 
-    public function testMcApi(Request $request): RedirectResponse
+    public function updateMcApiUrl(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'url' => ['required', 'url'],
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
         ]);
 
-        $result = $this->config->testMcApi($data['url'], $data['username'], $data['password']);
+        $this->config->updateMcApiUrl($data['url']);
+
+        return back()->with('success', 'Minecraft server address saved.');
+    }
+
+    public function testMcApi(): RedirectResponse
+    {
+        $result = $this->config->testMcApi();
 
         return back()->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
-    public function updateMcApi(Request $request): RedirectResponse
+    /** Generates a one-time pairing code and re-renders the page with it in props. */
+    public function startPairing(): Response
     {
-        $data = $request->validate([
-            'url' => ['required', 'url'],
-            'username' => ['required', 'string'],
-            'password' => ['nullable', 'string'],
+        $pairing = $this->config->startPairing();
+
+        return Inertia::render('Dashboard/Configuration', [
+            'discord' => $this->config->discordAppConfig(),
+            'mcApi' => $this->config->mcApiConfig(),
+            'pairing' => $pairing,
         ]);
-
-        $this->config->updateMcApiConfig($data['url'], $data['username'], $data['password'] ?? null);
-
-        return back()->with('success', 'Minecraft API connection saved.');
     }
 
-    public function regenerateWebhookSecret(): RedirectResponse
+    /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */
+    public function pairingStatus(): JsonResponse
     {
-        $this->config->regenerateWebhookSecret();
+        return response()->json(['paired' => (bool) config('minecraft.service_api_key')]);
+    }
 
-        return back()->with('success', 'Webhook secret regenerated — update it in the mod\'s config.json too (webDashboard.userSyncWebhookSecret).');
+    public function unpair(): RedirectResponse
+    {
+        $this->config->unpair();
+
+        return back()->with('success', 'Unpaired. Run /dashboard unpair on the server console too, to revoke its API key.');
     }
 
     public function syncUsers(): RedirectResponse

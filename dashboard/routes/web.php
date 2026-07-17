@@ -187,9 +187,11 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
         Route::middleware('can:configuration.manage')->prefix('configuration')->name('configuration.')->group(function () {
             Route::get('/', [ConfigurationController::class, 'index'])->name('index');
             Route::post('/discord', [ConfigurationController::class, 'updateDiscord'])->name('discord.update');
+            Route::post('/mc-api/url', [ConfigurationController::class, 'updateMcApiUrl'])->name('mc-api.url');
             Route::post('/mc-api/test', [ConfigurationController::class, 'testMcApi'])->name('mc-api.test');
-            Route::post('/mc-api', [ConfigurationController::class, 'updateMcApi'])->name('mc-api.update');
-            Route::post('/webhook/regenerate', [ConfigurationController::class, 'regenerateWebhookSecret'])->name('webhook.regenerate');
+            Route::post('/mc-api/pairing/start', [ConfigurationController::class, 'startPairing'])->name('mc-api.pairing.start');
+            Route::get('/mc-api/pairing/status', [ConfigurationController::class, 'pairingStatus'])->name('mc-api.pairing.status');
+            Route::post('/mc-api/unpair', [ConfigurationController::class, 'unpair'])->name('mc-api.unpair');
             Route::post('/sync-users', [ConfigurationController::class, 'syncUsers'])->name('sync-users');
         });
     });

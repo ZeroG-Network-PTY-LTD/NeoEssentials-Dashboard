@@ -21,20 +21,16 @@ use RuntimeException;
 class MinecraftApiService
 {
     private string $baseUrl;
-    private string $serviceUsername;
-    private string $servicePassword;
+    private string $serviceApiKey;
     private int $timeout;
     private int $cacheTtl;
-    private int $sessionCacheTtl;
 
     public function __construct()
     {
         $this->baseUrl = rtrim((string) config('minecraft.api_url'), '/');
-        $this->serviceUsername = (string) config('minecraft.service_username');
-        $this->servicePassword = (string) config('minecraft.service_password');
+        $this->serviceApiKey = (string) config('minecraft.service_api_key');
         $this->timeout = (int) config('minecraft.timeout');
         $this->cacheTtl = (int) config('minecraft.cache_ttl');
-        $this->sessionCacheTtl = (int) config('minecraft.session_cache_ttl');
     }
 
     // --- Status / players -----------------------------------------------
@@ -730,7 +726,7 @@ class MinecraftApiService
 
     /**
      * Authenticate a real dashboard visitor directly against the mod's own
-     * /api/auth/login — NOT the service account used by sessionId() above.
+     * /api/auth/login — NOT the paired API key used by serviceToken() above.
      * Returns the mod's raw response (success/user/sessionId) for both accepted and
      * rejected credentials; only throws when the mod's API couldn't be reached at
      * all, which LoginRequest uses to decide whether to fall back to this user's
@@ -788,16 +784,12 @@ class MinecraftApiService
         return $result;
     }
 
-    /**
-     * @param bool $isRetry internal — set on the single allowed retry after a 401,
-     *                       to avoid an infinite loop if the service account itself is broken.
-     */
-    private function request(string $method, string $path, array $data = [], bool $isRetry = false): array
+    private function request(string $method, string $path, array $data = []): array
     {
-        $sessionId = $this->sessionId();
+        $token = $this->serviceToken();
 
         try {
-            $response = Http::withToken($sessionId)
+            $response = Http::withToken($token)
                 ->timeout($this->timeout)
                 ->{$method}("{$this->baseUrl}/{$path}", $data);
         } catch (\Throwable $e) {
@@ -807,12 +799,7 @@ class MinecraftApiService
         }
 
         if ($response->status() === 401) {
-            if ($isRetry) {
-                throw new RuntimeException('Minecraft API rejected the dashboard service account — check MC_SERVICE_USERNAME/MC_SERVICE_PASSWORD.');
-            }
-            // Session expired or was invalidated server-side — log in again and retry once.
-            Cache::forget('mc_api:session_id');
-            return $this->request($method, $path, $data, true);
+            throw new RuntimeException('Minecraft API rejected our paired API key — it may have been revoked on the server. Re-pair from Configuration → Minecraft Server Connection.');
         }
 
         if ($response->failed()) {
@@ -826,21 +813,20 @@ class MinecraftApiService
     }
 
     /** Like request(), but returns the raw response for binary payloads (backup ZIP downloads). */
-    private function rawGet(string $path, bool $isRetry = false): \Illuminate\Http\Client\Response
+    private function rawGet(string $path): \Illuminate\Http\Client\Response
     {
-        $sessionId = $this->sessionId();
+        $token = $this->serviceToken();
 
         try {
-            $response = Http::withToken($sessionId)->timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
+            $response = Http::withToken($token)->timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
             $this->markReachable(false);
             throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
         }
 
-        if ($response->status() === 401 && !$isRetry) {
-            Cache::forget('mc_api:session_id');
-            return $this->rawGet($path, true);
+        if ($response->status() === 401) {
+            throw new RuntimeException('Minecraft API rejected our paired API key — it may have been revoked on the server. Re-pair from Configuration → Minecraft Server Connection.');
         }
 
         if ($response->failed()) {
@@ -853,36 +839,17 @@ class MinecraftApiService
         return $response;
     }
 
-    /** Returns a cached session id, logging in fresh if none is cached or valid. */
-    private function sessionId(): string
+    /**
+     * Returns the API key minted for us during pairing — no login round-trip, no session
+     * cache, since API keys don't idle-expire the way the mod's human-login sessions do.
+     */
+    private function serviceToken(): string
     {
-        return Cache::remember('mc_api:session_id', $this->sessionCacheTtl, function () {
-            if (empty($this->serviceUsername) || empty($this->servicePassword)) {
-                throw new RuntimeException('MC_SERVICE_USERNAME / MC_SERVICE_PASSWORD are not configured.');
-            }
+        if (empty($this->serviceApiKey)) {
+            throw new RuntimeException('Not paired with a Minecraft server yet — visit Configuration → Minecraft Server Connection to pair.');
+        }
 
-            try {
-                $response = Http::timeout($this->timeout)
-                    ->post("{$this->baseUrl}/api/auth/login", [
-                        'username' => $this->serviceUsername,
-                        'password' => $this->servicePassword,
-                    ]);
-            } catch (\Throwable $e) {
-                Log::warning('Minecraft API login unreachable', ['error' => $e->getMessage()]);
-                $this->markReachable(false);
-                throw new RuntimeException('Could not reach the Minecraft server API to log in. Is the server online?');
-            }
-
-            if ($response->failed() || !($response->json('success'))) {
-                Log::warning('Minecraft API login failed', ['status' => $response->status(), 'body' => $response->body()]);
-                $this->markReachable(false);
-                throw new RuntimeException('Minecraft API login failed — check MC_SERVICE_USERNAME/MC_SERVICE_PASSWORD.');
-            }
-
-            $this->markReachable(true);
-
-            return $response->json('sessionId');
-        });
+        return $this->serviceApiKey;
     }
 
     private function bustCaches(): void

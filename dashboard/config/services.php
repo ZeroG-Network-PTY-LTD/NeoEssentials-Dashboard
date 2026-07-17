@@ -45,14 +45,12 @@ return [
         'redirect' => env('DISCORD_REDIRECT_URI'),
     ],
 
-    // Shared secret for verifying the mod's optional DashboardUserSyncWebhook
-    // (X-NeoEssentials-Signature: hex HMAC-SHA256 of the raw request body) —
-    // see WebhookController and docs/API.md's dashboard-account-sync section
-    // on the mod side. Leave unset to accept unsigned webhook calls (fine for
-    // a same-host/trusted-network setup; set it if the mod and dashboard
-    // aren't on a network you control end-to-end).
+    // Bearer token the dashboard minted for the mod during pairing (see PairingController) —
+    // the mod presents this as `Authorization: Bearer <token>` on its outbound user-sync
+    // webhook (WebhookController). Populated automatically by pairing, never hand-typed.
+    // Until a pairing has completed, this is empty and the webhook route rejects everything.
     'mod_sync' => [
-        'webhook_secret' => env('MOD_SYNC_WEBHOOK_SECRET'),
+        'webhook_token' => env('MOD_WEBHOOK_TOKEN'),
     ],
 
 ];

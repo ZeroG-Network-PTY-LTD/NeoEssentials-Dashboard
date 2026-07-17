@@ -21,11 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // The mod's own DashboardUserSyncWebhook is a server-to-server POST
-        // with no browser session/CSRF token to send — signed instead via
-        // WebhookController's own HMAC check against MOD_SYNC_WEBHOOK_SECRET.
+        // The mod's own DashboardUserSyncWebhook and /dashboard pair command are
+        // server-to-server POSTs with no browser session/CSRF token to send —
+        // authenticated instead via a Bearer token (WebhookController) or a
+        // one-time pairing code (PairingController).
         $middleware->validateCsrfTokens(except: [
             'webhooks/*',
+            'api/pair/complete',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

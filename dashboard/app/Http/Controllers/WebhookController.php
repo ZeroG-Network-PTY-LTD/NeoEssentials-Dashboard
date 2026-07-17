@@ -14,18 +14,18 @@ use Illuminate\Support\Str;
  * (in-game /dashboardregister, api/users/create, api/users/sync, role/enable
  * changes, deletion), so this app doesn't have to poll api/users/list to
  * notice a change. Complements ConfigService::syncFromMod()'s pull-based
- * reconciliation rather than replacing it — the mod only sends this if
- * webDashboard.userSyncWebhookUrl is configured on its side; the pull path
- * still works (and is the only thing that runs) if it isn't.
+ * reconciliation rather than replacing it — the mod only sends this once
+ * paired (see PairingController); the pull path still works (and is the
+ * only thing that runs) if it isn't.
  */
 class WebhookController extends Controller
 {
     public function modUserSync(Request $request): JsonResponse
     {
-        if (! $this->verifySignature($request)) {
-            Log::warning('Rejected mod user-sync webhook — bad or missing signature');
+        if (! $this->verifyToken($request)) {
+            Log::warning('Rejected mod user-sync webhook — bad or missing token');
 
-            return response()->json(['error' => 'invalid signature'], 401);
+            return response()->json(['error' => 'invalid token'], 401);
         }
 
         $event = $request->input('event');
@@ -69,25 +69,23 @@ class WebhookController extends Controller
     }
 
     /**
-     * Recomputes the HMAC-SHA256 hex digest of the raw request body against
-     * MOD_SYNC_WEBHOOK_SECRET and compares to X-NeoEssentials-Signature. If no
-     * secret is configured, accepts unsigned requests (fine for a same-host/
-     * trusted-network setup — see config/services.php's comment).
+     * Compares the request's Bearer token against the token this dashboard minted for the
+     * mod during pairing (services.mod_sync.webhook_token). Unlike the old HMAC scheme, an
+     * unconfigured token always rejects — there's nothing to compare against until a pairing
+     * has actually completed, and accepting unsigned calls by default was the wrong posture.
      */
-    private function verifySignature(Request $request): bool
+    private function verifyToken(Request $request): bool
     {
-        $secret = config('services.mod_sync.webhook_secret');
-        if (! $secret) {
-            return true;
-        }
-
-        $signature = $request->header('X-NeoEssentials-Signature');
-        if (! $signature) {
+        $expected = config('services.mod_sync.webhook_token');
+        if (! $expected) {
             return false;
         }
 
-        $expected = hash_hmac('sha256', $request->getContent(), $secret);
+        $token = $request->bearerToken();
+        if (! $token) {
+            return false;
+        }
 
-        return hash_equals($expected, $signature);
+        return hash_equals($expected, $token);
     }
 }

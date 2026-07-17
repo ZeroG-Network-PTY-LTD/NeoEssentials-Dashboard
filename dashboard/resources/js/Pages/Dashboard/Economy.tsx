@@ -1,10 +1,15 @@
 import { Head, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import Card from '@/Components/Dashboard/Card';
+import PageHeading from '@/Components/Dashboard/PageHeading';
 import type { LeaderboardEntry } from '@/types/minecraft';
+import { Coins, Trophy, Sliders } from 'lucide-react';
 
 interface Props {
   leaderboard: LeaderboardEntry[];
 }
+
+const MEDAL = ['text-[var(--mc-cyan-400)]', 'text-[var(--mc-purple-400)]', 'text-[var(--mc-text-muted)]'];
 
 export default function Economy({ leaderboard }: Props) {
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -21,32 +26,21 @@ export default function Economy({ leaderboard }: Props) {
   return (
     <DashboardLayout>
       <Head title="Economy" />
-      <h1 className="font-display text-[20px] font-semibold mb-5">Economy</h1>
+      <PageHeading title="Economy" icon={Coins} subtitle="Balances, leaderboard, and manual balance adjustments." />
 
       <div className="grid grid-cols-[1fr_320px] gap-5">
-        <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-            Balance leaderboard
-          </div>
+        <Card title="Balance leaderboard" icon={Trophy} accent="cyan">
           {leaderboard.length === 0 && (
-            <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+            <div className="px-4 py-8 text-center text-[13px] text-[var(--mc-text-muted)]">
               No balances tracked yet.
             </div>
           )}
           {leaderboard.map((entry, i) => (
             <div
               key={entry.uuid}
-              className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]"
+              className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]"
             >
-              <span
-                className={`w-6 font-data ${
-                  i === 0
-                    ? 'text-[var(--mc-cyan-400)]'
-                    : i === 1
-                    ? 'text-[var(--mc-purple-400)]'
-                    : 'text-[var(--mc-text-muted)]'
-                }`}
-              >
+              <span className={`w-6 font-data ${MEDAL[Math.min(i, 2)]}`}>
                 #{i + 1}
               </span>
               <img
@@ -55,60 +49,57 @@ export default function Economy({ leaderboard }: Props) {
                 className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)] ml-1"
               />
               <span className="flex-1 ml-2.5">{entry.username}</span>
-              <span className="font-data text-[13px]">${entry.balance.toLocaleString()}</span>
+              <span className="font-data text-[13px] text-[var(--mc-moss-400)]">${entry.balance.toLocaleString()}</span>
             </div>
           ))}
-        </div>
+        </Card>
 
-        <form
-          onSubmit={submit}
-          className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 h-fit flex flex-col gap-3"
-        >
-          <div className="font-display text-[14px] font-semibold mb-1">Adjust balance</div>
+        <Card title="Adjust balance" icon={Sliders} accent="purple" padded className="h-fit">
+          <form onSubmit={submit} className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Player UUID or username
+              <input
+                value={data.uuid}
+                onChange={(e) => setData('uuid', e.target.value)}
+                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              />
+              {errors.uuid && <span className="text-[var(--mc-ember-500)]">{errors.uuid}</span>}
+            </label>
 
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Player UUID or username
-            <input
-              value={data.uuid}
-              onChange={(e) => setData('uuid', e.target.value)}
-              className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-            />
-            {errors.uuid && <span className="text-[var(--mc-ember-500)]">{errors.uuid}</span>}
-          </label>
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Action
+              <select
+                value={data.action}
+                onChange={(e) => setData('action', e.target.value as typeof data.action)}
+                className="text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              >
+                <option value="give">Give</option>
+                <option value="take">Take</option>
+                <option value="set">Set balance to</option>
+              </select>
+            </label>
 
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Action
-            <select
-              value={data.action}
-              onChange={(e) => setData('action', e.target.value as typeof data.action)}
-              className="text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Amount
+              <input
+                type="number"
+                min="0"
+                value={data.amount}
+                onChange={(e) => setData('amount', e.target.value)}
+                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              />
+              {errors.amount && <span className="text-[var(--mc-ember-500)]">{errors.amount}</span>}
+            </label>
+
+            <button
+              type="submit"
+              disabled={processing}
+              className="btn-pop mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium hover:bg-[var(--mc-cyan-400)] transition-colors disabled:opacity-50"
             >
-              <option value="give">Give</option>
-              <option value="take">Take</option>
-              <option value="set">Set balance to</option>
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Amount
-            <input
-              type="number"
-              min="0"
-              value={data.amount}
-              onChange={(e) => setData('amount', e.target.value)}
-              className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-            />
-            {errors.amount && <span className="text-[var(--mc-ember-500)]">{errors.amount}</span>}
-          </label>
-
-          <button
-            type="submit"
-            disabled={processing}
-            className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
-          >
-            Apply
-          </button>
-        </form>
+              Apply
+            </button>
+          </form>
+        </Card>
       </div>
     </DashboardLayout>
   );

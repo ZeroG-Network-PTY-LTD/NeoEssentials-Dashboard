@@ -1,5 +1,8 @@
 import { Head } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import Card from '@/Components/Dashboard/Card';
+import PageHeading from '@/Components/Dashboard/PageHeading';
+import Badge from '@/Components/Dashboard/Badge';
 import type { Kit, KitStats } from '@/types/minecraft';
 import { Package, CheckCircle2, Lock, Timer, Hash, LucideIcon } from 'lucide-react';
 
@@ -34,11 +37,11 @@ export default function Kits({ kits, stats }: Props) {
   return (
     <DashboardLayout>
       <Head title="Kits" />
-      <h1 className="font-display text-[20px] font-semibold mb-1">Kits</h1>
-      <p className="text-[12px] text-[var(--mc-text-muted)] mb-5">
-        Read-only — the mod doesn't expose a dashboard API to create/edit kits yet.
-        Configure kits in-game or via <code>kits.json</code>.
-      </p>
+      <PageHeading
+        title="Kits"
+        icon={Package}
+        subtitle="Read-only — the mod doesn't expose a dashboard API to create/edit kits yet. Configure kits in-game or via kits.json."
+      />
 
       <div className="grid grid-cols-5 gap-3 mb-5">
         {KIT_STAT_ICONS.map(([label, Icon], i) => {
@@ -46,7 +49,7 @@ export default function Kits({ kits, stats }: Props) {
           return (
             <div
               key={label}
-              className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-3 flex items-start gap-2.5"
+              className="dash-card dash-card-interactive p-3 flex items-start gap-2.5"
             >
               <span className={`h-7 w-7 rounded-[7px] shrink-0 flex items-center justify-center ${bg} ${fg}`}>
                 <Icon size={14} strokeWidth={2} />
@@ -60,24 +63,20 @@ export default function Kits({ kits, stats }: Props) {
         })}
       </div>
 
-      <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-          {kits.length} kit{kits.length === 1 ? '' : 's'}
-        </div>
+      <Card title={`${kits.length} kit${kits.length === 1 ? '' : 's'}`} icon={Package}>
         {kits.length === 0 && (
-          <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--mc-text-muted)]">
             No kits configured yet.
           </div>
         )}
         {kits.map((kit) => (
           <div
             key={kit.name}
-            className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]"
+            className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]"
           >
-            <span
-              className={`w-2 h-2 rounded-full mr-3 ${kit.enabled ? 'bg-[var(--mc-moss-500)]' : 'bg-[var(--mc-text-muted)]'}`}
-              title={kit.enabled ? 'Enabled' : 'Disabled'}
-            />
+            <Badge variant={kit.enabled ? 'moss' : 'neutral'} dot={kit.enabled} className="mr-3">
+              {kit.enabled ? 'enabled' : 'disabled'}
+            </Badge>
             <span className="flex-1">
               <span className="font-medium">{kit.displayName}</span>
               {kit.displayName !== kit.name && (
@@ -87,13 +86,13 @@ export default function Kits({ kits, stats }: Props) {
             <span className="text-[12px] text-[var(--mc-text-muted)] mr-3">{kit.itemCount} items</span>
             <span className="text-[12px] text-[var(--mc-text-muted)] mr-3">{kit.cooldownDisplay}</span>
             {kit.permission && (
-              <span className="font-data text-[11px] px-2 py-0.5 rounded-full bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]">
+              <Badge variant="cyan" className="font-data">
                 {kit.permission}
-              </span>
+              </Badge>
             )}
           </div>
         ))}
-      </div>
+      </Card>
     </DashboardLayout>
   );
 }

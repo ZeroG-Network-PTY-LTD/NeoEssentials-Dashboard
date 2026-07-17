@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import Card from '@/Components/Dashboard/Card';
+import PageHeading from '@/Components/Dashboard/PageHeading';
+import Badge from '@/Components/Dashboard/Badge';
 import type {
   PermissionGroup,
   PermissionOverview,
@@ -9,6 +12,7 @@ import type {
   PermissionNodeCategory,
 } from '@/types/minecraft';
 import type { PageProps } from '@/types';
+import { ShieldCheck, Users, UserCog, Link2, Plus, RefreshCw, Search, Key } from 'lucide-react';
 
 interface Props {
   overview: PermissionOverview;
@@ -37,7 +41,7 @@ function NodeInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2 py-1 text-[var(--mc-text-primary)]"
+        className="flex-1 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2 py-1 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
       />
     </>
   );
@@ -151,44 +155,42 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
         )}
       </datalist>
 
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="font-display text-[20px] font-semibold">Permissions</h1>
-        {isAdmin && !overview.usingExternal && (
-          <button
-            onClick={reload}
-            className="text-[12px] px-2.5 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]"
-          >
-            Reload
-          </button>
-        )}
-      </div>
-      <p className="text-[13px] text-[var(--mc-text-muted)] mb-5">
-        {overview.systemType} · {overview.totalGroups} groups · {overview.totalUsers} online users
-        {overview.usingExternal && ' · management disabled while an external permission plugin is active'}
-      </p>
+      <PageHeading
+        title="Permissions"
+        icon={ShieldCheck}
+        subtitle={`${overview.systemType} · ${overview.totalGroups} groups · ${overview.totalUsers} online users${overview.usingExternal ? ' · management disabled while an external permission plugin is active' : ''}`}
+        action={
+          isAdmin && !overview.usingExternal && (
+            <button
+              onClick={reload}
+              className="flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]"
+            >
+              <RefreshCw size={12} strokeWidth={2} />
+              Reload
+            </button>
+          )
+        }
+      />
 
       {!overview.usingExternal && (
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-[1fr_320px] gap-5">
-            <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-                Groups
-              </div>
+            <Card title="Groups" icon={Users} accent="cyan">
               {groups.map((g) => (
-                <div key={g.name} className="px-4 py-3 border-b border-[var(--mc-border)] last:border-0 text-[13px]">
+                <div key={g.name} className="px-4 py-3 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
                   <div className="flex items-center gap-2 mb-1.5">
                     {renaming[g.name] !== undefined ? (
                       <>
                         <input
                           value={renaming[g.name]}
                           onChange={(e) => setRenaming((s) => ({ ...s, [g.name]: e.target.value }))}
-                          className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5"
+                          className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5 outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                           autoFocus
                         />
-                        <button onClick={() => submitRename(g.name)} className="text-[11px] px-2 py-0.5 rounded bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium">
+                        <button onClick={() => submitRename(g.name)} className="btn-pop text-[11px] px-2 py-0.5 rounded bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]">
                           Save
                         </button>
-                        <button onClick={() => cancelRename(g.name)} className="text-[11px] px-2 py-0.5 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)]">
+                        <button onClick={() => cancelRename(g.name)} className="text-[11px] px-2 py-0.5 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]">
                           Cancel
                         </button>
                       </>
@@ -196,17 +198,13 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                       <>
                         <span className="font-medium">{g.name}</span>
                         {isAdmin && (
-                          <button onClick={() => startRename(g.name)} className="text-[11px] text-[var(--mc-text-muted)] underline">
+                          <button onClick={() => startRename(g.name)} className="text-[11px] text-[var(--mc-text-muted)] underline transition-colors hover:text-[var(--mc-cyan-400)]">
                             rename
                           </button>
                         )}
                       </>
                     )}
-                    {g.isDefault && (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-cyan-50)] text-[var(--mc-cyan-500)]">
-                        default
-                      </span>
-                    )}
+                    {g.isDefault && <Badge variant="cyan">default</Badge>}
                     {!isAdmin && (g.prefix || g.suffix) && (
                       <span className="text-[12px] text-[var(--mc-text-muted)]">
                         {g.prefix}{g.suffix}
@@ -215,7 +213,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                     {isAdmin && (
                       <button
                         onClick={() => deleteGroup(g.name)}
-                        className="ml-auto text-[12px] px-2 py-0.5 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white"
+                        className="ml-auto text-[12px] px-2 py-0.5 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white transition-colors hover:bg-[var(--mc-ember-600,var(--mc-ember-500))]"
                       >
                         Delete
                       </button>
@@ -231,7 +229,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                           onBlur={(e) => {
                             if (e.target.value !== g.prefix) setGroupField(g.name, 'prefix', e.target.value);
                           }}
-                          className="w-20 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5"
+                          className="w-20 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5 outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                         />
                       </label>
                       <label className="flex items-center gap-1.5">
@@ -241,7 +239,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                           onBlur={(e) => {
                             if (e.target.value !== g.suffix) setGroupField(g.name, 'suffix', e.target.value);
                           }}
-                          className="w-20 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5"
+                          className="w-20 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5 outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                         />
                       </label>
                       <label className="flex items-center gap-1.5">
@@ -253,7 +251,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                             const v = parseInt(e.target.value, 10);
                             if (!Number.isNaN(v) && v !== g.priority) setGroupField(g.name, 'priority', v);
                           }}
-                          className="w-16 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5"
+                          className="w-16 font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5 outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                         />
                       </label>
                       <label className="flex items-center gap-1.5">
@@ -264,12 +262,13 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                             if (e.target.checked) setGroupField(g.name, 'isDefault', true);
                             else e.target.checked = true; // "default" can only move to another group, not be unset directly
                           }}
+                          className="accent-[var(--mc-cyan-500)]"
                         />
                         Default group
                       </label>
                       <button
                         onClick={() => setEditingInherits((s) => ({ ...s, [g.name]: !s[g.name] }))}
-                        className="underline"
+                        className="underline transition-colors hover:text-[var(--mc-cyan-400)]"
                       >
                         inherits ({g.inherits.length})
                       </button>
@@ -277,13 +276,14 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                   )}
 
                   {editingInherits[g.name] && (
-                    <div className="flex flex-wrap gap-2 mb-1.5 p-2 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)]">
+                    <div className="flex flex-wrap gap-2 mb-1.5 p-2 rounded-[8px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)]">
                       {groups.filter((other) => other.name !== g.name).map((other) => (
                         <label key={other.name} className="flex items-center gap-1 text-[12px]">
                           <input
                             type="checkbox"
                             checked={g.inherits.includes(other.name)}
                             onChange={() => toggleInherit(g, other.name)}
+                            className="accent-[var(--mc-cyan-500)]"
                           />
                           {other.name}
                         </label>
@@ -296,11 +296,11 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                     {(g.permissions ?? []).map((p) => (
                       <span
                         key={p}
-                        className="font-data text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"
+                        className="font-data text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"
                       >
                         {p}
                         {isAdmin && (
-                          <button onClick={() => removeGroupPermission(g.name, p)} className="text-[var(--mc-ember-500)]">
+                          <button onClick={() => removeGroupPermission(g.name, p)} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
                             &times;
                           </button>
                         )}
@@ -316,7 +316,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                       />
                       <button
                         onClick={() => addGroupPermission(g.name)}
-                        className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
+                        className="btn-pop text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]"
                       >
                         Add
                       </button>
@@ -324,75 +324,74 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                   )}
                 </div>
               ))}
-            </div>
+              {groups.length === 0 && (
+                <div className="text-center py-8 text-[13px] text-[var(--mc-text-muted)]">No groups configured.</div>
+              )}
+            </Card>
 
             {isAdmin && (
-              <form
-                onSubmit={createGroup}
-                className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 h-fit flex flex-col gap-3"
-              >
-                <div className="font-display text-[14px] font-semibold mb-1">Create group</div>
-                <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                  Name
-                  <input
-                    value={groupForm.data.name}
-                    onChange={(e) => groupForm.setData('name', e.target.value)}
-                    className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                  Prefix
-                  <input
-                    value={groupForm.data.prefix}
-                    onChange={(e) => groupForm.setData('prefix', e.target.value)}
-                    className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                  Suffix
-                  <input
-                    value={groupForm.data.suffix}
-                    onChange={(e) => groupForm.setData('suffix', e.target.value)}
-                    className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                  Priority
-                  <input
-                    type="number"
-                    value={groupForm.data.priority}
-                    onChange={(e) => groupForm.setData('priority', parseInt(e.target.value, 10) || 0)}
-                    className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-[12px] text-[var(--mc-text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={groupForm.data.isDefault}
-                    onChange={(e) => groupForm.setData('isDefault', e.target.checked)}
-                  />
-                  Make default group
-                </label>
-                <button
-                  type="submit"
-                  disabled={groupForm.processing}
-                  className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
-                >
-                  Create
-                </button>
-              </form>
+              <Card title="Create group" icon={Plus} accent="purple" padded className="h-fit">
+                <form onSubmit={createGroup} className="flex flex-col gap-3">
+                  <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                    Name
+                    <input
+                      value={groupForm.data.name}
+                      onChange={(e) => groupForm.setData('name', e.target.value)}
+                      className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                    Prefix
+                    <input
+                      value={groupForm.data.prefix}
+                      onChange={(e) => groupForm.setData('prefix', e.target.value)}
+                      className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                    Suffix
+                    <input
+                      value={groupForm.data.suffix}
+                      onChange={(e) => groupForm.setData('suffix', e.target.value)}
+                      className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                    Priority
+                    <input
+                      type="number"
+                      value={groupForm.data.priority}
+                      onChange={(e) => groupForm.setData('priority', parseInt(e.target.value, 10) || 0)}
+                      className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-[12px] text-[var(--mc-text-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={groupForm.data.isDefault}
+                      onChange={(e) => groupForm.setData('isDefault', e.target.checked)}
+                      className="accent-[var(--mc-cyan-500)]"
+                    />
+                    Make default group
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={groupForm.processing}
+                    className="btn-pop text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)] disabled:opacity-50"
+                  >
+                    Create
+                  </button>
+                </form>
+              </Card>
             )}
           </div>
 
-          <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-            <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-              Online users
-            </div>
+          <Card title="Online users" icon={UserCog} accent="cyan">
             {users.length === 0 && (
-              <div className="px-4 py-6 text-[13px] text-[var(--mc-text-muted)]">No players online.</div>
+              <div className="text-center py-8 text-[13px] text-[var(--mc-text-muted)]">No players online.</div>
             )}
             {users.map((u) => (
-              <div key={u.username} className="px-4 py-3 border-b border-[var(--mc-border)] last:border-0 text-[13px]">
+              <div key={u.username} className="px-4 py-3 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
                 <div className="flex items-center gap-2 mb-1.5">
                   <img
                     src={`https://mc-heads.net/avatar/${u.uuid}/32`}
@@ -404,7 +403,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                     <select
                       value={u.group}
                       onChange={(e) => setUserGroup(u.username, e.target.value)}
-                      className="font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5"
+                      className="font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5 outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                     >
                       {groups.map((g) => (
                         <option key={g.name} value={g.name}>{g.name}</option>
@@ -418,11 +417,11 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                   {(u.permissions ?? []).map((p) => (
                     <span
                       key={p}
-                      className="font-data text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"
+                      className="font-data text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"
                     >
                       {p}
                       {isAdmin && (
-                        <button onClick={() => removeUserPermission(u.username, p)} className="text-[var(--mc-ember-500)]">
+                        <button onClick={() => removeUserPermission(u.username, p)} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
                           &times;
                         </button>
                       )}
@@ -438,7 +437,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                     />
                     <button
                       onClick={() => addUserPermission(u.username)}
-                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
+                      className="btn-pop text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]"
                     >
                       Add
                     </button>
@@ -446,24 +445,21 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                 )}
               </div>
             ))}
-          </div>
+          </Card>
 
           {isAdmin && (
-            <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-                Manage another player
-              </div>
+            <Card title="Manage another player" icon={Search} accent="purple">
               <div className="px-4 py-3 border-b border-[var(--mc-border)]">
                 <form onSubmit={runLookup} className="flex gap-1.5">
                   <input
                     value={lookupInput}
                     onChange={(e) => setLookupInput(e.target.value)}
                     placeholder="Username (online or offline)"
-                    className="flex-1 font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
+                    className="flex-1 font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                   />
                   <button
                     type="submit"
-                    className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
+                    className="btn-pop text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]"
                   >
                     Look up
                   </button>
@@ -487,13 +483,13 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                           />
                         )}
                         <span className="font-medium">{lookupResult.username}</span>
-                        <span className={`text-[11px] px-1.5 py-0.5 rounded ${lookupResult.online ? 'bg-[var(--mc-moss-50)] text-[var(--mc-moss-500)]' : 'bg-[var(--mc-bg-surface-raised)] text-[var(--mc-text-muted)]'}`}>
+                        <Badge variant={lookupResult.online ? 'moss' : 'neutral'} dot={lookupResult.online}>
                           {lookupResult.online ? 'online' : 'offline'}
-                        </span>
+                        </Badge>
                         <select
                           value={lookupResult.group}
                           onChange={(e) => setUserGroup(lookupResult.username!, e.target.value)}
-                          className="font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5"
+                          className="font-data text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-1.5 py-0.5 outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
                         >
                           {groups.map((g) => (
                             <option key={g.name} value={g.name}>{g.name}</option>
@@ -504,10 +500,10 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                         {(lookupResult.permissions ?? []).map((p) => (
                           <span
                             key={p}
-                            className="font-data text-[11px] px-1.5 py-0.5 rounded bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"
+                            className="font-data text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border)] flex items-center gap-1"
                           >
                             {p}
-                            <button onClick={() => removeUserPermission(lookupResult.username!, p)} className="text-[var(--mc-ember-500)]">
+                            <button onClick={() => removeUserPermission(lookupResult.username!, p)} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
                               &times;
                             </button>
                           </span>
@@ -521,7 +517,7 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                         />
                         <button
                           onClick={() => addUserPermission(lookupResult.username!)}
-                          className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium"
+                          className="btn-pop text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]"
                         >
                           Add
                         </button>
@@ -530,62 +526,57 @@ export default function Permissions({ overview, groups, users, aliases, nodeCata
                   )}
                 </div>
               )}
-            </div>
+            </Card>
           )}
 
           <div className="grid grid-cols-[1fr_320px] gap-5">
-            <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-                Permission aliases
-              </div>
+            <Card title="Permission aliases" icon={Link2} accent="cyan">
               {Object.entries(aliases).length === 0 && (
-                <div className="px-4 py-6 text-[13px] text-[var(--mc-text-muted)]">No aliases configured.</div>
+                <div className="text-center py-8 text-[13px] text-[var(--mc-text-muted)]">No aliases configured.</div>
               )}
               {Object.entries(aliases).map(([alias, canonical]) => (
-                <div key={alias} className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] font-data">
+                <div key={alias} className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] font-data transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
                   <span className="flex-1">{alias} &rarr; {canonical}</span>
                   {isAdmin && (
                     <button
                       onClick={() => deleteAlias(alias)}
-                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white"
+                      className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white transition-colors hover:bg-[var(--mc-ember-600,var(--mc-ember-500))]"
                     >
                       Delete
                     </button>
                   )}
                 </div>
               ))}
-            </div>
+            </Card>
 
             {isAdmin && (
-              <form
-                onSubmit={createAlias}
-                className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 h-fit flex flex-col gap-3"
-              >
-                <div className="font-display text-[14px] font-semibold mb-1">Add alias</div>
-                <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                  Alias
-                  <input
-                    value={aliasForm.data.alias}
-                    onChange={(e) => aliasForm.setData('alias', e.target.value)}
-                    className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-                  Canonical node
-                  <NodeInput
-                    value={aliasForm.data.canonical}
-                    onChange={(v) => aliasForm.setData('canonical', v)}
-                    placeholder=""
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={aliasForm.processing}
-                  className="text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
-                >
-                  Add
-                </button>
-              </form>
+              <Card title="Add alias" icon={Key} accent="purple" padded className="h-fit">
+                <form onSubmit={createAlias} className="flex flex-col gap-3">
+                  <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                    Alias
+                    <input
+                      value={aliasForm.data.alias}
+                      onChange={(e) => aliasForm.setData('alias', e.target.value)}
+                      className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                    Canonical node
+                    <NodeInput
+                      value={aliasForm.data.canonical}
+                      onChange={(v) => aliasForm.setData('canonical', v)}
+                      placeholder=""
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={aliasForm.processing}
+                    className="btn-pop text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)] disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </form>
+              </Card>
             )}
           </div>
         </div>

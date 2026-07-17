@@ -1,5 +1,5 @@
 import { PageProps } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import {
     ShieldCheck,
     Coins,
@@ -7,7 +7,15 @@ import {
     Sparkles,
     DatabaseBackup,
     Terminal,
+    Search,
 } from 'lucide-react';
+import { FormEventHandler } from 'react';
+import Panel from '@/Components/Home/Panel';
+import PageHeader from '@/Components/Home/PageHeader';
+import DiscordAuthButton from '@/Components/DiscordAuthButton';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
+import InputError from '@/Components/InputError';
 
 const features = [
     {
@@ -49,6 +57,20 @@ const features = [
 ];
 
 export default function Welcome({ auth }: PageProps) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        login: '',
+        password: '',
+        remember: false as boolean,
+    });
+
+    const submitLogin: FormEventHandler = (e) => {
+        e.preventDefault();
+
+        post(route('login'), {
+            onFinish: () => reset('password'),
+        });
+    };
+
     return (
         <>
             <Head title="ZeroG Network Dashboard" />
@@ -90,7 +112,7 @@ export default function Welcome({ auth }: PageProps) {
                             {auth.user ? (
                                 <Link
                                     href={route('dashboard')}
-                                    className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
+                                    className="btn-pop rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                 >
                                     Dashboard
                                 </Link>
@@ -104,7 +126,7 @@ export default function Welcome({ auth }: PageProps) {
                                     </Link>
                                     <Link
                                         href={route('register')}
-                                        className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
+                                        className="btn-pop rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                     >
                                         Register
                                     </Link>
@@ -114,7 +136,7 @@ export default function Welcome({ auth }: PageProps) {
                     </header>
 
                     <main>
-                        <div className="py-20 text-center sm:py-28">
+                        <div className="py-16 text-center sm:py-20">
                             <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
                                 Run your NeoEssentials server
                                 <br />
@@ -128,38 +150,185 @@ export default function Welcome({ auth }: PageProps) {
                                 in-game, managed remotely with the same data,
                                 the same rules, and the same audit trail.
                             </p>
-                            <div className="mt-8 flex items-center justify-center gap-3">
-                                {auth.user ? (
+                        </div>
+
+                        {/* Three-panel row, in the spirit of BanManager WebUI's
+                            home layout: matched, bordered, rounded-3xl cards
+                            with an eyebrow/title header and a CTA pinned to
+                            the bottom of each. */}
+                        <div className="flex flex-wrap gap-4 pb-4">
+                            <div className="w-full lg:w-[calc(33.333%-0.667rem)]">
+                                <Panel>
+                                    <PageHeader
+                                        eyebrow="ZeroG Network"
+                                        title="NeoEssentials"
+                                    />
+                                    <p className="text-center text-sm leading-relaxed text-[var(--mc-text-secondary)]">
+                                        A control room for the mod running on
+                                        your server — moderation, economy,
+                                        and world tools, all backed by the
+                                        same data players see in-game.
+                                    </p>
                                     <Link
-                                        href={route('dashboard')}
-                                        className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-6 py-3 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
+                                        href={
+                                            auth.user
+                                                ? route('dashboard')
+                                                : route('register')
+                                        }
+                                        className="btn-pop mt-auto inline-flex w-full items-center justify-center rounded-3xl bg-[var(--mc-cyan-500)] px-6 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                     >
-                                        Open Dashboard
+                                        {auth.user
+                                            ? 'Open Dashboard'
+                                            : 'Get Started'}
                                     </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={route('register')}
-                                            className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-6 py-3 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
-                                        >
-                                            Get Started
-                                        </Link>
-                                        <Link
-                                            href={route('login')}
-                                            className="rounded-[var(--radius)] border border-[var(--mc-border-strong)] px-6 py-3 text-sm font-semibold text-[var(--mc-text-primary)] transition hover:bg-[var(--mc-bg-surface-raised)]"
-                                        >
-                                            Log in
-                                        </Link>
-                                    </>
-                                )}
+                                </Panel>
+                            </div>
+
+                            <div className="w-full lg:w-[calc(33.333%-0.667rem)]">
+                                <Panel>
+                                    <PageHeader
+                                        eyebrow="Quick Access"
+                                        title="Player Lookup"
+                                    />
+                                    <p className="text-center text-sm leading-relaxed text-[var(--mc-text-secondary)]">
+                                        Check a player's ban, mute, and kick
+                                        history without logging in — the same
+                                        public lookup staff and players both
+                                        use.
+                                    </p>
+                                    <Link
+                                        href={route('lookup')}
+                                        className="btn-pop mt-auto inline-flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-[var(--mc-border-strong)] px-6 py-2 text-sm font-semibold text-[var(--mc-text-primary)] transition hover:bg-[var(--mc-bg-surface-raised)]"
+                                    >
+                                        <Search size={16} strokeWidth={1.75} />
+                                        Look up a player
+                                    </Link>
+                                </Panel>
+                            </div>
+
+                            <div className="w-full lg:w-[calc(33.333%-0.667rem)]">
+                                <Panel>
+                                    <PageHeader
+                                        eyebrow={
+                                            auth.user
+                                                ? 'Welcome back'
+                                                : 'Get Started'
+                                        }
+                                        title={
+                                            auth.user
+                                                ? auth.user.name
+                                                : 'Sign In'
+                                        }
+                                    />
+                                    {auth.user ? (
+                                        <>
+                                            <p className="text-center text-sm leading-relaxed text-[var(--mc-text-secondary)]">
+                                                You're signed in as{' '}
+                                                {auth.user.email}. Jump back
+                                                into the dashboard to keep
+                                                managing your server.
+                                            </p>
+                                            <Link
+                                                href={route('dashboard')}
+                                                className="btn-pop mt-auto inline-flex w-full items-center justify-center rounded-3xl bg-[var(--mc-cyan-500)] px-6 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
+                                            >
+                                                Open Dashboard
+                                            </Link>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <form
+                                                onSubmit={submitLogin}
+                                                className="flex flex-1 flex-col"
+                                            >
+                                                <div>
+                                                    <InputLabel
+                                                        htmlFor="home-login"
+                                                        value="Email or Minecraft username"
+                                                        className="text-xs"
+                                                    />
+                                                    <TextInput
+                                                        id="home-login"
+                                                        type="text"
+                                                        name="login"
+                                                        value={data.login}
+                                                        className="mt-1 block w-full text-sm"
+                                                        autoComplete="username"
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                'login',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                    <InputError
+                                                        message={errors.login}
+                                                        className="mt-1"
+                                                    />
+                                                </div>
+
+                                                <div className="mt-3">
+                                                    <InputLabel
+                                                        htmlFor="home-password"
+                                                        value="Password"
+                                                        className="text-xs"
+                                                    />
+                                                    <TextInput
+                                                        id="home-password"
+                                                        type="password"
+                                                        name="password"
+                                                        value={data.password}
+                                                        className="mt-1 block w-full text-sm"
+                                                        autoComplete="current-password"
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                'password',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            errors.password
+                                                        }
+                                                        className="mt-1"
+                                                    />
+                                                </div>
+
+                                                <div className="mt-2 text-right">
+                                                    <Link
+                                                        href={route(
+                                                            'password.request',
+                                                        )}
+                                                        className="text-xs text-[var(--mc-text-muted)] underline hover:text-[var(--mc-text-secondary)]"
+                                                    >
+                                                        Forgot your password?
+                                                    </Link>
+                                                </div>
+
+                                                <button
+                                                    type="submit"
+                                                    disabled={processing}
+                                                    className="btn-pop mt-auto inline-flex w-full items-center justify-center rounded-3xl bg-[var(--mc-cyan-500)] px-6 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)] disabled:opacity-60"
+                                                >
+                                                    Log in
+                                                </button>
+                                            </form>
+                                            <DiscordAuthButton label="Continue with Discord" />
+                                        </>
+                                    )}
+                                </Panel>
                             </div>
                         </div>
 
-                        <div className="grid gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-3">
+                        {/* Feature strip below the panel row, echoing the
+                            BanManager stats strip: a full-width grid of
+                            bordered, rounded-3xl icon tiles. */}
+                        <div className="grid gap-4 pb-24 pt-4 sm:grid-cols-2 lg:grid-cols-3">
                             {features.map(({ icon: Icon, title, description }, i) => (
                                 <div
                                     key={title}
-                                    className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-6 transition hover:border-[var(--mc-border-strong)]"
+                                    className="rounded-3xl border-2 border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-6 transition hover:border-[var(--mc-border-strong)]"
                                 >
                                     <div
                                         className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius)] ${

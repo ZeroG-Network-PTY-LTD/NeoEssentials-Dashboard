@@ -1,6 +1,10 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import Card from '@/Components/Dashboard/Card';
+import PageHeading from '@/Components/Dashboard/PageHeading';
+import Badge from '@/Components/Dashboard/Badge';
 import type { ModUser, ModUserSession, ModUserRole } from '@/types/minecraft';
+import { UserCog, UserPlus, KeyRound, Power, Trash2, Radio } from 'lucide-react';
 
 interface Props {
   users: ModUser[];
@@ -8,6 +12,12 @@ interface Props {
 }
 
 const ROLES: ModUserRole[] = ['ADMIN', 'MODERATOR', 'VIEWER'];
+
+const ROLE_BADGE: Record<ModUserRole, 'purple' | 'cyan' | 'neutral'> = {
+  ADMIN: 'purple',
+  MODERATOR: 'cyan',
+  VIEWER: 'neutral',
+};
 
 export default function Users({ users, sessions }: Props) {
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -47,33 +57,28 @@ export default function Users({ users, sessions }: Props) {
   return (
     <DashboardLayout>
       <Head title="Users" />
-      <h1 className="font-display text-[20px] font-semibold mb-1">Mod dashboard accounts</h1>
-      <p className="text-[12px] text-[var(--mc-text-muted)] mb-5">
-        These are logins for the <em>mod's own</em> embedded dashboard (including the
-        service account this app authenticates as) — separate from your account on
-        this Laravel app.
-      </p>
+      <PageHeading
+        title="Mod dashboard accounts"
+        icon={UserCog}
+        subtitle="Logins for the mod's own embedded dashboard (including the service account this app authenticates as) — separate from your account on this Laravel app."
+      />
 
       <div className="grid grid-cols-[1fr_320px] gap-5 mb-5">
-        <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-            {users.length} account{users.length === 1 ? '' : 's'}
-          </div>
+        <Card title={`${users.length} account${users.length === 1 ? '' : 's'}`} icon={UserCog}>
           {users.length === 0 && (
-            <div className="px-4 py-6 text-center text-[13px] text-[var(--mc-text-muted)]">
+            <div className="px-4 py-8 text-center text-[13px] text-[var(--mc-text-muted)]">
               No accounts found.
             </div>
           )}
           {users.map((u) => (
             <div
               key={u.id}
-              className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] gap-2"
+              className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] gap-2 transition-colors hover:bg-[var(--mc-bg-surface-raised)]"
             >
-              <span
-                className={`w-2 h-2 rounded-full ${u.enabled ? 'bg-[var(--mc-moss-500)]' : 'bg-[var(--mc-text-muted)]'}`}
-                title={u.enabled ? 'Enabled' : 'Disabled'}
-              />
-              <div className="flex-1">
+              <Badge variant={u.enabled ? 'moss' : 'neutral'} dot={u.enabled}>
+                {u.enabled ? 'enabled' : 'disabled'}
+              </Badge>
+              <div className="flex-1 ml-1">
                 <div className="font-medium">{u.username}</div>
                 <div className="text-[11px] text-[var(--mc-text-muted)]">
                   {typeof u.lastLoginAt === 'number' && u.lastLoginAt > 0
@@ -81,10 +86,11 @@ export default function Users({ users, sessions }: Props) {
                     : 'Never logged in'}
                 </div>
               </div>
+              <Badge variant={ROLE_BADGE[u.role]}>{u.role}</Badge>
               <select
                 value={u.role}
                 onChange={(e) => setRole(u.id, e.target.value as ModUserRole)}
-                className="text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-2 py-1"
+                className="text-[12px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[6px] px-2 py-1 transition-colors focus:border-[var(--mc-cyan-400)] outline-none"
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{r}</option>
@@ -92,97 +98,97 @@ export default function Users({ users, sessions }: Props) {
               </select>
               <button
                 onClick={() => resetPassword(u.id, u.username)}
-                className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)]"
+                className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] transition-colors"
               >
+                <KeyRound size={12} strokeWidth={2} />
                 Reset password
               </button>
               <button
                 onClick={() => toggleEnabled(u.id, u.enabled)}
-                className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)]"
+                className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] transition-colors"
               >
+                <Power size={12} strokeWidth={2} />
                 {u.enabled ? 'Disable' : 'Enable'}
               </button>
               <button
                 onClick={() => destroy(u.id, u.username)}
-                className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white"
+                className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white transition-colors hover:bg-[var(--mc-ember-600,var(--mc-ember-500))]"
               >
+                <Trash2 size={12} strokeWidth={2} />
                 Delete
               </button>
             </div>
           ))}
-        </div>
+        </Card>
 
-        <form
-          onSubmit={submit}
-          className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 h-fit flex flex-col gap-3"
-        >
-          <div className="font-display text-[14px] font-semibold mb-1">Create account</div>
+        <Card title="Create account" icon={UserPlus} accent="purple" padded className="h-fit">
+          <form onSubmit={submit} className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Username
+              <input
+                value={data.username}
+                onChange={(e) => setData('username', e.target.value)}
+                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              />
+              {errors.username && <span className="text-[var(--mc-ember-500)]">{errors.username}</span>}
+            </label>
 
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Username
-            <input
-              value={data.username}
-              onChange={(e) => setData('username', e.target.value)}
-              className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-            />
-            {errors.username && <span className="text-[var(--mc-ember-500)]">{errors.username}</span>}
-          </label>
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Password
+              <input
+                type="password"
+                value={data.password}
+                onChange={(e) => setData('password', e.target.value)}
+                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              />
+              {errors.password && <span className="text-[var(--mc-ember-500)]">{errors.password}</span>}
+            </label>
 
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Password
-            <input
-              type="password"
-              value={data.password}
-              onChange={(e) => setData('password', e.target.value)}
-              className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-            />
-            {errors.password && <span className="text-[var(--mc-ember-500)]">{errors.password}</span>}
-          </label>
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Email (optional)
+              <input
+                type="email"
+                value={data.email}
+                onChange={(e) => setData('email', e.target.value)}
+                className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              />
+            </label>
 
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Email (optional)
-            <input
-              type="email"
-              value={data.email}
-              onChange={(e) => setData('email', e.target.value)}
-              className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
-            />
-          </label>
+            <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+              Role
+              <select
+                value={data.role}
+                onChange={(e) => setData('role', e.target.value as ModUserRole)}
+                className="text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+              >
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </label>
 
-          <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
-            Role
-            <select
-              value={data.role}
-              onChange={(e) => setData('role', e.target.value as ModUserRole)}
-              className="text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)]"
+            <button
+              type="submit"
+              disabled={processing}
+              className="btn-pop mt-1 flex items-center justify-center gap-1.5 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)] disabled:opacity-50"
             >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </label>
-
-          <button
-            type="submit"
-            disabled={processing}
-            className="mt-1 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium disabled:opacity-50"
-          >
-            Create
-          </button>
-        </form>
+              <UserPlus size={13} strokeWidth={2} />
+              Create
+            </button>
+          </form>
+        </Card>
       </div>
 
-      <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--mc-border)] font-display text-[14px] font-semibold">
-          Active sessions
-        </div>
+      <Card title="Active sessions" icon={Radio} accent="moss">
         {sessions.length === 0 && (
-          <div className="px-4 py-6 text-[13px] text-[var(--mc-text-muted)]">No active sessions.</div>
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--mc-text-muted)]">
+            No active sessions.
+          </div>
         )}
         {sessions.map((s) => (
           <div
             key={s.sessionId}
-            className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px]"
+            className="flex items-center px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]"
           >
             <div className="flex-1">
               <div>{s.username} <span className="text-[var(--mc-text-muted)]">({s.role})</span></div>
@@ -193,13 +199,14 @@ export default function Users({ users, sessions }: Props) {
             <span className="font-data text-[12px] text-[var(--mc-text-muted)] mr-3">{s.ipAddress}</span>
             <button
               onClick={() => revokeSession(s.sessionId)}
-              className="text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white"
+              className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-ember-500)] text-white transition-colors hover:bg-[var(--mc-ember-600,var(--mc-ember-500))]"
             >
+              <Trash2 size={12} strokeWidth={2} />
               Revoke
             </button>
           </div>
         ))}
-      </div>
+      </Card>
     </DashboardLayout>
   );
 }

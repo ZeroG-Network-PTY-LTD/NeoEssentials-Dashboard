@@ -221,6 +221,9 @@ export default function PublicLookup({
                                                     </div>
                                                     <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
                                                         Banned by {b.bannedBy} · {formatDate(b.banTime)}
+                                                        {b.active && !b.permanent && (
+                                                            <> · Expires {formatDate(b.expireTime)}</>
+                                                        )}
                                                         {!b.active && b.unbannedBy && (
                                                             <> · Unbanned by {b.unbannedBy}</>
                                                         )}
@@ -243,6 +246,9 @@ export default function PublicLookup({
                                                     </div>
                                                     <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
                                                         Muted by {m.mutedBy} · {formatDate(m.muteTime)}
+                                                        {m.active && !m.permanent && (
+                                                            <> · Expires {formatDate(m.expireTime)}</>
+                                                        )}
                                                         {!m.active && m.unmutedBy && (
                                                             <> · Unmuted by {m.unmutedBy}</>
                                                         )}

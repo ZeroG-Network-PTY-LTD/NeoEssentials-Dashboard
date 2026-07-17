@@ -1,0 +1,236 @@
+import { Head, useForm, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import DashboardLayout from '@/Layouts/DashboardLayout';
+import Card from '@/Components/Dashboard/Card';
+import PageHeading from '@/Components/Dashboard/PageHeading';
+import Badge from '@/Components/Dashboard/Badge';
+import type { PageProps } from '@/types';
+import {
+  RefreshCw,
+  GitBranch,
+  GitMerge,
+  UploadCloud,
+  ExternalLink,
+  AlertTriangle,
+  CheckCircle2,
+} from 'lucide-react';
+
+interface CurrentVersion {
+  commit: string | null;
+  shortCommit: string | null;
+  label: string | null;
+  source: string;
+  appliedAt: string | null;
+  branch: string | null;
+}
+
+interface GithubCheck {
+  reachable: boolean;
+  error?: string;
+  latestSha?: string;
+  latestShortSha?: string;
+  latestMessage?: string;
+  latestDate?: string;
+  compareUrl?: string;
+  updateAvailable?: boolean;
+}
+
+interface Props {
+  current: CurrentVersion;
+  github: GithubCheck;
+  repo: string;
+  branch: string;
+  maxUploadKb: number;
+}
+
+export default function Updates({ current, github, repo, branch, maxUploadKb }: Props) {
+  const { props } = usePage<PageProps>();
+  const [applying, setApplying] = useState(false);
+  const uploadForm = useForm<{ package: File | null }>({ package: null });
+
+  const checkNow = () => router.post(route('dashboard.updates.check'), {}, { preserveScroll: true });
+
+  const applyGitUpdate = () => {
+    if (!confirm(`This will fetch and fast-forward-merge origin/${branch}, then run composer install, npm run build, and migrate. Continue?`)) return;
+    setApplying(true);
+    router.post(route('dashboard.updates.apply'), {}, {
+      preserveScroll: true,
+      onFinish: () => setApplying(false),
+    });
+  };
+
+  const submitUpload = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadForm.data.package) return;
+    const kind = /_installer\.zip$/i.test(uploadForm.data.package.name) ? 'install' : 'update';
+    if (!confirm(`This will extract the uploaded package and overlay it onto the running app (${kind}), then rebuild. Continue?`)) return;
+    uploadForm.post(route('dashboard.updates.upload'), {
+      preserveScroll: true,
+      forceFormData: true,
+    });
+  };
+
+  const maxUploadMb = Math.round(maxUploadKb / 1024);
+
+  return (
+    <DashboardLayout>
+      <Head title="Updates" />
+      <PageHeading
+        title="Updates"
+        icon={RefreshCw}
+        subtitle={`Tracking ${repo} @ ${branch}`}
+        action={
+          github.reachable && (
+            <Badge variant={github.updateAvailable ? 'cyan' : 'moss'} dot={github.updateAvailable}>
+              {github.updateAvailable ? 'Update available' : 'Up to date'}
+            </Badge>
+          )
+        }
+      />
+
+      {props.flash?.updateLog && (
+        <div className="mb-5">
+          <Card
+            title="Last run output"
+            icon={props.flash?.error ? AlertTriangle : CheckCircle2}
+            accent={props.flash?.error ? 'ember' : 'moss'}
+            padded
+          >
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-data text-[11.5px] leading-relaxed text-[var(--mc-text-secondary)]">
+              {props.flash.updateLog}
+            </pre>
+          </Card>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-5 mb-5">
+        <Card title="Current version" icon={GitBranch} accent="cyan" padded>
+          <dl className="flex flex-col gap-2 text-[13px]">
+            <div className="flex justify-between">
+              <dt className="text-[var(--mc-text-secondary)]">Commit</dt>
+              <dd className="font-data">{current.shortCommit ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--mc-text-secondary)]">Branch</dt>
+              <dd className="font-data">{current.branch ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--mc-text-secondary)]">Source</dt>
+              <dd>
+                <Badge variant={current.source === 'git' ? 'cyan' : current.source === 'installer' || current.source === 'updater' ? 'purple' : 'neutral'}>
+                  {current.source}
+                </Badge>
+              </dd>
+            </div>
+            {current.label && (
+              <div className="flex justify-between">
+                <dt className="text-[var(--mc-text-secondary)]">Label</dt>
+                <dd className="font-data text-right">{current.label}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-[var(--mc-text-secondary)]">Last applied</dt>
+              <dd className="text-right">{current.appliedAt ? new Date(current.appliedAt).toLocaleString() : '—'}</dd>
+            </div>
+          </dl>
+        </Card>
+
+        <Card
+          title="GitHub"
+          icon={GitMerge}
+          accent="purple"
+          padded
+          action={
+            <button
+              onClick={checkNow}
+              className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] transition-colors"
+            >
+              <RefreshCw size={12} strokeWidth={2} />
+              Check now
+            </button>
+          }
+        >
+          {!github.reachable ? (
+            <div className="text-[13px] text-[var(--mc-ember-500)] flex items-start gap-2">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>{github.error ?? "Couldn't reach the GitHub API."}</span>
+            </div>
+          ) : (
+            <dl className="flex flex-col gap-2 text-[13px]">
+              <div className="flex justify-between">
+                <dt className="text-[var(--mc-text-secondary)]">Latest commit</dt>
+                <dd className="font-data">{github.latestShortSha ?? '—'}</dd>
+              </div>
+              {github.latestMessage && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[var(--mc-text-secondary)] shrink-0">Message</dt>
+                  <dd className="text-right truncate" title={github.latestMessage}>
+                    {github.latestMessage.split('\n')[0]}
+                  </dd>
+                </div>
+              )}
+              {github.latestDate && (
+                <div className="flex justify-between">
+                  <dt className="text-[var(--mc-text-secondary)]">Date</dt>
+                  <dd>{new Date(github.latestDate).toLocaleString()}</dd>
+                </div>
+              )}
+              {github.compareUrl && (
+                <a
+                  href={github.compareUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-[12px] text-[var(--mc-purple-400)] hover:underline mt-1"
+                >
+                  <ExternalLink size={12} />
+                  View on GitHub
+                </a>
+              )}
+
+              <button
+                onClick={applyGitUpdate}
+                disabled={applying || !github.updateAvailable}
+                className="btn-pop mt-2 flex items-center justify-center gap-2 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium hover:bg-[var(--mc-cyan-400)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <GitMerge size={14} strokeWidth={2} />
+                {applying ? 'Updating…' : github.updateAvailable ? 'Update now' : 'Already up to date'}
+              </button>
+            </dl>
+          )}
+        </Card>
+      </div>
+
+      <Card title="Upload installer / updater package" icon={UploadCloud} accent="cyan" padded>
+        <p className="text-[12.5px] text-[var(--mc-text-secondary)] mb-3">
+          For servers that can't reach GitHub directly, or a manual deploy: upload a{' '}
+          <code className="font-data text-[var(--mc-cyan-400)]">*_installer.zip</code> (fresh install) or{' '}
+          <code className="font-data text-[var(--mc-purple-400)]">*-updater.zip</code> (incremental update). The
+          package is extracted and overlaid onto the app — <code className="font-data">.env</code>,{' '}
+          <code className="font-data">storage/</code>, <code className="font-data">vendor/</code>, and{' '}
+          <code className="font-data">node_modules/</code> are never touched — then dependencies are reinstalled
+          and rebuilt automatically. Max {maxUploadMb}MB.
+        </p>
+
+        <form onSubmit={submitUpload} className="flex items-center gap-3">
+          <input
+            type="file"
+            accept=".zip"
+            onChange={(e) => uploadForm.setData('package', e.target.files?.[0] ?? null)}
+            className="flex-1 text-[12.5px] file:mr-3 file:rounded-[8px] file:border-0 file:bg-[var(--mc-bg-surface-raised)] file:px-3 file:py-1.5 file:text-[12px] file:text-[var(--mc-text-primary)] text-[var(--mc-text-secondary)]"
+          />
+          <button
+            type="submit"
+            disabled={uploadForm.processing || !uploadForm.data.package}
+            className="btn-pop flex items-center gap-1.5 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium hover:bg-[var(--mc-cyan-400)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          >
+            <UploadCloud size={14} strokeWidth={2} />
+            {uploadForm.processing ? 'Uploading…' : 'Upload & apply'}
+          </button>
+        </form>
+        {uploadForm.errors.package && (
+          <div className="mt-2 text-[12px] text-[var(--mc-ember-500)]">{uploadForm.errors.package}</div>
+        )}
+      </Card>
+    </DashboardLayout>
+  );
+}

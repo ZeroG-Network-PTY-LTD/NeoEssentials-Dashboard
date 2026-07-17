@@ -1,0 +1,464 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
+use RuntimeException;
+use ZipArchive;
+
+/**
+ * Lets an admin update this dashboard from the Updates page instead of
+ * SSHing in — either by fast-forwarding from the tracked GitHub branch, or
+ * by uploading a *_installer.zip / *-updater.zip package. Deliberately
+ * conservative: git updates never force-push/reset (fail loudly on
+ * divergence rather than discarding history), and zip overlays refuse to
+ * touch anything in config('selfupdate.protected_paths') no matter what the
+ * archive contains.
+ */
+class SelfUpdateService
+{
+    private string $repoRoot;
+
+    private string $appRoot;
+
+    public function __construct()
+    {
+        $this->repoRoot = rtrim((string) config('selfupdate.repo_root'), '/\\');
+        $this->appRoot = rtrim(base_path(), '/\\');
+    }
+
+    /**
+     * What's actually running right now — the deployment record (written by
+     * a previous applyGitUpdate()/applyZipUpdate() call) if one exists,
+     * falling back to the live git commit for a checkout that predates this
+     * feature or was updated by hand.
+     */
+    public function currentVersion(): array
+    {
+        $record = $this->readDeploymentRecord();
+        $gitHead = $this->gitHead();
+
+        return [
+            'commit' => $record['commit'] ?? $gitHead['sha'] ?? null,
+            'shortCommit' => ($record['commit'] ?? null) ? substr($record['commit'], 0, 7) : ($gitHead['shortSha'] ?? null),
+            'label' => $record['label'] ?? null,
+            'source' => $record['source'] ?? ($gitHead['sha'] ? 'git' : 'unknown'),
+            'appliedAt' => $record['appliedAt'] ?? null,
+            'branch' => $gitHead['branch'] ?? config('selfupdate.branch'),
+        ];
+    }
+
+    /**
+     * Compares local HEAD against the tracked branch's tip on GitHub.
+     * Cached — this is called on every Updates page load, not just when the
+     * admin clicks "Check now".
+     */
+    public function checkGithub(bool $force = false): array
+    {
+        $cacheKey = 'selfupdate:github-check';
+
+        if ($force) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember($cacheKey, (int) config('selfupdate.check_cache_ttl'), function () {
+            $repo = config('selfupdate.repo');
+            $branch = config('selfupdate.branch');
+
+            try {
+                $request = Http::timeout(8)->acceptJson();
+                if ($token = config('selfupdate.github_token')) {
+                    $request = $request->withToken($token);
+                }
+
+                $response = $request->get("https://api.github.com/repos/{$repo}/commits/{$branch}");
+
+                if (! $response->successful()) {
+                    return ['reachable' => false, 'error' => "GitHub API returned {$response->status()}."];
+                }
+
+                $data = $response->json();
+                $latestSha = $data['sha'] ?? null;
+                $current = $this->currentVersion();
+
+                return [
+                    'reachable' => true,
+                    'latestSha' => $latestSha,
+                    'latestShortSha' => $latestSha ? substr($latestSha, 0, 7) : null,
+                    'latestMessage' => $data['commit']['message'] ?? null,
+                    'latestDate' => $data['commit']['committer']['date'] ?? null,
+                    'compareUrl' => $current['commit'] && $latestSha
+                        ? "https://github.com/{$repo}/compare/{$current['commit']}...{$latestSha}"
+                        : "https://github.com/{$repo}/commits/{$branch}",
+                    'updateAvailable' => $latestSha !== null && $latestSha !== $current['commit'],
+                ];
+            } catch (\Throwable $e) {
+                return ['reachable' => false, 'error' => $e->getMessage()];
+            }
+        });
+    }
+
+    /**
+     * Fast-forward-only fetch + merge from the tracked branch, then rebuild.
+     * Refuses to run against a dirty working tree or a diverged branch
+     * rather than force-resetting — either of those needs a human, not a
+     * button.
+     */
+    public function applyGitUpdate(): array
+    {
+        return $this->withLock(function () {
+            $branch = config('selfupdate.branch');
+            $log = '';
+
+            $status = $this->run(['git', 'status', '--porcelain'], $this->repoRoot);
+            $log .= $status['log'];
+            if (trim($status['output']) !== '') {
+                return ['success' => false, 'log' => $log."\nAborted: the repo checkout has uncommitted changes — resolve those manually before updating."];
+            }
+
+            $fetch = $this->run(['git', 'fetch', 'origin', $branch], $this->repoRoot);
+            $log .= $fetch['log'];
+            if (! $fetch['success']) {
+                return ['success' => false, 'log' => $log];
+            }
+
+            $merge = $this->run(['git', 'merge', '--ff-only', "origin/{$branch}"], $this->repoRoot);
+            $log .= $merge['log'];
+            if (! $merge['success']) {
+                return ['success' => false, 'log' => $log."\nFast-forward failed — local history has diverged from origin/{$branch}. Resolve manually (this app never force-resets)."];
+            }
+
+            $rebuild = $this->runRebuildSteps();
+            $log .= $rebuild['log'];
+            if (! $rebuild['success']) {
+                return ['success' => false, 'log' => $log];
+            }
+
+            $head = $this->gitHead();
+            $this->recordDeployment([
+                'commit' => $head['sha'],
+                'label' => $head['shortSha'],
+                'source' => 'git',
+                'appliedAt' => now()->toIso8601String(),
+            ]);
+
+            return ['success' => true, 'log' => $log];
+        });
+    }
+
+    /**
+     * Accepts a *_installer.zip or *-updater.zip, extracts it to a staging
+     * directory (never straight onto the live app — a corrupt/partial
+     * archive should fail before touching anything real), overlays it onto
+     * base_path() skipping every protected path, then rebuilds.
+     */
+    public function applyZipUpdate(UploadedFile $file): array
+    {
+        $kind = $this->packageKind($file->getClientOriginalName());
+        if ($kind === null) {
+            throw new RuntimeException('Filename must end in _installer.zip or -updater.zip.');
+        }
+
+        return $this->withLock(function () use ($file, $kind) {
+            $log = "Package type: {$kind}\n";
+
+            $stagingRoot = config('selfupdate.staging_dir');
+            File::ensureDirectoryExists($stagingRoot);
+
+            $zipPath = $stagingRoot.DIRECTORY_SEPARATOR.'incoming-'.now()->timestamp.'.zip';
+            $extractPath = $stagingRoot.DIRECTORY_SEPARATOR.'extract-'.now()->timestamp;
+
+            $file->move(dirname($zipPath), basename($zipPath));
+
+            try {
+                $log .= $this->safeExtractZip($zipPath, $extractPath);
+
+                $versionLabel = $this->readPackageVersion($extractPath);
+                $log .= "Package version: ".($versionLabel ?? 'unknown')."\n";
+
+                $log .= $this->overlayOntoApp($extractPath);
+
+                $rebuild = $this->runRebuildSteps();
+                $log .= $rebuild['log'];
+                if (! $rebuild['success']) {
+                    return ['success' => false, 'log' => $log];
+                }
+
+                $this->recordDeployment([
+                    'commit' => null,
+                    'label' => $versionLabel ?? ($kind === 'installer' ? 'installed from package' : 'updated from package'),
+                    'source' => $kind,
+                    'appliedAt' => now()->toIso8601String(),
+                ]);
+
+                return ['success' => true, 'log' => $log];
+            } finally {
+                File::delete($zipPath);
+                if (File::isDirectory($extractPath)) {
+                    File::deleteDirectory($extractPath);
+                }
+            }
+        });
+    }
+
+    /**
+     * 'installer' for *_installer.zip, 'updater' for *-updater.zip, null for
+     * anything else — the two supported upload shapes described on the
+     * Updates page. Deliberately strict: this determines what code we're
+     * about to let overwrite the running app.
+     */
+    public function packageKind(string $filename): ?string
+    {
+        if (preg_match('/_installer\.zip$/i', $filename)) {
+            return 'installer';
+        }
+        if (preg_match('/-updater\.zip$/i', $filename)) {
+            return 'updater';
+        }
+
+        return null;
+    }
+
+    private function runRebuildSteps(): array
+    {
+        $log = '';
+
+        $composerArgs = ['composer', 'install', '--no-interaction', '--prefer-dist', '--optimize-autoloader'];
+        if (config('selfupdate.composer_no_dev')) {
+            $composerArgs[] = '--no-dev';
+        }
+        $step = $this->run($composerArgs, $this->appRoot);
+        $log .= $step['log'];
+        if (! $step['success']) {
+            return ['success' => false, 'log' => $log];
+        }
+
+        $npmCi = File::exists($this->appRoot.'/package-lock.json')
+            ? ['npm', 'ci']
+            : ['npm', 'install'];
+        $step = $this->run($npmCi, $this->appRoot);
+        $log .= $step['log'];
+        if (! $step['success']) {
+            return ['success' => false, 'log' => $log];
+        }
+
+        $step = $this->run(['npm', 'run', 'build'], $this->appRoot);
+        $log .= $step['log'];
+        if (! $step['success']) {
+            return ['success' => false, 'log' => $log];
+        }
+
+        $step = $this->run(['php', 'artisan', 'migrate', '--force'], $this->appRoot);
+        $log .= $step['log'];
+        if (! $step['success']) {
+            return ['success' => false, 'log' => $log];
+        }
+
+        foreach (['config:clear', 'route:clear', 'view:clear'] as $artisanCmd) {
+            $step = $this->run(['php', 'artisan', $artisanCmd], $this->appRoot);
+            $log .= $step['log'];
+        }
+
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+            $log .= "opcache reset\n";
+        }
+
+        return ['success' => true, 'log' => $log];
+    }
+
+    private function run(array $command, string $cwd): array
+    {
+        $label = implode(' ', $command);
+        $result = Process::path($cwd)
+            ->timeout((int) config('selfupdate.process_timeout'))
+            ->run($command);
+
+        $log = "\$ {$label}\n".$result->output().$result->errorOutput()."\n";
+
+        if (! $result->successful()) {
+            Log::warning('Self-update step failed', ['command' => $label, 'exitCode' => $result->exitCode()]);
+        }
+
+        return [
+            'success' => $result->successful(),
+            'output' => $result->output(),
+            'log' => $log,
+        ];
+    }
+
+    /**
+     * Guards against zip-slip: refuses to extract any entry whose name
+     * escapes the target directory via `..` or an absolute path, before
+     * handing off to ZipArchive::extractTo(). A malicious/corrupt archive
+     * throws rather than silently writing outside $target.
+     */
+    private function safeExtractZip(string $zipPath, string $target): string
+    {
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new RuntimeException('Could not open the uploaded file as a zip archive.');
+        }
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if ($name === false) {
+                continue;
+            }
+            if (str_contains($name, '..') || str_starts_with($name, '/') || preg_match('#^[A-Za-z]:#', $name)) {
+                $zip->close();
+                throw new RuntimeException("Refusing to extract unsafe archive entry: {$name}");
+            }
+        }
+
+        File::ensureDirectoryExists($target);
+        $zip->extractTo($target);
+        $count = $zip->numFiles;
+        $zip->close();
+
+        return "Extracted {$count} entries.\n";
+    }
+
+    /**
+     * Copies everything from the extracted staging directory onto the app
+     * root, skipping any path under config('selfupdate.protected_paths').
+     * If the package's contents are nested one level deep (e.g. a GitHub
+     * "download zip" wrapping everything in a single top-level folder),
+     * that wrapper is detected and stripped first.
+     */
+    private function overlayOntoApp(string $extractPath): string
+    {
+        $source = $this->resolvePackageRoot($extractPath);
+        $protected = array_map(
+            fn (string $p) => $this->appRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $p),
+            config('selfupdate.protected_paths'),
+        );
+
+        $copied = 0;
+        $skipped = 0;
+        $this->copyTree($source, $this->appRoot, $protected, $copied, $skipped);
+
+        return "Applied {$copied} file(s) onto the app; skipped {$skipped} protected path(s).\n";
+    }
+
+    private function copyTree(string $from, string $to, array $protected, int &$copied, int &$skipped): void
+    {
+        foreach (File::allFiles($from) as $file) {
+            $relative = ltrim(str_replace($from, '', $file->getPathname()), DIRECTORY_SEPARATOR);
+            $destination = $to.DIRECTORY_SEPARATOR.$relative;
+
+            foreach ($protected as $protectedPath) {
+                if ($destination === $protectedPath || str_starts_with($destination.DIRECTORY_SEPARATOR, $protectedPath.DIRECTORY_SEPARATOR)) {
+                    $skipped++;
+                    continue 2;
+                }
+            }
+
+            File::ensureDirectoryExists(dirname($destination));
+            File::copy($file->getPathname(), $destination);
+            $copied++;
+        }
+    }
+
+    /**
+     * If the zip's only top-level entry is a single directory (common for
+     * GitHub-generated archives), treat that directory as the real root
+     * instead of copying the wrapper folder itself onto the app.
+     */
+    private function resolvePackageRoot(string $extractPath): string
+    {
+        $entries = array_values(array_diff(scandir($extractPath) ?: [], ['.', '..']));
+
+        if (count($entries) === 1 && File::isDirectory($extractPath.DIRECTORY_SEPARATOR.$entries[0])) {
+            return $extractPath.DIRECTORY_SEPARATOR.$entries[0];
+        }
+
+        return $extractPath;
+    }
+
+    private function readPackageVersion(string $root): ?string
+    {
+        $candidateRoot = $this->resolvePackageRoot($root);
+
+        $jsonPath = $candidateRoot.DIRECTORY_SEPARATOR.'version.json';
+        if (File::exists($jsonPath)) {
+            $data = json_decode(File::get($jsonPath), true);
+            if (is_array($data) && isset($data['version'])) {
+                return (string) $data['version'];
+            }
+        }
+
+        $versionPath = $candidateRoot.DIRECTORY_SEPARATOR.'VERSION';
+        if (File::exists($versionPath)) {
+            return trim(File::get($versionPath));
+        }
+
+        return null;
+    }
+
+    private function gitHead(): array
+    {
+        $result = Process::path($this->repoRoot)->run(['git', 'rev-parse', 'HEAD']);
+        $sha = $result->successful() ? trim($result->output()) : null;
+
+        $branchResult = Process::path($this->repoRoot)->run(['git', 'rev-parse', '--abbrev-ref', 'HEAD']);
+        $branch = $branchResult->successful() ? trim($branchResult->output()) : null;
+
+        return [
+            'sha' => $sha,
+            'shortSha' => $sha ? substr($sha, 0, 7) : null,
+            'branch' => $branch,
+        ];
+    }
+
+    private function deploymentRecordPath(): string
+    {
+        return storage_path('app/deployment.json');
+    }
+
+    private function readDeploymentRecord(): array
+    {
+        $path = $this->deploymentRecordPath();
+        if (! File::exists($path)) {
+            return [];
+        }
+
+        $data = json_decode(File::get($path), true);
+
+        return is_array($data) ? $data : [];
+    }
+
+    private function recordDeployment(array $meta): void
+    {
+        File::ensureDirectoryExists(dirname($this->deploymentRecordPath()));
+        File::put($this->deploymentRecordPath(), json_encode($meta, JSON_PRETTY_PRINT));
+    }
+
+    /**
+     * Refuses to run a second update concurrently with the first — an
+     * overlapping composer/npm run against the same vendor/node_modules
+     * tree is how you end up with a half-built app.
+     */
+    private function withLock(callable $fn): array
+    {
+        $lockPath = config('selfupdate.staging_dir').DIRECTORY_SEPARATOR.'update.lock';
+        File::ensureDirectoryExists(dirname($lockPath));
+
+        if (File::exists($lockPath) && File::lastModified($lockPath) > now()->subMinutes(20)->timestamp) {
+            return ['success' => false, 'log' => 'Another update looks like it\'s already in progress (lock younger than 20 minutes). If that\'s wrong, delete storage/app/updates/update.lock and try again.'];
+        }
+
+        File::put($lockPath, (string) now()->timestamp);
+
+        try {
+            return $fn();
+        } finally {
+            File::delete($lockPath);
+        }
+    }
+}

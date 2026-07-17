@@ -85,5 +85,10 @@ class AppServiceProvider extends ServiceProvider
         // admin on the mod side; status/list/file-browsing stay readable by
         // any logged-in account.
         Gate::define('backups.manage', fn (User $user) => $user->isAdmin());
+
+        // Self-update (git pull + rebuild, or upload an installer/updater
+        // zip) can overwrite this app's own code — admin-only, no mod-side
+        // equivalent to mirror since this is Laravel-app-specific.
+        Gate::define('updates.manage', fn (User $user) => $user->isAdmin());
     }
 }

@@ -11,6 +11,7 @@ use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PublicLookupController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UpdatesController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WarpsController;
 use Illuminate\Foundation\Application;
@@ -163,6 +164,17 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             Route::post('/users/{id}/enable', [UserManagementController::class, 'enable'])->name('users.enable');
             Route::post('/users/{id}/disable', [UserManagementController::class, 'disable'])->name('users.disable');
             Route::delete('/users/{id}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+        });
+
+        // Self-update — checking GitHub for a newer commit is admin-only (it's
+        // only interesting to whoever can act on it); applying an update (git
+        // or uploaded zip) is always admin-only since it overwrites this app's
+        // own code.
+        Route::middleware('can:updates.manage')->group(function () {
+            Route::get('/updates', [UpdatesController::class, 'index'])->name('updates.index');
+            Route::post('/updates/check', [UpdatesController::class, 'check'])->name('updates.check');
+            Route::post('/updates/apply', [UpdatesController::class, 'applyGit'])->name('updates.apply');
+            Route::post('/updates/upload', [UpdatesController::class, 'upload'])->name('updates.upload');
         });
     });
 });

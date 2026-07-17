@@ -23,6 +23,7 @@ import {
   Menu,
   X,
   ArrowLeft,
+  RefreshCw,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 
@@ -95,6 +96,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     // UserManagementEndpoint) — hide the link entirely for moderators rather
     // than showing a dead end that 403s.
     ...(isAdmin ? [{ label: 'Users', href: route('dashboard.users.index'), icon: UserCog }] : []),
+    // Self-update is entirely admin-gated server-side (can:updates.manage) —
+    // hide the link for moderators too rather than showing a dead end.
+    ...(isAdmin ? [{ label: 'Updates', href: route('dashboard.updates.index'), icon: RefreshCw }] : []),
   ];
 
   const avatarUrl = user.mc_uuid ? `https://mc-heads.net/avatar/${user.mc_uuid}/64` : null;

@@ -38,6 +38,11 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                // Full composer/npm/git command output from the last self-update
+                // attempt — deliberately separate from success/error (which drive
+                // the small toast) since this can be several KB of log text; only
+                // the Updates page renders it.
+                'updateLog' => fn () => $request->session()->get('updateLog'),
             ],
             // Reflects the outcome of whatever mod-API call this same request's
             // controller already made — see MinecraftApiService::isReachable().

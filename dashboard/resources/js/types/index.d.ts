@@ -19,5 +19,6 @@ export type PageProps<
     flash: {
         success: string | null;
         error: string | null;
+        updateLog: string | null;
     };
 };

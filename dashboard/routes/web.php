@@ -178,6 +178,7 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             Route::get('/updates', [UpdatesController::class, 'index'])->name('updates.index');
             Route::post('/updates/check', [UpdatesController::class, 'check'])->name('updates.check');
             Route::post('/updates/apply', [UpdatesController::class, 'applyGit'])->name('updates.apply');
+            Route::post('/updates/apply-release', [UpdatesController::class, 'applyRelease'])->name('updates.apply-release');
             Route::post('/updates/upload', [UpdatesController::class, 'upload'])->name('updates.upload');
         });
 

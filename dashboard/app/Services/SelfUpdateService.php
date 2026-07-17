@@ -168,16 +168,118 @@ class SelfUpdateService
             throw new RuntimeException('Filename must end in _installer.zip or -updater.zip.');
         }
 
-        return $this->withLock(function () use ($file, $kind) {
-            $log = "Package type: {$kind}\n";
+        $stagingRoot = config('selfupdate.staging_dir');
+        File::ensureDirectoryExists($stagingRoot);
+        $zipPath = $stagingRoot.DIRECTORY_SEPARATOR.'incoming-'.now()->timestamp.'.zip';
+        $file->move(dirname($zipPath), basename($zipPath));
+
+        return $this->applyZipFromPath($zipPath, $kind);
+    }
+
+    /**
+     * Checks the repo's latest GitHub Release for a *-updater.zip asset —
+     * preferred over applyGitUpdate() when one exists, since it needs
+     * neither git nor composer/npm reachable from this process (the asset
+     * already has vendor/ and the built frontend baked in by
+     * bin/build-installer.ps1), only an HTTPS download and PHP's own
+     * ZipArchive/Artisan::call. Cached like checkGithub().
+     */
+    public function checkGithubRelease(bool $force = false): array
+    {
+        $cacheKey = 'selfupdate:github-release-check';
+
+        if ($force) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember($cacheKey, (int) config('selfupdate.check_cache_ttl'), function () {
+            $repo = config('selfupdate.repo');
+
+            try {
+                $request = Http::timeout(8)->acceptJson();
+                if ($token = config('selfupdate.github_token')) {
+                    $request = $request->withToken($token);
+                }
+
+                $response = $request->get("https://api.github.com/repos/{$repo}/releases/latest");
+
+                if (! $response->successful()) {
+                    return ['available' => false, 'reachable' => false, 'error' => "GitHub API returned {$response->status()}."];
+                }
+
+                $data = $response->json();
+                $asset = collect($data['assets'] ?? [])->first(
+                    fn (array $a) => $this->packageKind($a['name'] ?? '') === 'updater',
+                );
+
+                if (! $asset) {
+                    return ['available' => false, 'reachable' => true];
+                }
+
+                $current = $this->currentVersion();
+                // The asset's own upload timestamp, not the release's
+                // published_at — the workflow re-uploads assets onto the same
+                // rolling "dashboard-latest" tag on every push, and re-uploading
+                // an asset onto an existing release doesn't necessarily bump
+                // published_at, only the individual asset's updated_at.
+                $assetUpdatedAt = $asset['updated_at'] ?? null;
+
+                return [
+                    'available' => true,
+                    'reachable' => true,
+                    'assetName' => $asset['name'],
+                    'downloadUrl' => $asset['browser_download_url'],
+                    'tagName' => $data['tag_name'] ?? null,
+                    'publishedAt' => $assetUpdatedAt,
+                    'releaseUrl' => $data['html_url'] ?? null,
+                    // If this app has never recorded a deployment, or the
+                    // asset was uploaded after the last one was applied,
+                    // there's a newer package available.
+                    'updateAvailable' => ! $current['appliedAt']
+                        || ($assetUpdatedAt && $assetUpdatedAt > $current['appliedAt']),
+                ];
+            } catch (\Throwable $e) {
+                return ['available' => false, 'reachable' => false, 'error' => $e->getMessage()];
+            }
+        });
+    }
+
+    /** Downloads the *-updater.zip asset found by checkGithubRelease() and applies it the same way an uploaded zip would be. */
+    public function applyReleaseUpdate(): array
+    {
+        $release = $this->checkGithubRelease();
+        if (! ($release['available'] ?? false)) {
+            return ['success' => false, 'log' => 'No updater package found on the latest GitHub release.'];
+        }
+
+        $stagingRoot = config('selfupdate.staging_dir');
+        File::ensureDirectoryExists($stagingRoot);
+        $zipPath = $stagingRoot.DIRECTORY_SEPARATOR.'release-'.now()->timestamp.'.zip';
+
+        try {
+            $request = Http::timeout(120)->sink($zipPath);
+            if ($token = config('selfupdate.github_token')) {
+                $request = $request->withToken($token);
+            }
+            $response = $request->get($release['downloadUrl']);
+
+            if (! $response->successful()) {
+                return ['success' => false, 'log' => "Download failed: HTTP {$response->status()}."];
+            }
+        } catch (\Throwable $e) {
+            return ['success' => false, 'log' => "Could not download the release asset: {$e->getMessage()}"];
+        }
+
+        return $this->applyZipFromPath($zipPath, 'updater', "Downloaded {$release['assetName']} from {$release['tagName']}\n");
+    }
+
+    private function applyZipFromPath(string $zipPath, string $kind, string $log = ''): array
+    {
+        return $this->withLock(function () use ($zipPath, $kind, $log) {
+            $log .= "Package type: {$kind}\n";
 
             $stagingRoot = config('selfupdate.staging_dir');
-            File::ensureDirectoryExists($stagingRoot);
-
-            $zipPath = $stagingRoot.DIRECTORY_SEPARATOR.'incoming-'.now()->timestamp.'.zip';
             $extractPath = $stagingRoot.DIRECTORY_SEPARATOR.'extract-'.now()->timestamp;
-
-            $file->move(dirname($zipPath), basename($zipPath));
 
             try {
                 $log .= $this->safeExtractZip($zipPath, $extractPath);

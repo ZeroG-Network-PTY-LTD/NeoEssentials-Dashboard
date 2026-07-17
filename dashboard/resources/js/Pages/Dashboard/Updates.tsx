@@ -13,6 +13,8 @@ import {
   ExternalLink,
   AlertTriangle,
   CheckCircle2,
+  PackageCheck,
+  ChevronDown,
 } from 'lucide-react';
 
 interface CurrentVersion {
@@ -35,20 +37,44 @@ interface GithubCheck {
   updateAvailable?: boolean;
 }
 
+interface ReleaseCheck {
+  available: boolean;
+  reachable: boolean;
+  error?: string;
+  assetName?: string;
+  downloadUrl?: string;
+  tagName?: string;
+  publishedAt?: string;
+  releaseUrl?: string;
+  updateAvailable?: boolean;
+}
+
 interface Props {
   current: CurrentVersion;
   github: GithubCheck;
+  release: ReleaseCheck;
   repo: string;
   branch: string;
   maxUploadKb: number;
 }
 
-export default function Updates({ current, github, repo, branch, maxUploadKb }: Props) {
+export default function Updates({ current, github, release, repo, branch, maxUploadKb }: Props) {
   const { props } = usePage<PageProps>();
   const [applying, setApplying] = useState(false);
+  const [applyingRelease, setApplyingRelease] = useState(false);
+  const [showGitFallback, setShowGitFallback] = useState(!release.available);
   const uploadForm = useForm<{ package: File | null }>({ package: null });
 
   const checkNow = () => router.post(route('dashboard.updates.check'), {}, { preserveScroll: true });
+
+  const applyReleaseUpdate = () => {
+    if (!confirm(`This will download ${release.assetName} from ${release.tagName} and apply it over the running app. Continue?`)) return;
+    setApplyingRelease(true);
+    router.post(route('dashboard.updates.apply-release'), {}, {
+      preserveScroll: true,
+      onFinish: () => setApplyingRelease(false),
+    });
+  };
 
   const applyGitUpdate = () => {
     if (!confirm(`This will fetch and fast-forward-merge origin/${branch}, then run composer install, npm run build, and migrate. Continue?`)) return;
@@ -71,6 +97,7 @@ export default function Updates({ current, github, repo, branch, maxUploadKb }: 
   };
 
   const maxUploadMb = Math.round(maxUploadKb / 1024);
+  const updateAvailable = release.available ? release.updateAvailable : github.updateAvailable;
 
   return (
     <DashboardLayout>
@@ -80,9 +107,9 @@ export default function Updates({ current, github, repo, branch, maxUploadKb }: 
         icon={RefreshCw}
         subtitle={`Tracking ${repo} @ ${branch}`}
         action={
-          github.reachable && (
-            <Badge variant={github.updateAvailable ? 'cyan' : 'moss'} dot={github.updateAvailable}>
-              {github.updateAvailable ? 'Update available' : 'Up to date'}
+          (release.reachable || github.reachable) && (
+            <Badge variant={updateAvailable ? 'cyan' : 'moss'} dot={updateAvailable}>
+              {updateAvailable ? 'Update available' : 'Up to date'}
             </Badge>
           )
         }
@@ -136,9 +163,9 @@ export default function Updates({ current, github, repo, branch, maxUploadKb }: 
         </Card>
 
         <Card
-          title="GitHub"
-          icon={GitMerge}
-          accent="purple"
+          title="Update package (recommended)"
+          icon={PackageCheck}
+          accent="moss"
           padded
           action={
             <button
@@ -150,6 +177,73 @@ export default function Updates({ current, github, repo, branch, maxUploadKb }: 
             </button>
           }
         >
+          {!release.reachable ? (
+            <div className="text-[13px] text-[var(--mc-ember-500)] flex items-start gap-2">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>{release.error ?? "Couldn't reach the GitHub API."}</span>
+            </div>
+          ) : !release.available ? (
+            <p className="text-[13px] text-[var(--mc-text-muted)]">
+              No <code className="font-data">*-updater.zip</code> found on the latest GitHub release yet — use the
+              git-based update below instead, or wait for one to be published.
+            </p>
+          ) : (
+            <dl className="flex flex-col gap-2 text-[13px]">
+              <div className="flex justify-between">
+                <dt className="text-[var(--mc-text-secondary)]">Release</dt>
+                <dd className="font-data">{release.tagName}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--mc-text-secondary)] shrink-0">Asset</dt>
+                <dd className="text-right truncate font-data text-[12px]" title={release.assetName}>
+                  {release.assetName}
+                </dd>
+              </div>
+              {release.publishedAt && (
+                <div className="flex justify-between">
+                  <dt className="text-[var(--mc-text-secondary)]">Published</dt>
+                  <dd>{new Date(release.publishedAt).toLocaleString()}</dd>
+                </div>
+              )}
+              {release.releaseUrl && (
+                <a
+                  href={release.releaseUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-[12px] text-[var(--mc-moss-400)] hover:underline mt-1"
+                >
+                  <ExternalLink size={12} />
+                  View release on GitHub
+                </a>
+              )}
+
+              <p className="text-[11.5px] text-[var(--mc-text-muted)] mt-1">
+                No git, Composer, or npm needed on this server — the package already has everything built in.
+              </p>
+
+              <button
+                onClick={applyReleaseUpdate}
+                disabled={applyingRelease}
+                className="btn-pop mt-1 flex items-center justify-center gap-2 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-moss-500)] text-[#0a1620] font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <PackageCheck size={14} strokeWidth={2} />
+                {applyingRelease ? 'Downloading & applying…' : 'Update now'}
+              </button>
+            </dl>
+          )}
+        </Card>
+      </div>
+
+      <button
+        onClick={() => setShowGitFallback((v) => !v)}
+        className="mb-2 flex items-center gap-1.5 text-[12.5px] text-[var(--mc-text-muted)] hover:text-[var(--mc-text-secondary)] transition-colors"
+      >
+        <ChevronDown size={14} className={`transition-transform ${showGitFallback ? 'rotate-180' : ''}`} />
+        {showGitFallback ? 'Hide' : 'Show'} git-based update (requires git/Composer/npm on this server)
+      </button>
+
+      {showGitFallback && (
+        <Card title="Update via git" icon={GitMerge} accent="purple" padded className="mb-5">
           {!github.reachable ? (
             <div className="text-[13px] text-[var(--mc-ember-500)] flex items-start gap-2">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -198,7 +292,7 @@ export default function Updates({ current, github, repo, branch, maxUploadKb }: 
             </dl>
           )}
         </Card>
-      </div>
+      )}
 
       <Card title="Upload installer / updater package" icon={UploadCloud} accent="cyan" padded>
         <p className="text-[12.5px] text-[var(--mc-text-secondary)] mb-3">

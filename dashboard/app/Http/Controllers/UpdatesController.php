@@ -19,6 +19,11 @@ class UpdatesController extends Controller
         return Inertia::render('Dashboard/Updates', [
             'current' => $this->updates->currentVersion(),
             'github' => $this->updates->checkGithub(),
+            // Checked separately from the commit-comparison above — a
+            // *-updater.zip release asset is preferred when available (no
+            // git/composer/npm required on this server), the commit-based
+            // git-update path is the fallback.
+            'release' => $this->updates->checkGithubRelease(),
             'repo' => config('selfupdate.repo'),
             'branch' => config('selfupdate.branch'),
             'maxUploadKb' => config('selfupdate.max_upload_kb'),
@@ -28,6 +33,7 @@ class UpdatesController extends Controller
     public function check(): RedirectResponse
     {
         $this->updates->checkGithub(force: true);
+        $this->updates->checkGithubRelease(force: true);
 
         return back();
     }
@@ -35,6 +41,15 @@ class UpdatesController extends Controller
     public function applyGit(): RedirectResponse
     {
         $result = $this->updates->applyGitUpdate();
+
+        return back()
+            ->with($result['success'] ? 'success' : 'error', $this->summarize($result))
+            ->with('updateLog', $result['log']);
+    }
+
+    public function applyRelease(): RedirectResponse
+    {
+        $result = $this->updates->applyReleaseUpdate();
 
         return back()
             ->with($result['success'] ? 'success' : 'error', $this->summarize($result))

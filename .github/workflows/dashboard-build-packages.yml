@@ -1,0 +1,73 @@
+name: Dashboard — build installer/updater packages
+
+# Builds both dashboard/dist/*_installer.zip and *-updater.zip (see
+# dashboard/bin/build-installer.ps1) and publishes them to a rolling
+# "dashboard-latest" GitHub Release. The dashboard's own Updates page
+# (SelfUpdateService::checkGithubRelease()) queries this repo's
+# /releases/latest for a *-updater.zip asset and prefers applying it over
+# a git-based update whenever one is available — this workflow is what
+# keeps that asset present and current.
+#
+# Runs on windows-latest specifically so build-installer.ps1 (Windows
+# PowerShell 5.1 syntax — see its own comments on Join-Path/RNG quirks)
+# runs unmodified, the same script a maintainer would run locally.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo, pdo_sqlite, curl, fileinfo, zip, ctype, json, tokenizer, openssl
+          tools: composer:v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compute short SHA
+        id: vars
+        shell: bash
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build installer package
+        shell: pwsh
+        run: ./bin/build-installer.ps1 -Kind installer -Version "${{ steps.vars.outputs.sha }}"
+
+      - name: Build updater package
+        shell: pwsh
+        run: ./bin/build-installer.ps1 -Kind updater -Version "${{ steps.vars.outputs.sha }}"
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dashboard-latest
+          name: Dashboard — latest build (${{ steps.vars.outputs.sha }})
+          body: |
+            Automatically built from commit ${{ github.sha }} on `main`.
+
+            - `*_installer.zip` — fresh deploy to shared/cPanel hosting (see dashboard/INSTALL.md)
+            - `*-updater.zip` — applied automatically from the dashboard's own Updates page when available
+          make_latest: true
+          prerelease: false
+          files: |
+            dashboard/dist/*_installer.zip
+            dashboard/dist/*-updater.zip

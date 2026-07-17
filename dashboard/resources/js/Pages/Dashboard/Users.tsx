@@ -11,10 +11,11 @@ interface Props {
   sessions: ModUserSession[];
 }
 
-const ROLES: ModUserRole[] = ['ADMIN', 'MODERATOR', 'VIEWER'];
+const ROLES: ModUserRole[] = ['ADMIN', 'OPERATOR', 'MODERATOR', 'VIEWER'];
 
-const ROLE_BADGE: Record<ModUserRole, 'purple' | 'cyan' | 'neutral'> = {
+const ROLE_BADGE: Record<ModUserRole, 'purple' | 'cyan' | 'moss' | 'neutral'> = {
   ADMIN: 'purple',
+  OPERATOR: 'moss',
   MODERATOR: 'cyan',
   VIEWER: 'neutral',
 };
@@ -24,7 +25,7 @@ export default function Users({ users, sessions }: Props) {
     username: '',
     password: '',
     email: '',
-    role: 'MODERATOR' as ModUserRole,
+    role: 'VIEWER' as ModUserRole,
   });
 
   const submit = (e: React.FormEvent) => {

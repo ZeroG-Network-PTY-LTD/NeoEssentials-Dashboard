@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BackupsController;
+use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\ConsoleController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscordController;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 require __DIR__.'/install.php';
+require __DIR__.'/webhooks.php';
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -177,6 +179,17 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             Route::post('/updates/check', [UpdatesController::class, 'check'])->name('updates.check');
             Route::post('/updates/apply', [UpdatesController::class, 'applyGit'])->name('updates.apply');
             Route::post('/updates/upload', [UpdatesController::class, 'upload'])->name('updates.upload');
+        });
+
+        // Discord OAuth app credentials, MC API connection, and the mod-account
+        // sync trigger — admin-only, this app's own runtime config.
+        Route::middleware('can:configuration.manage')->prefix('configuration')->name('configuration.')->group(function () {
+            Route::get('/', [ConfigurationController::class, 'index'])->name('index');
+            Route::post('/discord', [ConfigurationController::class, 'updateDiscord'])->name('discord.update');
+            Route::post('/mc-api/test', [ConfigurationController::class, 'testMcApi'])->name('mc-api.test');
+            Route::post('/mc-api', [ConfigurationController::class, 'updateMcApi'])->name('mc-api.update');
+            Route::post('/webhook/regenerate', [ConfigurationController::class, 'regenerateWebhookSecret'])->name('webhook.regenerate');
+            Route::post('/sync-users', [ConfigurationController::class, 'syncUsers'])->name('sync-users');
         });
     });
 });

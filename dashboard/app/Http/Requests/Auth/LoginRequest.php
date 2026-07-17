@@ -43,10 +43,14 @@ class LoginRequest extends FormRequest
      * role) so login keeps working if the mod's API goes offline afterward —
      * live server data just won't populate again until the API is reachable.
      *
-     * Only when the API itself can't be reached at all do we fall back to that
-     * locally-cached copy. If the API IS reachable but rejects the credentials,
-     * that rejection is authoritative — we do not fall back to a stale local
-     * copy in that case.
+     * If the API is reachable AND rejects the credentials for an account this
+     * app already knows is mod-linked (has a local mod_username), that
+     * rejection is authoritative — no fallback. But the mod's /api/auth/login
+     * has no concept of a Discord-OAuth-only account (see DiscordAuthController),
+     * which never has a mod_username — for those, a reachable-but-rejecting API
+     * response just means "the mod has never heard of this login," not "the
+     * password is wrong," so we still fall back to the local copy. The API
+     * being fully unreachable always falls back regardless of mod_username.
      *
      * The 'login' field also accepts a Minecraft username for accounts linked via
      * Discord OAuth (see DiscordAuthController), matched against 'name' or
@@ -86,9 +90,10 @@ class LoginRequest extends FormRequest
             return;
         }
 
-        if ($apiReachable) {
-            // The mod API is up and explicitly rejected these credentials —
-            // authoritative, don't fall back to a possibly-stale local copy.
+        if ($apiReachable && ($localUser?->mod_username !== null)) {
+            // The mod API is up and explicitly rejected these credentials for
+            // an account this app already knows is mod-linked — authoritative,
+            // don't fall back to a possibly-stale local copy for that account.
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -96,7 +101,10 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // API unreachable — fall back to the locally-cached credential copy.
+        // Either the API is unreachable, or it rejected the login because no
+        // mod-side account exists at all for a candidate this app already has
+        // locally (e.g. a Discord-OAuth-only account, which never has a
+        // mod_username) — fall back to the locally-cached credential copy.
         if (! $localUser || ! Auth::attempt(
             ['id' => $localUser->id, 'password' => $password],
             $remember,

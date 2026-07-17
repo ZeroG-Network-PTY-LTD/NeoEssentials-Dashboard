@@ -37,7 +37,7 @@ class UserManagementController extends Controller
             'username' => ['required', 'string', 'max:32'],
             'password' => ['required', 'string', 'min:8'],
             'email' => ['nullable', 'email'],
-            'role' => ['required', 'in:ADMIN,MODERATOR,VIEWER'],
+            'role' => ['required', 'in:ADMIN,OPERATOR,MODERATOR,VIEWER'],
         ]);
 
         return $this->attempt(
@@ -48,7 +48,7 @@ class UserManagementController extends Controller
 
     public function setRole(Request $request, string $id): RedirectResponse
     {
-        $data = $request->validate(['role' => ['required', 'in:ADMIN,MODERATOR,VIEWER']]);
+        $data = $request->validate(['role' => ['required', 'in:ADMIN,OPERATOR,MODERATOR,VIEWER']]);
 
         return $this->attempt(fn () => $this->mc->setModUserRole($id, $data['role']), 'Role updated.');
     }

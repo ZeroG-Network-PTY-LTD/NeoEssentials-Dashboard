@@ -62,7 +62,7 @@ class DiscordController extends Controller
             'enabled' => ['required', 'boolean'],
             'requireLinkedAccount' => ['required', 'boolean'],
             'allowAutoRegistration' => ['required', 'boolean'],
-            'defaultRole' => ['required', 'string', 'in:ADMIN,MODERATOR,VIEWER'],
+            'defaultRole' => ['required', 'string', 'in:ADMIN,OPERATOR,MODERATOR,VIEWER'],
         ]);
 
         return $this->attempt(

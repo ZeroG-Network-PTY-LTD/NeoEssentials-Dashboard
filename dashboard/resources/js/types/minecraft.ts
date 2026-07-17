@@ -92,7 +92,7 @@ export interface KitStats {
 }
 
 /** Mod dashboard account role — distinct from this app's own admin/moderator. */
-export type ModUserRole = 'ADMIN' | 'MODERATOR' | 'VIEWER';
+export type ModUserRole = 'ADMIN' | 'OPERATOR' | 'MODERATOR' | 'VIEWER';
 
 export interface ModUser {
   id: string;

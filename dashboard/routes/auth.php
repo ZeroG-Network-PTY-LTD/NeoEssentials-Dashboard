@@ -26,9 +26,6 @@ Route::middleware('guest')->group(function () {
     Route::get('auth/discord/redirect', [DiscordAuthController::class, 'redirect'])
         ->name('discord.redirect');
 
-    Route::get('auth/discord/callback', [DiscordAuthController::class, 'callback'])
-        ->name('discord.callback');
-
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
@@ -42,7 +39,22 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
+// Reachable regardless of auth state — Discord's OAuth2 redirect_uri must be
+// one fixed URL registered in the Developer Portal, shared by both the guest
+// "log in with Discord" flow (auth/discord/redirect above) and the
+// authenticated "connect Discord to my account" flow (auth/discord/connect
+// below). DiscordAuthController::callback() branches on Auth::check() itself
+// rather than this being two different callback routes.
+Route::get('auth/discord/callback', [DiscordAuthController::class, 'callback'])
+    ->name('discord.callback');
+
 Route::middleware('auth')->group(function () {
+    Route::get('auth/discord/connect', [DiscordAuthController::class, 'connect'])
+        ->name('discord.connect');
+
+    Route::delete('auth/discord/disconnect', [DiscordAuthController::class, 'disconnect'])
+        ->name('discord.disconnect');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

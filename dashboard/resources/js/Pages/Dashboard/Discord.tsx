@@ -210,6 +210,7 @@ export default function Discord({ status, events, authConfig }: Props) {
                   >
                     <option value="VIEWER">VIEWER</option>
                     <option value="MODERATOR">MODERATOR</option>
+                    <option value="OPERATOR">OPERATOR</option>
                     <option value="ADMIN">ADMIN</option>
                   </select>
                 </label>

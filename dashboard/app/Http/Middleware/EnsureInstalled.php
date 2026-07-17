@@ -16,7 +16,7 @@ class EnsureInstalled
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('install.*') || $request->is('up')) {
+        if ($request->routeIs('install.*') || $request->routeIs('webhooks.*') || $request->is('up')) {
             return $next($request);
         }
 

@@ -90,5 +90,10 @@ class AppServiceProvider extends ServiceProvider
         // zip) can overwrite this app's own code — admin-only, no mod-side
         // equivalent to mirror since this is Laravel-app-specific.
         Gate::define('updates.manage', fn (User $user) => $user->isAdmin());
+
+        // Discord OAuth app credentials, the MC API connection, and the
+        // mod-account sync trigger — all admin-only, Laravel-app-specific
+        // (no mod-side equivalent to mirror).
+        Gate::define('configuration.manage', fn (User $user) => $user->isAdmin());
     }
 }

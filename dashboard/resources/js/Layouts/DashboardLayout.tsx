@@ -99,6 +99,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     // Self-update is entirely admin-gated server-side (can:updates.manage) —
     // hide the link for moderators too rather than showing a dead end.
     ...(isAdmin ? [{ label: 'Updates', href: route('dashboard.updates.index'), icon: RefreshCw }] : []),
+    // Discord OAuth app / MC API / account sync — same admin-only gate
+    // (can:configuration.manage) as Users and Updates above.
+    ...(isAdmin ? [{ label: 'Configuration', href: route('dashboard.configuration.index'), icon: Settings }] : []),
   ];
 
   const avatarUrl = user.mc_uuid ? `https://mc-heads.net/avatar/${user.mc_uuid}/64` : null;

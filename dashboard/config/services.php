@@ -45,4 +45,14 @@ return [
         'redirect' => env('DISCORD_REDIRECT_URI'),
     ],
 
+    // Shared secret for verifying the mod's optional DashboardUserSyncWebhook
+    // (X-NeoEssentials-Signature: hex HMAC-SHA256 of the raw request body) —
+    // see WebhookController and docs/API.md's dashboard-account-sync section
+    // on the mod side. Leave unset to accept unsigned webhook calls (fine for
+    // a same-host/trusted-network setup; set it if the mod and dashboard
+    // aren't on a network you control end-to-end).
+    'mod_sync' => [
+        'webhook_secret' => env('MOD_SYNC_WEBHOOK_SECRET'),
+    ],
+
 ];

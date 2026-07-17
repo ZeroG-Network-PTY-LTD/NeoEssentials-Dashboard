@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\WritesEnvFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +19,8 @@ use PDOException;
  */
 class InstallService
 {
+    use WritesEnvFile;
+
     public function isInstalled(): bool
     {
         if (File::exists($this->lockPath())) {
@@ -168,45 +171,7 @@ class InstallService
         }
     }
 
-    // --- .env writing ------------------------------------------------------
-
-    /**
-     * Upserts KEY=value pairs into .env, quoting any value containing
-     * whitespace. Creates .env from .env.example first if it's somehow
-     * still missing (the shipped installer package always includes a
-     * working one, but this keeps the wizard from hard-crashing if someone
-     * deleted it by hand).
-     */
-    public function writeEnv(array $updates): void
-    {
-        $path = base_path('.env');
-
-        if (! File::exists($path)) {
-            $example = base_path('.env.example');
-            File::put($path, File::exists($example) ? File::get($example) : '');
-        }
-
-        $contents = File::get($path);
-
-        foreach ($updates as $key => $value) {
-            $formatted = preg_match('/\s/', (string) $value) ? '"'.addslashes((string) $value).'"' : $value;
-            $line = "{$key}={$formatted}";
-
-            if (preg_match("/^{$key}=.*$/m", $contents)) {
-                $contents = preg_replace("/^{$key}=.*$/m", $line, $contents);
-            } else {
-                $contents = rtrim($contents)."\n{$line}\n";
-            }
-        }
-
-        File::put($path, $contents);
-
-        if (! config('app.key')) {
-            Artisan::call('key:generate', ['--force' => true]);
-        }
-
-        Artisan::call('config:clear');
-    }
+    // --- .env writing (see App\Support\WritesEnvFile::writeEnv()) ---------
 
     // --- Migrations ----------------------------------------------------
 

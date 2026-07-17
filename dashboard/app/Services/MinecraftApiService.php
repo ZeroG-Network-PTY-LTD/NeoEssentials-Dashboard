@@ -616,7 +616,26 @@ class MinecraftApiService
             'username' => $username,
             'password' => $password,
             'email' => $email,
-            'role' => $role, // ADMIN | MODERATOR | VIEWER
+            'role' => $role, // ADMIN | OPERATOR | MODERATOR | VIEWER
+        ]);
+    }
+
+    /**
+     * Idempotent create-or-update, purpose-built for mirroring THIS app's own
+     * accounts onto the mod's dashboard-account store — unlike createModUser(),
+     * safe to call on every registration/role-change without an "already
+     * exists" error on repeat calls. Matches purely by username (the mod has
+     * no external-ID field), never touches password (the mod generates its
+     * own unusable placeholder for new accounts — this app's own login is the
+     * real auth surface for anyone created this way), and only mutates role +
+     * email on an existing match. Does not touch enabled/disabled state.
+     */
+    public function syncModUser(string $username, string $email, string $role): array
+    {
+        return $this->post('api/users/sync', [
+            'username' => $username,
+            'email' => $email,
+            'role' => $role, // ADMIN | OPERATOR | MODERATOR | VIEWER
         ]);
     }
 

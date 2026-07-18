@@ -24,6 +24,9 @@ class UpdatesController extends Controller
             // git/composer/npm required on this server), the commit-based
             // git-update path is the fallback.
             'release' => $this->updates->checkGithubRelease(),
+            // Every past build, each its own permanently-kept release — the
+            // dropdown to apply an older version instead of the newest one.
+            'releases' => $this->updates->listGithubReleases(),
             'repo' => config('selfupdate.repo'),
             'branch' => config('selfupdate.branch'),
             'maxUploadKb' => config('selfupdate.max_upload_kb'),
@@ -50,6 +53,17 @@ class UpdatesController extends Controller
     public function applyRelease(): RedirectResponse
     {
         $result = $this->updates->applyReleaseUpdate();
+
+        return back()
+            ->with($result['success'] ? 'success' : 'error', $this->summarize($result))
+            ->with('updateLog', $result['log']);
+    }
+
+    public function applyReleaseVersion(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['tag' => ['required', 'string']]);
+
+        $result = $this->updates->applyReleaseByTag($data['tag']);
 
         return back()
             ->with($result['success'] ? 'success' : 'error', $this->summarize($result))

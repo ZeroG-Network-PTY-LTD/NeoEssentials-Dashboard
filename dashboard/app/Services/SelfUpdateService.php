@@ -208,11 +208,10 @@ class SelfUpdateService
                 }
 
                 $data = $response->json();
-                // Most-recently-uploaded match wins, not just the first one
-                // GitHub's API happens to list — the workflow prunes old
-                // assets from this release on every run, but this stays
-                // correct even if that cleanup step ever fails/is skipped
-                // and a stale asset ends up sitting alongside a newer one.
+                // Each build gets its own uniquely-tagged release (see the
+                // build-packages workflow), so /releases/latest only ever has
+                // one *-updater.zip asset — sortByDesc here is just a cheap
+                // safety net in case that ever isn't true.
                 $asset = collect($data['assets'] ?? [])
                     ->filter(fn (array $a) => $this->packageKind($a['name'] ?? '') === 'updater')
                     ->sortByDesc(fn (array $a) => $a['updated_at'] ?? '')
@@ -223,11 +222,6 @@ class SelfUpdateService
                 }
 
                 $current = $this->currentVersion();
-                // The asset's own upload timestamp, not the release's
-                // published_at — the workflow re-uploads assets onto the same
-                // rolling "dashboard-latest" tag on every push, and re-uploading
-                // an asset onto an existing release doesn't necessarily bump
-                // published_at, only the individual asset's updated_at.
                 $assetUpdatedAt = $asset['updated_at'] ?? null;
 
                 return [
@@ -258,6 +252,94 @@ class SelfUpdateService
             return ['success' => false, 'log' => 'No updater package found on the latest GitHub release.'];
         }
 
+        return $this->downloadAndApplyAsset($release['downloadUrl'], $release['assetName'], $release['tagName']);
+    }
+
+    /**
+     * Every past build, each its own permanently-kept GitHub Release
+     * (dashboard-<sha>, see the build-packages workflow) — this is what
+     * powers the "choose a version" downgrade picker on the Updates page.
+     * Only releases that actually have a *-updater.zip asset are returned
+     * (defensive — every build ships one, but an interrupted/manual release
+     * shouldn't show up as a choice with nothing to apply).
+     */
+    public function listGithubReleases(int $limit = 20): array
+    {
+        $repo = config('selfupdate.repo');
+
+        try {
+            $request = Http::timeout(8)->acceptJson();
+            if ($token = config('selfupdate.github_token')) {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->get("https://api.github.com/repos/{$repo}/releases", ['per_page' => $limit]);
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $current = $this->currentVersion();
+
+            return collect($response->json() ?? [])
+                ->map(function (array $release) use ($current) {
+                    $asset = collect($release['assets'] ?? [])
+                        ->first(fn (array $a) => $this->packageKind($a['name'] ?? '') === 'updater');
+
+                    if (! $asset) {
+                        return null;
+                    }
+
+                    return [
+                        'tagName' => $release['tag_name'],
+                        'name' => $release['name'] ?: $release['tag_name'],
+                        'publishedAt' => $release['published_at'] ?? null,
+                        'assetName' => $asset['name'],
+                        'downloadUrl' => $asset['browser_download_url'],
+                        'isCurrent' => $current['label'] !== null && str_contains($release['tag_name'], (string) $current['label']),
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /** Downloads and applies a specific past release by tag — the "downgrade to an older version" action. */
+    public function applyReleaseByTag(string $tag): array
+    {
+        $repo = config('selfupdate.repo');
+
+        try {
+            $request = Http::timeout(8)->acceptJson();
+            if ($token = config('selfupdate.github_token')) {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->get("https://api.github.com/repos/{$repo}/releases/tags/{$tag}");
+
+            if (! $response->successful()) {
+                return ['success' => false, 'log' => "Could not find release '{$tag}' (HTTP {$response->status()})."];
+            }
+
+            $data = $response->json();
+            $asset = collect($data['assets'] ?? [])
+                ->first(fn (array $a) => $this->packageKind($a['name'] ?? '') === 'updater');
+
+            if (! $asset) {
+                return ['success' => false, 'log' => "Release '{$tag}' has no updater package attached."];
+            }
+        } catch (\Throwable $e) {
+            return ['success' => false, 'log' => "Could not reach GitHub: {$e->getMessage()}"];
+        }
+
+        return $this->downloadAndApplyAsset($asset['browser_download_url'], $asset['name'], $tag);
+    }
+
+    private function downloadAndApplyAsset(string $downloadUrl, string $assetName, string $tagName): array
+    {
         $stagingRoot = config('selfupdate.staging_dir');
         File::ensureDirectoryExists($stagingRoot);
         $zipPath = $stagingRoot.DIRECTORY_SEPARATOR.'release-'.now()->timestamp.'.zip';
@@ -267,7 +349,7 @@ class SelfUpdateService
             if ($token = config('selfupdate.github_token')) {
                 $request = $request->withToken($token);
             }
-            $response = $request->get($release['downloadUrl']);
+            $response = $request->get($downloadUrl);
 
             if (! $response->successful()) {
                 return ['success' => false, 'log' => "Download failed: HTTP {$response->status()}."];
@@ -276,7 +358,7 @@ class SelfUpdateService
             return ['success' => false, 'log' => "Could not download the release asset: {$e->getMessage()}"];
         }
 
-        return $this->applyZipFromPath($zipPath, 'updater', "Downloaded {$release['assetName']} from {$release['tagName']}\n");
+        return $this->applyZipFromPath($zipPath, 'updater', "Downloaded {$assetName} from {$tagName}\n");
     }
 
     private function applyZipFromPath(string $zipPath, string $kind, string $log = ''): array

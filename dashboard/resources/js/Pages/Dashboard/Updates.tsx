@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   PackageCheck,
   ChevronDown,
+  History,
 } from 'lucide-react';
 
 interface CurrentVersion {
@@ -49,20 +50,32 @@ interface ReleaseCheck {
   updateAvailable?: boolean;
 }
 
+interface ReleaseVersion {
+  tagName: string;
+  name: string;
+  publishedAt: string | null;
+  assetName: string;
+  downloadUrl: string;
+  isCurrent: boolean;
+}
+
 interface Props {
   current: CurrentVersion;
   github: GithubCheck;
   release: ReleaseCheck;
+  releases: ReleaseVersion[];
   repo: string;
   branch: string;
   maxUploadKb: number;
 }
 
-export default function Updates({ current, github, release, repo, branch, maxUploadKb }: Props) {
+export default function Updates({ current, github, release, releases, repo, branch, maxUploadKb }: Props) {
   const { props } = usePage<PageProps>();
   const [applying, setApplying] = useState(false);
   const [applyingRelease, setApplyingRelease] = useState(false);
   const [showGitFallback, setShowGitFallback] = useState(!release.available);
+  const [selectedTag, setSelectedTag] = useState(releases[0]?.tagName ?? '');
+  const [applyingVersion, setApplyingVersion] = useState(false);
   const uploadForm = useForm<{ package: File | null }>({ package: null });
 
   const checkNow = () => router.post(route('dashboard.updates.check'), {}, { preserveScroll: true });
@@ -82,6 +95,20 @@ export default function Updates({ current, github, release, repo, branch, maxUpl
     router.post(route('dashboard.updates.apply'), {}, {
       preserveScroll: true,
       onFinish: () => setApplying(false),
+    });
+  };
+
+  const applyVersion = () => {
+    const target = releases.find((r) => r.tagName === selectedTag);
+    if (!target) return;
+    const downgrading = releases[0]?.tagName !== selectedTag;
+    if (!confirm(
+      `This will download ${target.assetName} (${target.name}) and apply it over the running app${downgrading ? ' — this is OLDER than what\'s currently installed, i.e. a downgrade' : ''}. Continue?`,
+    )) return;
+    setApplyingVersion(true);
+    router.post(route('dashboard.updates.apply-release-version'), { tag: selectedTag }, {
+      preserveScroll: true,
+      onFinish: () => setApplyingVersion(false),
     });
   };
 
@@ -233,6 +260,36 @@ export default function Updates({ current, github, release, repo, branch, maxUpl
           )}
         </Card>
       </div>
+
+      {releases.length > 0 && (
+        <Card title="Choose a version" icon={History} accent="cyan" padded className="mb-5">
+          <p className="text-[12.5px] text-[var(--mc-text-secondary)] mb-3">
+            Every build is kept — pick an older one to roll back to if the latest update caused a problem.
+          </p>
+          <div className="flex gap-2">
+            <select
+              value={selectedTag}
+              onChange={(e) => setSelectedTag(e.target.value)}
+              className="flex-1 font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+            >
+              {releases.map((r, i) => (
+                <option key={r.tagName} value={r.tagName}>
+                  {r.name} {i === 0 ? '(latest)' : ''} {r.isCurrent ? '— currently installed' : ''}
+                  {r.publishedAt ? ` — ${new Date(r.publishedAt).toLocaleDateString()}` : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={applyVersion}
+              disabled={applyingVersion || !selectedTag}
+              className="btn-pop shrink-0 flex items-center gap-1.5 text-[13px] px-3 py-2 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] transition-colors disabled:opacity-50"
+            >
+              <History size={14} />
+              {applyingVersion ? 'Applying…' : 'Apply this version'}
+            </button>
+          </div>
+        </Card>
+      )}
 
       <button
         onClick={() => setShowGitFallback((v) => !v)}

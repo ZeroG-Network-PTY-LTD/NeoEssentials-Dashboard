@@ -1,12 +1,15 @@
 name: Dashboard — build installer/updater packages
 
 # Builds both dashboard/dist/*_installer.zip and *-updater.zip (see
-# dashboard/bin/build-installer.ps1) and publishes them to a rolling
-# "dashboard-latest" GitHub Release. The dashboard's own Updates page
-# (SelfUpdateService::checkGithubRelease()) queries this repo's
-# /releases/latest for a *-updater.zip asset and prefers applying it over
-# a git-based update whenever one is available — this workflow is what
-# keeps that asset present and current.
+# dashboard/bin/build-installer.ps1) and publishes them as a NEW,
+# uniquely-tagged GitHub Release per build (dashboard-<shortsha>) — not a
+# single rolling release. Each one is kept permanently, so the repo's
+# Releases page doubles as the version history, and the dashboard's own
+# Updates page can offer a "downgrade to an older version" picker built
+# from that same list (SelfUpdateService::listGithubReleases()). The
+# newest build is flagged make_latest, so /releases/latest — what
+# SelfUpdateService::checkGithubRelease() checks for the *recommended*
+# update — always resolves to it without any extra bookkeeping.
 #
 # Runs on windows-latest specifically so build-installer.ps1 (Windows
 # PowerShell 5.1 syntax — see its own comments on Join-Path/RNG quirks)
@@ -58,32 +61,17 @@ jobs:
         shell: pwsh
         run: ./bin/build-installer.ps1 -Kind updater -Version "${{ steps.vars.outputs.sha }}"
 
-      - name: Delete stale assets from the previous build
-        shell: bash
-        # softprops/action-gh-release only ADDS files with new names — it never
-        # removes assets from a prior run, so every push left the old build's
-        # zips sitting alongside the new ones. That's not just clutter:
-        # SelfUpdateService::checkGithubRelease() takes the FIRST *-updater.zip
-        # match GitHub's API returns (oldest first), so a stale asset here
-        # means the dashboard's own "recommended update" silently re-applies
-        # an old build instead of the current one. `|| true` — nothing to
-        # delete on the very first run, when the release doesn't exist yet.
-        run: |
-          gh release view dashboard-latest --json assets --jq '.assets[].name' | \
-            xargs -r -I{} gh release delete-asset dashboard-latest {} -y || true
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Publish rolling release
+      - name: Publish dated release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: dashboard-latest
-          name: Dashboard — latest build (${{ steps.vars.outputs.sha }})
+          tag_name: dashboard-${{ steps.vars.outputs.sha }}
+          name: Dashboard ${{ steps.vars.outputs.sha }}
           body: |
-            Automatically built from commit ${{ github.sha }} on `main`.
+            Built from commit ${{ github.sha }} on `main`.
 
             - `*_installer.zip` — fresh deploy to shared/cPanel hosting (see dashboard/INSTALL.md)
-            - `*-updater.zip` — applied automatically from the dashboard's own Updates page when available
+            - `*-updater.zip` — available from the dashboard's own Updates page (as the recommended
+              update if this is the newest release, or under "choose a version" otherwise)
           make_latest: true
           prerelease: false
           files: |

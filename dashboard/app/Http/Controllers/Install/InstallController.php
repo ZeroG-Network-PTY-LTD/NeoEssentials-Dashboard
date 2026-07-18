@@ -174,6 +174,7 @@ class InstallController extends Controller
 
         return Inertia::render('Install/McApi', [
             'mcApi' => $this->config->mcApiConfig(),
+            'pairing' => session('pairing'),
         ]);
     }
 
@@ -201,17 +202,21 @@ class InstallController extends Controller
         return back()->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
-    /** Generates a one-time pairing code and re-renders the page with it in props. */
-    public function mcApiPairingStart(Request $request): Response|RedirectResponse
+    /**
+     * Generates a one-time pairing code and redirects back with it flashed to the session —
+     * deliberately a redirect, not a direct Inertia::render() from this POST handler: rendering
+     * here would leave the browser's address bar pointing at this POST-only URL, and any full
+     * page reload after that sends a plain GET to it, which 405s since only POST is registered.
+     */
+    public function mcApiPairingStart(Request $request): RedirectResponse
     {
         if ($redirect = $this->guard($request)) {
             return $redirect;
         }
 
-        return Inertia::render('Install/McApi', [
-            'mcApi' => $this->config->mcApiConfig(),
-            'pairing' => $this->config->startPairing(),
-        ]);
+        $pairing = $this->config->startPairing();
+
+        return redirect()->route('install.mc-api')->with('pairing', $pairing);
     }
 
     /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */

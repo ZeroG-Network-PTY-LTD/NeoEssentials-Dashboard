@@ -27,6 +27,7 @@ class ConfigurationController extends Controller
         return Inertia::render('Dashboard/Configuration', [
             'discord' => $this->config->discordAppConfig(),
             'mcApi' => $this->config->mcApiConfig(),
+            'pairing' => session('pairing'),
         ]);
     }
 
@@ -61,16 +62,18 @@ class ConfigurationController extends Controller
         return back()->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
-    /** Generates a one-time pairing code and re-renders the page with it in props. */
-    public function startPairing(): Response
+    /**
+     * Generates a one-time pairing code and redirects back with it flashed to the session —
+     * deliberately a redirect, not a direct Inertia::render() from this POST handler: rendering
+     * here would leave the browser's address bar pointing at this POST-only URL, and any full
+     * page reload after that (e.g. Inertia's own forced reload after a new deploy changes the
+     * asset version) sends a plain GET to it, which 405s since only POST is registered.
+     */
+    public function startPairing(): RedirectResponse
     {
         $pairing = $this->config->startPairing();
 
-        return Inertia::render('Dashboard/Configuration', [
-            'discord' => $this->config->discordAppConfig(),
-            'mcApi' => $this->config->mcApiConfig(),
-            'pairing' => $pairing,
-        ]);
+        return redirect()->route('dashboard.configuration.index')->with('pairing', $pairing);
     }
 
     /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */

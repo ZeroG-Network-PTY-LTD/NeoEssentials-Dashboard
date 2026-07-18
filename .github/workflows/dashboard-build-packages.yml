@@ -58,6 +58,22 @@ jobs:
         shell: pwsh
         run: ./bin/build-installer.ps1 -Kind updater -Version "${{ steps.vars.outputs.sha }}"
 
+      - name: Delete stale assets from the previous build
+        shell: bash
+        # softprops/action-gh-release only ADDS files with new names — it never
+        # removes assets from a prior run, so every push left the old build's
+        # zips sitting alongside the new ones. That's not just clutter:
+        # SelfUpdateService::checkGithubRelease() takes the FIRST *-updater.zip
+        # match GitHub's API returns (oldest first), so a stale asset here
+        # means the dashboard's own "recommended update" silently re-applies
+        # an old build instead of the current one. `|| true` — nothing to
+        # delete on the very first run, when the release doesn't exist yet.
+        run: |
+          gh release view dashboard-latest --json assets --jq '.assets[].name' | \
+            xargs -r -I{} gh release delete-asset dashboard-latest {} -y || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Publish rolling release
         uses: softprops/action-gh-release@v2
         with:

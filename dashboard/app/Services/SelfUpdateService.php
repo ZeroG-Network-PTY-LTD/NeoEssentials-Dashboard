@@ -208,9 +208,15 @@ class SelfUpdateService
                 }
 
                 $data = $response->json();
-                $asset = collect($data['assets'] ?? [])->first(
-                    fn (array $a) => $this->packageKind($a['name'] ?? '') === 'updater',
-                );
+                // Most-recently-uploaded match wins, not just the first one
+                // GitHub's API happens to list — the workflow prunes old
+                // assets from this release on every run, but this stays
+                // correct even if that cleanup step ever fails/is skipped
+                // and a stale asset ends up sitting alongside a newer one.
+                $asset = collect($data['assets'] ?? [])
+                    ->filter(fn (array $a) => $this->packageKind($a['name'] ?? '') === 'updater')
+                    ->sortByDesc(fn (array $a) => $a['updated_at'] ?? '')
+                    ->first();
 
                 if (! $asset) {
                     return ['available' => false, 'reachable' => true];

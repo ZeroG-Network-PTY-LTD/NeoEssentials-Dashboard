@@ -35,7 +35,7 @@ two sides — no keys to copy by hand:
 
 1. Log into this dashboard as an admin and open **Configuration → Minecraft
    Server Connection**, then click **Generate Pairing Code**.
-2. Run the command it shows (`/dashboard pair <dashboardUrl> <code>`) on the
+2. Run the command it shows (`/dashboard pair "<dashboardUrl>" <code>`) on the
    Minecraft server's console, or in-game if you're OP.
 3. That's it — in one round trip the mod mints an API key for this app to use
    (stored as `MC_SERVICE_API_KEY`), and this app mints a token back for the

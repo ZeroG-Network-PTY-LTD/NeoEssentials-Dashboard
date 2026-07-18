@@ -4,6 +4,7 @@ import InstallLayout from '@/Layouts/InstallLayout';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
+import { copyToClipboard } from '@/lib/clipboard';
 import { PlugZap, ArrowRight, SkipForward, Link2, Copy, Check, RefreshCw } from 'lucide-react';
 
 interface Pairing {
@@ -52,9 +53,10 @@ export default function McApi({ mcApi, pairing }: Props) {
 
     const copyCommand = async () => {
         if (!pairing) return;
-        await navigator.clipboard.writeText(pairing.command);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (await copyToClipboard(pairing.command)) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     const continueWizard = () => router.post(route('install.mc-api.continue'));

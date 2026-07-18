@@ -79,7 +79,9 @@ class ConfigService
         return [
             'code' => $code,
             'dashboardUrl' => $dashboardUrl,
-            'command' => "/dashboard pair {$dashboardUrl} {$code}",
+            // The URL must be quoted in-game — Brigadier's unquoted string parsing can't
+            // contain ':' or '/', which every URL does.
+            'command' => "/dashboard pair \"{$dashboardUrl}\" {$code}",
             'expiresInSeconds' => 600,
         ];
     }

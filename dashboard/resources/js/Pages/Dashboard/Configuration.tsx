@@ -4,6 +4,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
 import Badge from '@/Components/Dashboard/Badge';
+import { copyToClipboard } from '@/lib/clipboard';
 import { Settings, MessageCircle, PlugZap, RefreshCw, Copy, Check, Link2, Unlink } from 'lucide-react';
 
 interface Pairing {
@@ -73,9 +74,10 @@ export default function Configuration({ discord, mcApi, pairing }: Props) {
 
   const copyCommand = async () => {
     if (!pairing) return;
-    await navigator.clipboard.writeText(pairing.command);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (await copyToClipboard(pairing.command)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const syncNow = () => {

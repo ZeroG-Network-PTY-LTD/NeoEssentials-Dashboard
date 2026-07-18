@@ -140,7 +140,7 @@ one-time pairing code — nothing to type in by hand:
 2. **Run the command it shows** on the Minecraft server's console (or
    in-game, if you're OP):
    ```
-   /dashboard pair <dashboardUrl> <code>
+   /dashboard pair "<dashboardUrl>" <code>
    ```
 3. In that single round trip, the mod mints an API key for this app to use
    (saved as `MC_SERVICE_API_KEY`) and this app mints a token back for the

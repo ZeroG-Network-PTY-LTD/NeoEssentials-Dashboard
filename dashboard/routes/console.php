@@ -16,3 +16,8 @@ Artisan::command('inspire', function () {
 // actually call `php artisan schedule:run` every minute — not automatic on
 // shared hosting without a cron job configured for it.
 Schedule::command('dashboard:sync-mod-users')->hourly();
+
+// Keeps the sidebar's "API connected/unreachable" indicator honest even when nobody's actively
+// browsing the dashboard — see MinecraftApiService::checkHealth() for why the page-traffic-only
+// version of this flag isn't enough on its own.
+Schedule::command('dashboard:check-mc-health')->everyMinute();

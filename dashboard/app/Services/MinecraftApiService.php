@@ -177,7 +177,7 @@ class MinecraftApiService
     private function publicGet(string $path): array
     {
         try {
-            $response = Http::timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
+            $response = Http::timeout($this->timeout)->retry(2, 150)->get("{$this->baseUrl}/{$path}");
         } catch (\Throwable $e) {
             Log::warning('Minecraft public API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
             throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
@@ -789,9 +789,16 @@ class MinecraftApiService
         $token = $this->serviceToken();
 
         try {
-            $response = Http::withToken($token)
-                ->timeout($this->timeout)
-                ->{$method}("{$this->baseUrl}/{$path}", $data);
+            $request = Http::withToken($token)->timeout($this->timeout);
+
+            // Only GETs are safe to retry blind — a read timeout on a POST/PUT/DELETE can mean
+            // the mod already applied the change (economy grant, ban, etc.) and only the
+            // response got lost, so retrying it here could double it up. GETs have no such risk.
+            if ($method === 'get') {
+                $request = $request->retry(2, 150);
+            }
+
+            $response = $request->{$method}("{$this->baseUrl}/{$path}", $data);
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
             $this->markReachable(false);
@@ -818,7 +825,7 @@ class MinecraftApiService
         $token = $this->serviceToken();
 
         try {
-            $response = Http::withToken($token)->timeout($this->timeout)->get("{$this->baseUrl}/{$path}");
+            $response = Http::withToken($token)->timeout($this->timeout)->retry(2, 150)->get("{$this->baseUrl}/{$path}");
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
             $this->markReachable(false);
@@ -866,15 +873,50 @@ class MinecraftApiService
      * cheap cached flag instead of making its own extra network call on every
      * page load — it just reflects whatever the current page's own
      * controller calls already found out.
+     *
+     * TTL is longer than a single request/response cycle needs, on purpose: it has to outlive
+     * the gap between two runs of the independent health-check schedule (see checkHealth() /
+     * CheckMcHealth) so the flag doesn't quietly revert to the optimistic default in between.
      */
     private function markReachable(bool $reachable): void
     {
-        Cache::put('mc_api:reachable', $reachable, now()->addSeconds(30));
+        Cache::put('mc_api:reachable', $reachable, now()->addSeconds(90));
     }
 
     /** Optimistic (true) until the first real attempt reports otherwise. */
     public function isReachable(): bool
     {
         return Cache::get('mc_api:reachable', true);
+    }
+
+    /**
+     * Independent liveness probe, meant to run on a schedule (see CheckMcHealth /
+     * routes/console.php) rather than piggyback on whatever a page's own controller happens to
+     * call. Without this, isReachable() only ever reflects the last real request some admin's
+     * page load triggered — if nobody's browsing the dashboard when the mod goes down, the flag
+     * just stays stuck on whatever it last was (or the optimistic default if nothing's called
+     * the API yet at all in this cache's lifetime).
+     */
+    public function checkHealth(): bool
+    {
+        if (empty($this->serviceApiKey)) {
+            return false; // not paired — nothing to check yet
+        }
+
+        try {
+            $response = Http::withToken($this->serviceApiKey)
+                ->timeout($this->timeout)
+                ->retry(2, 150)
+                ->get("{$this->baseUrl}/api/server/status");
+        } catch (\Throwable $e) {
+            $this->markReachable(false);
+
+            return false;
+        }
+
+        $reachable = $response->successful();
+        $this->markReachable($reachable);
+
+        return $reachable;
     }
 }

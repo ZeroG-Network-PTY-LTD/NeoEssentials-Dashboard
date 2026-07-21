@@ -65,8 +65,8 @@ class McWebSocketBridge extends Command
 
                 $conn->send(json_encode(['type' => 'authenticate', 'apiKey' => $apiKey]));
 
-                $conn->on('message', function ($msg) use ($conn) {
-                    $this->handleMessage($conn, (string) $msg);
+                $conn->on('message', function ($msg) use ($conn, $loop) {
+                    $this->handleMessage($conn, (string) $msg, $loop);
                 });
 
                 $conn->on('close', function ($code = null, $reason = null) use ($url, $apiKey, $loop) {
@@ -91,7 +91,15 @@ class McWebSocketBridge extends Command
         });
     }
 
-    private function handleMessage(WebSocket $conn, string $raw): void
+    /**
+     * Only these three ever carry the mod's own channel data (see docs/API.md's WebSocket
+     * section) — everything else is connection/protocol lifecycle chatter (welcome on open,
+     * subscribed/unsubscribed acks, pong, generic error) that must never be relayed as a
+     * dashboard broadcast.
+     */
+    private const DATA_TYPES = ['event', 'chat', 'stats'];
+
+    private function handleMessage(WebSocket $conn, string $raw, LoopInterface $loop): void
     {
         $payload = json_decode($raw, true);
 
@@ -99,17 +107,36 @@ class McWebSocketBridge extends Command
             return;
         }
 
+        if (in_array($payload['type'], self::DATA_TYPES, true)) {
+            // A broadcast failure (Reverb briefly down, etc.) must not take out the WS
+            // connection to the mod itself — that would drop and reconnect the whole session
+            // over what's often a transient, unrelated problem on the Laravel side.
+            try {
+                McRelayEvent::dispatch($payload);
+            } catch (Throwable $e) {
+                Log::warning("mc-bridge: failed to broadcast a relayed {$payload['type']} message: {$e->getMessage()}");
+            }
+
+            return;
+        }
+
         match ($payload['type']) {
-            'authenticated' => $this->onAuthenticated($conn),
+            'authenticated' => $this->onAuthenticated($conn, $loop),
             'auth_error' => Log::error('mc-bridge: authentication rejected: '.($payload['message'] ?? 'unknown')),
-            'pong' => null,
-            default => McRelayEvent::dispatch($payload),
+            'error' => Log::warning('mc-bridge: protocol error from mod: '.($payload['message'] ?? 'unknown')),
+            default => null, // welcome, subscribed, unsubscribed, pong — nothing to do
         };
     }
 
-    private function onAuthenticated(WebSocket $conn): void
+    private function onAuthenticated(WebSocket $conn, LoopInterface $loop): void
     {
         $this->info('Authenticated — subscribing to events/chat/stats.');
-        $conn->send(json_encode(['type' => 'subscribe', 'channels' => ['events', 'chat', 'stats']]));
+
+        // The mod enforces a 100ms-minimum gap between messages per connection; sending
+        // subscribe in the very same tick we received "authenticated" can land inside that
+        // window on localhost's near-zero round-trip and get bounced as a rate-limit error.
+        $loop->addTimer(0.15, function () use ($conn) {
+            $conn->send(json_encode(['type' => 'subscribe', 'channels' => ['events', 'chat', 'stats']]));
+        });
     }
 }

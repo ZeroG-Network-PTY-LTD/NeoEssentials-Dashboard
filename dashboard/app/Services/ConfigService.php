@@ -92,7 +92,7 @@ class ConfigService
      * outbound user-sync webhook, and stores the mod's token for our own outbound REST calls —
      * both directions connected in one round trip, nothing hand-copied between config files.
      */
-    public function completePairing(string $code, string $modToken, ?string $serverName): array
+    public function completePairing(string $code, string $modToken, ?string $serverName, ?int $websocketPort = null): array
     {
         if (! Cache::pull("pairing_code:{$code}")) {
             return ['success' => false, 'message' => 'Invalid or expired pairing code.'];
@@ -103,6 +103,7 @@ class ConfigService
         $this->writeEnv([
             'MC_SERVICE_API_KEY' => $modToken,
             'MOD_WEBHOOK_TOKEN' => $dashboardToken,
+            'MC_WS_PORT' => $websocketPort !== null ? (string) $websocketPort : '',
         ]);
 
         return [
@@ -116,6 +117,7 @@ class ConfigService
         $this->writeEnv([
             'MC_SERVICE_API_KEY' => '',
             'MOD_WEBHOOK_TOKEN' => '',
+            'MC_WS_PORT' => '',
         ]);
     }
 

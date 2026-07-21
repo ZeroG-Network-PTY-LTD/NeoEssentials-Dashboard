@@ -127,6 +127,29 @@ Then open `http://127.0.0.1:8000`, register an account (the first one
 becomes admin automatically), and log in. Set `MC_API_URL` in `.env` and pair
 with the mod as described below.
 
+### Optional: live dashboard updates (Reverb)
+
+Only possible here, on Option B — it needs a persistent background process,
+which shared/cPanel hosting can't run:
+
+```bash
+php artisan reverb:install     # generates REVERB_* keys in .env, once
+npm run build                  # picks up the new VITE_REVERB_* values
+```
+
+Then keep two more processes running alongside `queue:work` (Supervisor,
+systemd, `screen`/`tmux` — whatever you already use to keep `php artisan
+serve` itself alive):
+
+```bash
+php artisan reverb:start        # browser-facing broadcast server
+php artisan dashboard:mc-bridge # relays the mod's own WebSocket feed into it
+```
+
+Without this, the dashboard works exactly as it does today — status,
+players, and logs refresh on navigation, not live. Nothing else changes or
+breaks by skipping it.
+
 ---
 
 ## Pairing the dashboard with your Minecraft server

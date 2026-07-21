@@ -26,6 +26,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { PageProps } from '@/types';
+import { isMcLiveAvailable, useMcLiveStatus } from '@/lib/useMcLive';
 
 type DashboardPageProps = PageProps<{ apiReachable?: boolean; permissionsUsingExternal?: boolean }>;
 
@@ -69,6 +70,11 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   const { url, props } = usePage<DashboardPageProps>();
   const reachable = props.apiReachable ?? true;
   const permissionsUsingExternal = props.permissionsUsingExternal ?? false;
+  // Reverb isn't configured at all on shared/cPanel installs (see resources/js/app.tsx) — in
+  // that case there's nothing to show a connection status for, so the badge only renders once
+  // it's actually possible to be live.
+  const liveAvailable = isMcLiveAvailable();
+  const isLive = useMcLiveStatus();
   const user = props.auth.user;
   const isAdmin = user.role === 'admin';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -199,6 +205,21 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
             {reachable ? 'API connected' : 'API unreachable'}
             <span className="pulse-dot relative ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
           </span>
+          {/* Only shown on installs that ran `php artisan reverb:install` (VPS/Docker) — on
+              shared/cPanel hosting liveAvailable is false and this renders nothing, matching
+              the dashboard's pre-Phase-1 behavior exactly. */}
+          {liveAvailable && (
+            <span
+              className={`mt-1.5 inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[12px] ${
+                isLive
+                  ? 'bg-[var(--mc-cyan-50)] text-[var(--mc-cyan-400)]'
+                  : 'bg-[var(--mc-bg-surface-raised)] text-[var(--mc-text-muted)]'
+              }`}
+            >
+              <Radio size={13} className="shrink-0" />
+              {isLive ? 'Live updates' : 'Connecting…'}
+            </span>
+          )}
         </div>
 
         <div className="border-t border-[var(--mc-border)] p-3 flex items-center gap-3">

@@ -4,6 +4,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
 import Badge from '@/Components/Dashboard/Badge';
+import { useMcEvents } from '@/lib/useMcLive';
 import type { Home, McPlayer, OfflinePlayer, PlayerLookupResult } from '@/types/minecraft';
 import { Users, Clock, Search, HeartPulse, MoreHorizontal, Home as HomeIcon, VolumeX, LogOut, ShieldBan } from 'lucide-react';
 
@@ -45,6 +46,15 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
   const [homes, setHomes] = useState<Home[] | null>(null);
   const [homesError, setHomesError] = useState<string | null>(null);
   const [lookupInput, setLookupInput] = useState(lookupQuery ?? '');
+
+  // Live join/leave only tells us *that* it happened, not the full player record — a partial
+  // reload of just these two props is the cheapest correct way to reflect it (no-ops when
+  // Reverb isn't configured, same as Overview.tsx).
+  useMcEvents((payload) => {
+    if (payload.event === 'player_join' || payload.event === 'player_leave') {
+      router.reload({ only: ['players', 'offlinePlayers'] });
+    }
+  });
 
   const runLookup = (e: React.FormEvent) => {
     e.preventDefault();

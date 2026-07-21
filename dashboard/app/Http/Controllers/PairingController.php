@@ -25,9 +25,15 @@ class PairingController extends Controller
             'code' => ['required', 'string'],
             'modToken' => ['required', 'string'],
             'serverName' => ['nullable', 'string'],
+            'websocketPort' => ['nullable', 'integer'],
         ]);
 
-        $result = $this->config->completePairing($data['code'], $data['modToken'], $data['serverName'] ?? null);
+        $result = $this->config->completePairing(
+            $data['code'],
+            $data['modToken'],
+            $data['serverName'] ?? null,
+            $data['websocketPort'] ?? null,
+        );
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }

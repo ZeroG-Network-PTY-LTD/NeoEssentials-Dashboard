@@ -1,8 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
 import type { McPlayer, ServerStatus } from '@/types/minecraft';
+import { useMcStats, useMcEvents } from '@/lib/useMcLive';
 import { Users, Gauge, Clock, MemoryStick, LayoutGrid, ServerCrash, LucideIcon } from 'lucide-react';
 
 interface Props {
@@ -47,7 +49,32 @@ function StatCard({
   );
 }
 
-export default function Overview({ status, players, apiReachable }: Props) {
+export default function Overview({ status: initialStatus, players, apiReachable }: Props) {
+  // Seeded from the Inertia prop, then overlaid live by the mod's ~60s stats pulse (see
+  // useMcLive.ts) — no-ops on installs without Reverb, so this stays exactly the initial prop.
+  const [status, setStatus] = useState(initialStatus);
+
+  useMcStats((payload) => {
+    setStatus((prev) => ({
+      ...prev,
+      tps: payload.tps,
+      onlineCount: payload.players,
+      maxPlayers: payload.playersMax,
+      memoryUsedMb: payload.memUsedMb,
+      memoryMaxMb: payload.memMaxMb,
+      uptimeSeconds: Math.round(payload.uptimeMs / 1000),
+    }));
+  });
+
+  // The mod only tells us *that* someone joined/left, not their full player record (position,
+  // uuid, etc.) — cheapest correct way to reflect it here is a partial Inertia reload of just
+  // the players prop, not trying to synthesize a partial McPlayer from the event payload.
+  useMcEvents((payload) => {
+    if (payload.event === 'player_join' || payload.event === 'player_leave') {
+      router.reload({ only: ['players'] });
+    }
+  });
+
   if (!apiReachable) {
     return (
       <DashboardLayout>

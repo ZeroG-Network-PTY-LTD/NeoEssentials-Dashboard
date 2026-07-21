@@ -45,12 +45,4 @@ return [
         'redirect' => env('DISCORD_REDIRECT_URI'),
     ],
 
-    // Bearer token the dashboard minted for the mod during pairing (see PairingController) —
-    // the mod presents this as `Authorization: Bearer <token>` on its outbound user-sync
-    // webhook (WebhookController). Populated automatically by pairing, never hand-typed.
-    // Until a pairing has completed, this is empty and the webhook route rejects everything.
-    'mod_sync' => [
-        'webhook_token' => env('MOD_WEBHOOK_TOKEN'),
-    ],
-
 ];

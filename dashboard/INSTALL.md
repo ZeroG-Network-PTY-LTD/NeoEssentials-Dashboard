@@ -166,10 +166,9 @@ one-time pairing code — nothing to type in by hand:
    /dashboard pair "<dashboardUrl>" <code>
    ```
 3. In that single round trip, the mod mints an API key for this app to use
-   (saved as `MC_SERVICE_API_KEY`) and this app mints a token back for the
-   mod's outbound account-sync webhook (`MOD_WEBHOOK_TOKEN`). Both are
-   written to `.env` automatically — neither is ever sent to the browser,
-   and there's nothing to keep in sync by hand.
+   and this app mints a token back for the mod's outbound account-sync
+   webhook. Both are stored in the database automatically — neither is ever
+   sent to the browser, and there's nothing to keep in sync by hand.
 
 Run `/dashboard unpair` on the mod's console (and click **Unpair** on the
 Configuration page) to disconnect, e.g. before re-pairing with a different

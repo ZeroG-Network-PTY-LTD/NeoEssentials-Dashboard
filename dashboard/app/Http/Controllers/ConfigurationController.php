@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\McConnection;
 use App\Services\ConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -79,7 +80,7 @@ class ConfigurationController extends Controller
     /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */
     public function pairingStatus(): JsonResponse
     {
-        return response()->json(['paired' => (bool) config('minecraft.service_api_key')]);
+        return response()->json(['paired' => McConnection::current()->isPaired()]);
     }
 
     public function unpair(): RedirectResponse

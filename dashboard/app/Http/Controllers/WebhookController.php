@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\McConnection;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,14 +70,15 @@ class WebhookController extends Controller
     }
 
     /**
-     * Compares the request's Bearer token against the token this dashboard minted for the
-     * mod during pairing (services.mod_sync.webhook_token). Unlike the old HMAC scheme, an
-     * unconfigured token always rejects — there's nothing to compare against until a pairing
-     * has actually completed, and accepting unsigned calls by default was the wrong posture.
+     * Compares the request's Bearer token against the token this dashboard minted for the mod
+     * during pairing (mc_connection.webhook_token — see McConnection). Unlike the old HMAC
+     * scheme, an unconfigured token always rejects — there's nothing to compare against until a
+     * pairing has actually completed, and accepting unsigned calls by default was the wrong
+     * posture.
      */
     private function verifyToken(Request $request): bool
     {
-        $expected = config('services.mod_sync.webhook_token');
+        $expected = McConnection::current()->webhook_token;
         if (! $expected) {
             return false;
         }

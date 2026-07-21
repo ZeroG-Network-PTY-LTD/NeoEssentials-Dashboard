@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Events\McRelayEvent;
+use App\Models\McConnection;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Ratchet\Client\Connector;
@@ -35,8 +36,9 @@ class McWebSocketBridge extends Command
     public function handle(): int
     {
         $host = parse_url((string) config('minecraft.api_url'), PHP_URL_HOST) ?: '127.0.0.1';
-        $port = config('minecraft.ws_port');
-        $apiKey = config('minecraft.service_api_key');
+        $connection = McConnection::current();
+        $port = $connection->ws_port;
+        $apiKey = $connection->api_key;
 
         if (! $port || ! $apiKey) {
             $this->error('Not paired, or no WebSocket port on record — pair the dashboard with the mod first (Configuration → Minecraft Server Connection).');

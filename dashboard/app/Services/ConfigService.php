@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\McConnection;
 use App\Models\User;
 use App\Support\WritesEnvFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -59,7 +61,7 @@ class ConfigService
     {
         return [
             'url' => config('minecraft.api_url'),
-            'paired' => (bool) config('minecraft.service_api_key'),
+            'paired' => McConnection::current()->isPaired(),
         ];
     }
 
@@ -100,10 +102,12 @@ class ConfigService
 
         $dashboardToken = Str::random(40);
 
-        $this->writeEnv([
-            'MC_SERVICE_API_KEY' => $modToken,
-            'MOD_WEBHOOK_TOKEN' => $dashboardToken,
-            'MC_WS_PORT' => $websocketPort !== null ? (string) $websocketPort : '',
+        McConnection::current()->update([
+            'api_key' => $modToken,
+            'api_key_id' => $this->extractKeyId($modToken),
+            'webhook_token' => $dashboardToken,
+            'ws_port' => $websocketPort,
+            'server_name' => $serverName,
         ]);
 
         return [
@@ -112,18 +116,65 @@ class ConfigService
         ];
     }
 
+    /**
+     * Best-effort: revokes this connection's own API key on the mod (self-service, since a
+     * freshly-paired key is minted with ADMIN role) before clearing the local row, so unpairing
+     * here doesn't leave a live, unrevoked credential dangling on the mod side until someone
+     * separately remembers to run `/dashboard unpair` in-game too. Still clears local state even
+     * if the mod is unreachable — an admin unpairing from here shouldn't get stuck because the
+     * game server happens to be offline right now.
+     */
     public function unpair(): void
     {
-        $this->writeEnv([
-            'MC_SERVICE_API_KEY' => '',
-            'MOD_WEBHOOK_TOKEN' => '',
-            'MC_WS_PORT' => '',
+        $connection = McConnection::current();
+
+        if ($connection->api_key_id) {
+            try {
+                $this->mc->revokeApiKey($connection->api_key_id);
+            } catch (\Throwable $e) {
+                Log::warning('Could not revoke the mod-side API key during unpair — it may need manual cleanup via /apikey revoke', [
+                    'keyId' => $connection->api_key_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $connection->update([
+            'api_key' => null,
+            'api_key_id' => null,
+            'webhook_token' => null,
+            'ws_port' => null,
+            'server_name' => null,
         ]);
+    }
+
+    /**
+     * Pulls the public `keyId` out of a `neo_<keyId>_<secret>` token — mirrors the mod's own
+     * ApiKeyManager.extractKeyId(), including the fixed-width slice (NOT split on the first
+     * underscore: base64url's alphabet includes `_`, so it isn't a reliable separator). Returns
+     * null for anything that doesn't match the mod's token shape.
+     */
+    private function extractKeyId(string $token): ?string
+    {
+        $prefix = 'neo_';
+        $keyIdLength = 12; // (KEY_ID_BYTES=9 * 8 bits) / 6 bits-per-base64url-char
+
+        if (! str_starts_with($token, $prefix)) {
+            return null;
+        }
+
+        $rest = substr($token, strlen($prefix));
+
+        if (strlen($rest) <= $keyIdLength + 1 || $rest[$keyIdLength] !== '_') {
+            return null;
+        }
+
+        return substr($rest, 0, $keyIdLength);
     }
 
     public function testMcApi(): array
     {
-        if (empty(config('minecraft.service_api_key'))) {
+        if (! McConnection::current()->isPaired()) {
             return ['success' => false, 'message' => 'Not paired with a Minecraft server yet.'];
         }
 

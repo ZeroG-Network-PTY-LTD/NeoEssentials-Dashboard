@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\McConnection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +29,9 @@ class MinecraftApiService
     public function __construct()
     {
         $this->baseUrl = rtrim((string) config('minecraft.api_url'), '/');
-        $this->serviceApiKey = (string) config('minecraft.service_api_key');
+        // Pairing credentials live in the mc_connection table, not .env/config — see the
+        // mc_connection migration for why (filesystem-write requirements, concurrency safety).
+        $this->serviceApiKey = (string) (McConnection::current()->api_key ?? '');
         $this->timeout = (int) config('minecraft.timeout');
         $this->cacheTtl = (int) config('minecraft.cache_ttl');
     }
@@ -107,6 +110,14 @@ class MinecraftApiService
             'username' => $p['username'],
             'lastSeen' => $p['lastSeen'] ?? 'Unknown',
         ], $offline);
+    }
+
+    // --- API keys (ApiKeyEndpoint — used here for self-revoke on unpair, see
+    // ConfigService::unpair()) -------------------------------------------------
+
+    public function revokeApiKey(string $keyId): array
+    {
+        return $this->delete("api/apikeys/{$keyId}");
     }
 
     /**

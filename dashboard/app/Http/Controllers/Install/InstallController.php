@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Install;
 
 use App\Http\Controllers\Controller;
+use App\Models\McConnection;
 use App\Services\ConfigService;
 use App\Services\InstallService;
 use Illuminate\Http\JsonResponse;
@@ -222,7 +223,7 @@ class InstallController extends Controller
     /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */
     public function mcApiPairingStatus(): JsonResponse
     {
-        return response()->json(['paired' => (bool) config('minecraft.service_api_key')]);
+        return response()->json(['paired' => McConnection::current()->isPaired()]);
     }
 
     public function mcApiContinue(Request $request): RedirectResponse

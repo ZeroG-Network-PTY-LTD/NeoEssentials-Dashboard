@@ -8,10 +8,8 @@ services:
       # if the mod runs on the same machine as Docker (Linux: add
       # "extra_hosts: - host.docker.internal:host-gateway" below).
       MC_API_URL: "http://host.docker.internal:8642"
-      # Populated automatically by pairing (Configuration -> "Minecraft Server
-      # Connection", or the /install wizard) — never hand-type these.
-      MC_SERVICE_API_KEY: ""
-      MOD_WEBHOOK_TOKEN: ""
+      # Pairing credentials (API key, webhook token, WS port) live in the mc_connection DB
+      # table, not env vars — persisted by the dashboard-data volume below across restarts.
     volumes:
       # Persist the SQLite DB and app key across container restarts/rebuilds.
       - dashboard-data:/app/database

@@ -128,12 +128,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
       >
         <div className="px-5 py-5 border-b border-[var(--mc-border)] flex items-center gap-2.5">
           <Link href="/" className="flex items-center gap-2.5 min-w-0 flex-1 group" title="Back to site">
-            <span className="h-8 w-8 rounded-[9px] shrink-0 bg-gradient-to-br from-[var(--mc-cyan-500)] to-[var(--mc-purple-500)] shadow-[0_0_16px_-2px_rgba(56,198,224,0.45)] flex items-center justify-center transition-transform group-hover:scale-105">
-              <svg className="h-4.5 w-4.5 text-[#0a0d16]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2 3 6.5v11L12 22l9-4.5v-11L12 2Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
-                <path d="M3 6.5 12 11l9-4.5M12 11v11" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
-              </svg>
-            </span>
+            <img src="/images/logo.png" alt="" className="h-8 w-8 shrink-0 object-contain transition-transform group-hover:scale-105" />
             <div className="min-w-0 flex-1">
               <div className="font-display text-[15px] font-semibold tracking-tight group-hover:text-[var(--mc-cyan-400)] transition-colors">
                 ZeroG Network
@@ -267,12 +262,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
           >
             <Menu size={20} />
           </button>
-          <span className="h-6 w-6 rounded-[7px] bg-gradient-to-br from-[var(--mc-cyan-500)] to-[var(--mc-purple-500)] shrink-0 flex items-center justify-center">
-            <svg className="h-3.5 w-3.5 text-[#0a0d16]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2 3 6.5v11L12 22l9-4.5v-11L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-              <path d="M3 6.5 12 11l9-4.5M12 11v11" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-            </svg>
-          </span>
+          <img src="/images/logo.png" alt="" className="h-6 w-6 shrink-0 object-contain" />
           <span className="font-display text-[14px] font-semibold tracking-tight">ZeroG Network</span>
         </div>
 

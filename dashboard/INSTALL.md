@@ -238,6 +238,20 @@ didn't, re-generate a code and make sure the mod can reach *this* dashboard's
 `MC_API_URL`-equivalent address (the URL you gave `/dashboard pair`) over
 the network, same reachability requirement in reverse.
 
+**I'm on a VPS/SSH box and landed on a screen asking me to open a file over
+FTP** — that's the `/install` wizard's setup-access step (see [Option
+A](#4-verify-the-setup-token)), which means the Option B manual bootstrap
+(`composer install` → `.env` → `key:generate` → `migrate` → register) wasn't
+fully finished — `EnsureInstalled` correctly sends any incomplete install
+through `/install`, but the page's default instructions assume no shell
+access, which isn't your situation. Since you have SSH, either:
+- Run `php artisan install:token` and paste what it prints into the form
+  (the page now shows this option too — no FTP client needed), then continue
+  through the rest of the wizard (it ends at the same mod-pairing step
+  described above); or
+- Skip the wizard entirely and just finish [Option B](#option-b--manual-install-sshcomposernode-available)'s
+  command sequence by hand from where it stopped.
+
 **Setup wizard won't go away after I already configured everything by
 hand** — it auto-detects an already-configured install (a working `APP_KEY`
 + at least one existing user account) and locks itself on the next request.

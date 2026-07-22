@@ -34,6 +34,9 @@ class PlayerController extends Controller
             'lookupResult' => $lookupUsername !== ''
                 ? $this->safe(fn () => $this->mc->lookupPlayer($lookupUsername), ['success' => false, 'message' => "Could not find a player named '{$lookupUsername}', or the Minecraft server API is unreachable."])
                 : null,
+            // For the "More" panel's permission-group select — same source the
+            // Permissions page uses, just also needed here now.
+            'groups' => $this->safe(fn () => $this->mc->permissionGroups(), []),
         ]);
     }
 
@@ -104,6 +107,18 @@ class PlayerController extends Controller
         );
     }
 
+    public function gamemode(Request $request, string $uuid): RedirectResponse
+    {
+        $data = $request->validate([
+            'gamemode' => ['required', 'string', 'in:survival,creative,adventure,spectator'],
+        ]);
+
+        return $this->attempt(
+            fn () => $this->mc->setGamemode($this->resolveUsername($uuid), $data['gamemode']),
+            "Game mode set to {$data['gamemode']}.",
+        );
+    }
+
     /**
      * Read-only — the mod's homes lookup only works for online players (it
      * resolves live off the player object, not a stored profile), so this
@@ -115,6 +130,21 @@ class PlayerController extends Controller
     {
         try {
             return response()->json(['homes' => $this->mc->homes($this->resolveUsername($uuid))]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 502);
+        }
+    }
+
+    /**
+     * Current permission group for the "More" panel's group select — same
+     * lookup the Permissions page's search box uses, just fetched via plain
+     * fetch() here instead of a full Inertia page load.
+     */
+    public function permissionGroup(string $uuid): JsonResponse
+    {
+        try {
+            $result = $this->mc->permissionUserLookup($this->resolveUsername($uuid));
+            return response()->json(['group' => $result['success'] ?? false ? ($result['group'] ?? null) : null]);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 502);
         }

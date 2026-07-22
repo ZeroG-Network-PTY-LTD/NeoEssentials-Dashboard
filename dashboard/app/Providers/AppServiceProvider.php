@@ -62,6 +62,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('players.kick', fn (User $user) => $user->isAdmin());
         Gate::define('players.ban', fn (User $user) => $user->isAdmin());
         Gate::define('players.mute', fn (User $user) => $user->isAdmin() || $user->role === 'moderator');
+        // Same tier as kick/ban — changing a player's game mode has a comparable blast
+        // radius (e.g. handing out creative mode) if a compromised/careless account uses it.
+        Gate::define('players.gamemode', fn (User $user) => $user->isAdmin());
         Gate::define('economy.manage', fn (User $user) => $user->isAdmin());
         Gate::define('console.run', fn (User $user) => $user->isAdmin());
 

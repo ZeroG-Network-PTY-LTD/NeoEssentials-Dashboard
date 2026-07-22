@@ -5,14 +5,17 @@ import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
 import Badge from '@/Components/Dashboard/Badge';
 import { useMcEvents } from '@/lib/useMcLive';
-import type { Home, McPlayer, OfflinePlayer, PlayerLookupResult } from '@/types/minecraft';
-import { Users, Clock, Search, HeartPulse, MoreHorizontal, Home as HomeIcon, VolumeX, LogOut, ShieldBan } from 'lucide-react';
+import type { Home, McPlayer, OfflinePlayer, PermissionGroup, PlayerLookupResult } from '@/types/minecraft';
+import { Users, Clock, Search, HeartPulse, MoreHorizontal, Home as HomeIcon, VolumeX, LogOut, ShieldBan, Gamepad2, UserCog } from 'lucide-react';
+
+type Gamemode = 'survival' | 'creative' | 'adventure' | 'spectator';
 
 interface Props {
   players: McPlayer[];
   offlinePlayers: OfflinePlayer[];
   lookupQuery: string | null;
   lookupResult: PlayerLookupResult | null;
+  groups: PermissionGroup[];
 }
 
 const RANK_STYLE: Record<string, string> = {
@@ -36,7 +39,7 @@ const ACTION_LABEL: Record<ActionType, string> = {
   mute: 'Mute',
 };
 
-export default function Players({ players, offlinePlayers, lookupQuery, lookupResult }: Props) {
+export default function Players({ players, offlinePlayers, lookupQuery, lookupResult, groups }: Props) {
   const [selected, setSelected] = useState<McPlayer | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [reason, setReason] = useState('');
@@ -46,6 +49,9 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
   const [homes, setHomes] = useState<Home[] | null>(null);
   const [homesError, setHomesError] = useState<string | null>(null);
   const [lookupInput, setLookupInput] = useState(lookupQuery ?? '');
+  const [currentGroup, setCurrentGroup] = useState<string | null>(null);
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [gamemodeSaving, setGamemodeSaving] = useState(false);
 
   // Live join/leave only tells us *that* it happened, not the full player record — a partial
   // reload of just these two props is the cheapest correct way to reflect it (no-ops when
@@ -68,6 +74,37 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
   };
 
   const heal = (uuid: string) => router.post(route('dashboard.players.heal', uuid));
+
+  const openMore = async (player: McPlayer) => {
+    setSelected(player);
+    setCurrentGroup(null);
+    try {
+      const res = await fetch(route('dashboard.players.permission-group', player.uuid), {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await res.json();
+      setCurrentGroup(data.group ?? null);
+    } catch {
+      setCurrentGroup(null);
+    }
+  };
+
+  const changeGroup = (player: McPlayer, group: string) => {
+    setGroupSaving(true);
+    router.post(route('dashboard.permissions.users.group', player.username), { group }, {
+      preserveScroll: true,
+      onSuccess: () => setCurrentGroup(group),
+      onFinish: () => setGroupSaving(false),
+    });
+  };
+
+  const changeGamemode = (player: McPlayer, gamemode: Gamemode) => {
+    setGamemodeSaving(true);
+    router.post(route('dashboard.players.gamemode', player.uuid), { gamemode }, {
+      preserveScroll: true,
+      onFinish: () => setGamemodeSaving(false),
+    });
+  };
 
   const viewHomes = async (player: McPlayer) => {
     setSelected(null);
@@ -173,7 +210,7 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
                         Heal
                       </button>
                       <button
-                        onClick={() => setSelected(p)}
+                        onClick={() => openMore(p)}
                         className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface)] transition-colors"
                       >
                         <MoreHorizontal size={12} />
@@ -299,6 +336,46 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
                 <VolumeX size={14} className="text-[var(--mc-purple-400)]" />
                 Mute
               </button>
+
+              <div className="mt-1 pt-2 border-t border-[var(--mc-border)]">
+                <div className="flex items-center gap-2 text-[11px] text-[var(--mc-text-muted)] mb-1.5">
+                  <Gamepad2 size={13} />
+                  Game mode
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(['survival', 'creative', 'adventure', 'spectator'] as Gamemode[]).map((gm) => (
+                    <button
+                      key={gm}
+                      disabled={gamemodeSaving}
+                      onClick={() => changeGamemode(selected, gm)}
+                      className="text-[12px] px-2 py-1.5 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] capitalize disabled:opacity-50 transition-colors"
+                    >
+                      {gm}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-1 pt-2 border-t border-[var(--mc-border)]">
+                <div className="flex items-center gap-2 text-[11px] text-[var(--mc-text-muted)] mb-1.5">
+                  <UserCog size={13} />
+                  Permission group
+                </div>
+                <select
+                  value={currentGroup ?? ''}
+                  disabled={groupSaving || groups.length === 0}
+                  onChange={(e) => changeGroup(selected, e.target.value)}
+                  className="w-full text-[13px] px-2.5 py-1.5 rounded-[6px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] outline-none focus:border-[var(--mc-cyan-400)] disabled:opacity-50"
+                >
+                  <option value="" disabled>
+                    {groups.length === 0 ? 'Loading groups…' : currentGroup === null ? 'Unknown' : 'Select group'}
+                  </option>
+                  {groups.map((g) => (
+                    <option key={g.name} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 onClick={() => openConfirm('kick', selected)}
                 className="flex items-center gap-2 text-[13px] px-3 py-2 rounded-[var(--radius)] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] text-left transition-colors"

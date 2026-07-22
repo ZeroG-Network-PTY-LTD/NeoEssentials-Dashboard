@@ -166,6 +166,11 @@ class MinecraftApiService
         ]);
     }
 
+    public function setGamemode(string $username, string $gamemode): array
+    {
+        return $this->post("api/player/gamemode/{$username}", ['gamemode' => $gamemode]);
+    }
+
     // --- Public moderation lookup (no dashboard login required on either side —
     // the mod's /api/public/moderation/* routes are registered without the
     // Bearer-token check, so these deliberately skip the service-account session

@@ -59,12 +59,15 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
         // Read-only — no gate, mirrors the mod's own homes lookup imposing no
         // admin requirement beyond being logged in.
         Route::get('/players/{uuid}/homes', [PlayerController::class, 'homes'])->name('players.homes');
+        Route::get('/players/{uuid}/permission-group', [PlayerController::class, 'permissionGroup'])->name('players.permission-group');
         Route::post('/players/{uuid}/kick', [PlayerController::class, 'kick'])
             ->middleware('can:players.kick')->name('players.kick');
         Route::post('/players/{uuid}/ban', [PlayerController::class, 'ban'])
             ->middleware('can:players.ban')->name('players.ban');
         Route::post('/players/{uuid}/mute', [PlayerController::class, 'mute'])
             ->middleware('can:players.mute')->name('players.mute');
+        Route::post('/players/{uuid}/gamemode', [PlayerController::class, 'gamemode'])
+            ->middleware('can:players.gamemode')->name('players.gamemode');
 
         Route::get('/economy', [EconomyController::class, 'index'])->name('economy.index');
         Route::post('/economy/adjust', [EconomyController::class, 'adjust'])

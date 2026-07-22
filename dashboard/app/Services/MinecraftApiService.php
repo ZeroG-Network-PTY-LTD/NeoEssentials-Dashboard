@@ -444,6 +444,31 @@ class MinecraftApiService
         ], $top);
     }
 
+    /**
+     * Full /api/stats/economy payload (total wealth, account count, average balance,
+     * distribution histogram) — economyLeaderboard() above only extracts topPlayers, this
+     * exposes everything else the Economy page's overview cards/distribution chart need.
+     */
+    public function economyStats(): array
+    {
+        $data = Cache::remember('mc_api:economy_stats', $this->cacheTtl,
+            fn () => $this->get('api/stats/economy'));
+
+        return [
+            'totalWealth' => $data['totalWealth'] ?? '0.00',
+            'accountCount' => (int) ($data['accountCount'] ?? 0),
+            'currencySymbol' => $data['currencySymbol'] ?? '$',
+            'startingBalance' => (float) ($data['startingBalance'] ?? 0),
+            'averageBalance' => $data['averageBalance'] ?? '0.00',
+            'topPlayers' => array_map(fn (array $e) => [
+                'uuid' => $e['uuid'],
+                'username' => $e['name'],
+                'balance' => (float) $e['balance'],
+            ], $data['topPlayers'] ?? []),
+            'distribution' => $data['distribution'] ?? [],
+        ];
+    }
+
     /** $identifier may be a username or a raw UUID — the mod accepts either. */
     public function economyAdjust(string $identifier, string $action, float $amount): array
     {

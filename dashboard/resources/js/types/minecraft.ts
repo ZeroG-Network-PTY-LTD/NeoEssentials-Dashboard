@@ -57,6 +57,21 @@ export interface LeaderboardEntry {
   balance: number;
 }
 
+export interface EconomyDistributionBucket {
+  label: string;
+  count: number;
+}
+
+export interface EconomyStats {
+  totalWealth: string;
+  accountCount: number;
+  currencySymbol: string;
+  startingBalance: number;
+  averageBalance: string;
+  topPlayers: LeaderboardEntry[];
+  distribution: EconomyDistributionBucket[];
+}
+
 export type LogEntryType = 'join' | 'leave' | 'command' | 'chat';
 
 export interface LogEntry {

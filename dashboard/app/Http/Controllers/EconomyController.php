@@ -20,7 +20,15 @@ class EconomyController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Economy', [
-            'leaderboard' => $this->safe(fn () => $this->mc->economyLeaderboard(), []),
+            'stats' => $this->safe(fn () => $this->mc->economyStats(), [
+                'totalWealth' => '0.00',
+                'accountCount' => 0,
+                'currencySymbol' => '$',
+                'startingBalance' => 0,
+                'averageBalance' => '0.00',
+                'topPlayers' => [],
+                'distribution' => [],
+            ]),
         ]);
     }
 

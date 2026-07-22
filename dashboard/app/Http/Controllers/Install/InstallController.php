@@ -136,6 +136,15 @@ class InstallController extends Controller
                 'DB_USERNAME' => $data['username'] ?? '',
                 'DB_PASSWORD' => $data['password'] ?? '',
             ];
+        } else {
+            // Must overwrite DB_DATABASE here too, not just DB_CONNECTION — a
+            // previous run through this step (or a re-installed host) may
+            // have left a MySQL database name sitting in .env, which the
+            // sqlite driver would otherwise try to open literally as a
+            // relative file path and fail with "Database file ... does not
+            // exist". testDatabaseConnection() already creates the file at
+            // this exact path, so this just points DB_DATABASE at it.
+            $env['DB_DATABASE'] = database_path('database.sqlite');
         }
 
         $this->install->writeEnv($env);

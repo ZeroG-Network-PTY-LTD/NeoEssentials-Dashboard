@@ -377,7 +377,14 @@ class SelfUpdateService
 
                 $log .= $this->overlayOntoApp($extractPath);
 
-                $rebuild = $this->runRebuildSteps();
+                // No composer/npm run here, unlike applyGitUpdate() — the zip
+                // just overlaid already has vendor/ and public/build baked in
+                // by bin/build-installer.ps1, matching this exact release.
+                // Rebuilding them again would require composer/npm on the
+                // target host, which is exactly what shipping a pre-built
+                // package is meant to avoid (see checkGithubRelease()'s
+                // docblock above).
+                $rebuild = $this->runPostApplySteps();
                 $log .= $rebuild['log'];
                 if (! $rebuild['success']) {
                     return ['success' => false, 'log' => $log];
@@ -416,6 +423,30 @@ class SelfUpdateService
         }
 
         return null;
+    }
+
+    /** Post-apply steps for a zip-based (installer/updater) update — no composer/npm, see applyZipFromPath(). */
+    private function runPostApplySteps(): array
+    {
+        $log = '';
+
+        $step = $this->run(['php', 'artisan', 'migrate', '--force'], $this->appRoot);
+        $log .= $step['log'];
+        if (! $step['success']) {
+            return ['success' => false, 'log' => $log];
+        }
+
+        foreach (['config:clear', 'route:clear', 'view:clear'] as $artisanCmd) {
+            $step = $this->run(['php', 'artisan', $artisanCmd], $this->appRoot);
+            $log .= $step['log'];
+        }
+
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+            $log .= "opcache reset\n";
+        }
+
+        return ['success' => true, 'log' => $log];
     }
 
     private function runRebuildSteps(): array

@@ -28,19 +28,22 @@ return [
     // being overlaid onto the app — never web-accessible.
     'staging_dir' => storage_path('app/updates'),
 
-    // Relative paths (from base_path()) an uploaded zip is never allowed to
-    // overwrite, regardless of what it contains — secrets, the database,
-    // dependency trees this process rebuilds itself, and anything Laravel is
-    // actively reading from mid-request.
+    // Relative paths (from base_path()) an installer/updater zip is never
+    // allowed to overwrite, regardless of what it contains — secrets, the
+    // database, and anything Laravel is actively reading from mid-request.
+    // Deliberately NOT listing vendor/, public/build/, or bootstrap/cache
+    // here: bin/build-installer.ps1 runs `composer install --no-dev` and
+    // `npm run build` inside every installer/updater package before zipping
+    // it, so those directories in the archive are already the correct,
+    // matching build for that release — skipping them would silently leave
+    // the target running old dependencies/frontend assets after "applying"
+    // an update. packageKind() only ever accepts *_installer.zip/
+    // *-updater.zip (our own CI output), so there's no arbitrary/untrusted
+    // zip case this list needs to defend against.
     'protected_paths' => [
         '.env',
         '.env.example',
         'storage',
-        'vendor',
-        'node_modules',
-        'public/build',
-        'public/hot',
-        'bootstrap/cache',
         'database/database.sqlite',
     ],
 

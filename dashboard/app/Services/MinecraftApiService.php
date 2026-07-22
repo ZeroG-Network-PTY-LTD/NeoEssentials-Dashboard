@@ -928,6 +928,32 @@ class MinecraftApiService
         return $this->delete("api/users/sessions/{$sessionId}");
     }
 
+    // --- Account linking (POST/GET /api/auth/link-minecraft/*, /api/auth/discord-status —
+    // this app has no mod-side dashboard session of its own, so every call here passes the
+    // Laravel user's own $modUsername explicitly; the mod resolves the target account by
+    // username instead of a session cookie, same API-key auth as everything else in this
+    // service. See docs/API.md's "AUTH*" note on these four routes.) -----------------------
+
+    public function linkMinecraftStart(string $modUsername): array
+    {
+        return $this->post('api/auth/link-minecraft/start', ['username' => $modUsername]);
+    }
+
+    public function linkMinecraftStatus(string $modUsername): array
+    {
+        return $this->get('api/auth/link-minecraft/status', ['username' => $modUsername]);
+    }
+
+    public function unlinkMinecraft(string $modUsername): array
+    {
+        return $this->post('api/auth/unlink-minecraft', ['username' => $modUsername]);
+    }
+
+    public function accountDiscordStatus(string $modUsername): array
+    {
+        return $this->get('api/auth/discord-status', ['username' => $modUsername]);
+    }
+
     // --- Homes / console -----------------------------------------------------
 
     public function homes(string $username): array

@@ -40,6 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::post('/profile/minecraft-link/start', [ProfileController::class, 'minecraftLinkStart'])->name('profile.minecraft-link.start');
+    Route::get('/profile/minecraft-link/status', [ProfileController::class, 'minecraftLinkStatus'])->name('profile.minecraft-link.status');
+    Route::post('/profile/minecraft-link/unlink', [ProfileController::class, 'minecraftLinkUnlink'])->name('profile.minecraft-link.unlink');
+    Route::get('/profile/discord-status', [ProfileController::class, 'discordStatus'])->name('profile.discord-status');
 });
 
 // All dashboard routes require an authenticated, verified user. The `can:` gates

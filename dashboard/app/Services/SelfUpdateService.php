@@ -575,6 +575,34 @@ class SelfUpdateService
         return $extractPath;
     }
 
+    /**
+     * Called by InstallService::finish() once the /install wizard completes —
+     * without this, a install-wizard deployment never writes deployment.json
+     * at all, so currentVersion() reports source 'unknown' with no
+     * appliedAt, and checkGithubRelease() reads that as "never deployed
+     * anything, so yes there's an update" even on the exact same build the
+     * installer package itself shipped. Reads the version.json every
+     * installer/updater package bundles at its own root (see
+     * bin/build-installer.ps1) rather than needing a fresh network call.
+     */
+    public function recordInstallerDeployment(): void
+    {
+        $versionPath = base_path('version.json');
+        $version = null;
+
+        if (File::exists($versionPath)) {
+            $data = json_decode(File::get($versionPath), true);
+            $version = is_array($data) ? ($data['version'] ?? null) : null;
+        }
+
+        $this->recordDeployment([
+            'commit' => null,
+            'label' => $version ?? 'installed from package',
+            'source' => 'installer',
+            'appliedAt' => now()->toIso8601String(),
+        ]);
+    }
+
     private function readPackageVersion(string $root): ?string
     {
         $candidateRoot = $this->resolvePackageRoot($root);

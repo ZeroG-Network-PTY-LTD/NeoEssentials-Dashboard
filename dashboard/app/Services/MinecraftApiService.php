@@ -171,6 +171,227 @@ class MinecraftApiService
         return $this->post("api/player/gamemode/{$username}", ['gamemode' => $gamemode]);
     }
 
+    public function getBalance(string $username): array
+    {
+        return $this->get("api/economy/{$username}");
+    }
+
+    public function getInventory(string $username): array
+    {
+        return $this->get("api/player/inventory/{$username}");
+    }
+
+    // --- Player state toggles (online players only) ------------------------
+
+    public function setFly(string $username, ?bool $enable = null): array
+    {
+        return $this->post("api/player/fly/{$username}", $enable === null ? [] : ['enable' => $enable]);
+    }
+
+    public function setGod(string $username, ?bool $enable = null): array
+    {
+        return $this->post("api/player/god/{$username}", $enable === null ? [] : ['enable' => $enable]);
+    }
+
+    public function feedPlayer(string $username): array
+    {
+        return $this->post("api/player/feed/{$username}", []);
+    }
+
+    public function extinguishPlayer(string $username): array
+    {
+        return $this->post("api/player/extinguish/{$username}", []);
+    }
+
+    public function setSpeed(string $username, string $type, float $speed): array
+    {
+        return $this->post("api/player/speed/{$username}", ['type' => $type, 'speed' => $speed]);
+    }
+
+    public function setNickname(string $username, ?string $nickname): array
+    {
+        return $this->post("api/player/nickname/{$username}", ['nickname' => $nickname]);
+    }
+
+    // --- Freeze / vanish / jail ---------------------------------------------
+
+    public function freezeStatus(string $username): array
+    {
+        return $this->get("api/moderation/freeze/{$username}");
+    }
+
+    public function freezePlayer(string $targetName, ?string $reason = null): array
+    {
+        return $this->post('api/moderation/freeze', ['targetName' => $targetName, 'reason' => $reason]);
+    }
+
+    public function unfreezePlayer(string $username): array
+    {
+        return $this->delete("api/moderation/freeze/{$username}");
+    }
+
+    public function vanishStatus(string $username): array
+    {
+        return $this->get("api/moderation/vanish/{$username}");
+    }
+
+    public function vanishPlayer(string $targetName): array
+    {
+        return $this->post('api/moderation/vanish', ['targetName' => $targetName]);
+    }
+
+    public function unvanishPlayer(string $username): array
+    {
+        return $this->delete("api/moderation/vanish/{$username}");
+    }
+
+    public function jailLocations(): array
+    {
+        return $this->get('api/moderation/jails')['jails'] ?? [];
+    }
+
+    public function jailStatus(string $username): array
+    {
+        return $this->get("api/moderation/jail/{$username}");
+    }
+
+    public function jailPlayer(string $targetName, string $jailName, ?string $reason = null, ?int $durationSeconds = null): array
+    {
+        return $this->post('api/moderation/jail', [
+            'targetName' => $targetName,
+            'jailName' => $jailName,
+            'reason' => $reason,
+            'duration' => $durationSeconds,
+        ]);
+    }
+
+    public function unjailPlayer(string $username): array
+    {
+        return $this->delete("api/moderation/jail/{$username}");
+    }
+
+    // --- Items / fun commands (online players only) -------------------------
+
+    public function giveItem(string $username, string $item, int $amount = 1): array
+    {
+        return $this->post("api/player/give/{$username}", ['item' => $item, 'amount' => $amount]);
+    }
+
+    public function burnPlayer(string $username, int $seconds = 10): array
+    {
+        return $this->post("api/player/burn/{$username}", ['seconds' => $seconds]);
+    }
+
+    public function killPlayer(string $username): array
+    {
+        return $this->post("api/player/kill/{$username}", []);
+    }
+
+    public function applyEffect(string $username, string $effect, int $duration = 30, int $amplifier = 0): array
+    {
+        return $this->post("api/player/effect/{$username}", ['effect' => $effect, 'duration' => $duration, 'amplifier' => $amplifier]);
+    }
+
+    public function clearEffects(string $username): array
+    {
+        return $this->post("api/player/effect/{$username}", ['clear' => true]);
+    }
+
+    public function strikeLightning(string $username): array
+    {
+        return $this->post("api/player/lightning/{$username}", []);
+    }
+
+    public function spawnMob(string $username, string $mob, int $amount = 1): array
+    {
+        return $this->post("api/player/spawnmob/{$username}", ['mob' => $mob, 'amount' => $amount]);
+    }
+
+    // --- Admin tools ---------------------------------------------------------
+
+    public function runSudo(string $username, string $command, bool $isChat = false): array
+    {
+        return $this->post("api/player/sudo/{$username}", ['command' => $command, 'isChat' => $isChat]);
+    }
+
+    public function clearInventory(string $username): array
+    {
+        return $this->post("api/player/clearinventory/{$username}", []);
+    }
+
+    public function getPtime(string $username): array
+    {
+        return $this->get("api/player/ptime/{$username}");
+    }
+
+    public function setPtime(string $username, ?int $ticks): array
+    {
+        return $this->post("api/player/ptime/{$username}", ['ticks' => $ticks]);
+    }
+
+    public function getPweather(string $username): array
+    {
+        return $this->get("api/player/pweather/{$username}");
+    }
+
+    public function setPweather(string $username, ?string $type): array
+    {
+        return $this->post("api/player/pweather/{$username}", ['type' => $type]);
+    }
+
+    // --- Moderation history (per-player) ------------------------------------
+    // Bans are keyed by UUID on the mod side; mutes/kicks/warns/notes by username.
+
+    public function banHistory(string $uuid): array
+    {
+        return $this->get("api/moderation/bans/{$uuid}")['bans'] ?? [];
+    }
+
+    public function unban(string $uuid): array
+    {
+        return $this->delete("api/moderation/ban/{$uuid}");
+    }
+
+    public function muteHistory(string $username): array
+    {
+        return $this->get("api/moderation/mutes/{$username}")['mutes'] ?? [];
+    }
+
+    public function unmute(string $username): array
+    {
+        return $this->delete("api/moderation/mute/{$username}");
+    }
+
+    public function kickHistory(string $username): array
+    {
+        return $this->get("api/moderation/kicks/{$username}")['kicks'] ?? [];
+    }
+
+    public function warnsForPlayer(string $username): array
+    {
+        return $this->get("api/moderation/warns/{$username}")['warns'] ?? [];
+    }
+
+    public function removeWarn(string $warnId, string $targetName): array
+    {
+        return $this->deleteWithBody("api/moderation/warn/{$warnId}", ['targetName' => $targetName]);
+    }
+
+    public function notesForPlayer(string $username): array
+    {
+        return $this->get("api/moderation/notes/{$username}")['notes'] ?? [];
+    }
+
+    public function createNote(string $targetName, string $text): array
+    {
+        return $this->post('api/moderation/note', ['targetName' => $targetName, 'text' => $text]);
+    }
+
+    public function removeNote(string $noteId, string $targetName): array
+    {
+        return $this->deleteWithBody("api/moderation/note/{$noteId}", ['targetName' => $targetName]);
+    }
+
     // --- Public moderation lookup (no dashboard login required on either side —
     // the mod's /api/public/moderation/* routes are registered without the
     // Bearer-token check, so these deliberately skip the service-account session
@@ -796,6 +1017,14 @@ class MinecraftApiService
     private function delete(string $path): array
     {
         $result = $this->request('delete', $path);
+        $this->bustCaches();
+        return $result;
+    }
+
+    /** Like delete(), but with a JSON body — the mod's warn/note removal routes need one. */
+    private function deleteWithBody(string $path, array $data): array
+    {
+        $result = $this->request('delete', $path, $data);
         $this->bustCaches();
         return $result;
     }

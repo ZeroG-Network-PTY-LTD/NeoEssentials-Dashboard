@@ -1,5 +1,5 @@
-import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
@@ -52,6 +52,7 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
   const [currentGroup, setCurrentGroup] = useState<string | null>(null);
   const [groupSaving, setGroupSaving] = useState(false);
   const [gamemodeSaving, setGamemodeSaving] = useState(false);
+  const [lookupExtra, setLookupExtra] = useState<{ balance?: string; group?: string; live?: McPlayer } | null>(null);
 
   // Live join/leave only tells us *that* it happened, not the full player record — a partial
   // reload of just these two props is the cheapest correct way to reflect it (no-ops when
@@ -66,12 +67,35 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
     e.preventDefault();
     const q = lookupInput.trim();
     if (!q) return;
+    setLookupExtra(null);
     router.get(route('dashboard.players.index'), { lookup: q }, {
       preserveState: true,
       preserveScroll: true,
       only: ['lookupQuery', 'lookupResult'],
     });
   };
+
+  // Balance/group aren't part of the mod's own lookup response — fetched separately here,
+  // for online and offline players alike (unlike the "More" panel, which only ever targets
+  // online players via resolveUsername()).
+  useEffect(() => {
+    if (!lookupResult?.success || !lookupResult.username) {
+      setLookupExtra(null);
+      return;
+    }
+    const username = lookupResult.username;
+    const live = players.find((p) => p.uuid === lookupResult.uuid);
+    Promise.allSettled([
+      fetch(route('dashboard.players.profile.balance', username)).then((r) => r.json()),
+      fetch(route('dashboard.players.profile.permission-info', username)).then((r) => r.json()),
+    ]).then(([balanceRes, groupRes]) => {
+      setLookupExtra({
+        balance: balanceRes.status === 'fulfilled' ? balanceRes.value.balance : undefined,
+        group: groupRes.status === 'fulfilled' && groupRes.value.success ? groupRes.value.group : undefined,
+        live,
+      });
+    });
+  }, [lookupResult, players]);
 
   const heal = (uuid: string) => router.post(route('dashboard.players.heal', uuid));
 
@@ -276,19 +300,59 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
                   {lookupResult?.message ?? `Could not find a player named '${lookupQuery}'.`}
                 </div>
               ) : (
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src={`https://mc-heads.net/avatar/${lookupResult.uuid}/32`}
-                    alt=""
-                    className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
-                  />
-                  <span className="font-medium">{lookupResult.username}</span>
-                  <Badge variant={lookupResult.online ? 'moss' : 'neutral'} dot={lookupResult.online}>
-                    {lookupResult.online ? 'online' : 'offline'}
-                  </Badge>
-                  {!lookupResult.online && lookupResult.lastSeen && (
-                    <span className="text-[12px] text-[var(--mc-text-muted)]">Last seen {lookupResult.lastSeen}</span>
-                  )}
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={`https://mc-heads.net/avatar/${lookupResult.uuid}/32`}
+                      alt=""
+                      className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+                    />
+                    <span className="font-medium">{lookupResult.username}</span>
+                    <Badge variant={lookupResult.online ? 'moss' : 'neutral'} dot={lookupResult.online}>
+                      {lookupResult.online ? 'online' : 'offline'}
+                    </Badge>
+                    {!lookupResult.online && lookupResult.lastSeen && (
+                      <span className="text-[12px] text-[var(--mc-text-muted)]">Last seen {lookupResult.lastSeen}</span>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-[var(--mc-border)] grid grid-cols-2 gap-x-4 gap-y-2 font-data text-[12px]">
+                    <div>
+                      <span className="text-[var(--mc-text-muted)]">UUID: </span>
+                      <span className="break-all">{lookupResult.uuid}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--mc-text-muted)]">Balance: </span>
+                      {lookupExtra?.balance !== undefined ? `$${lookupExtra.balance}` : '…'}
+                    </div>
+                    <div>
+                      <span className="text-[var(--mc-text-muted)]">Group: </span>
+                      {lookupExtra?.group ?? '…'}
+                    </div>
+                    {lookupResult.online && lookupExtra?.live && (
+                      <>
+                        <div>
+                          <span className="text-[var(--mc-text-muted)]">Health: </span>
+                          {lookupExtra.live.health.toFixed(0)}/{lookupExtra.live.maxHealth.toFixed(0)}
+                        </div>
+                        <div>
+                          <span className="text-[var(--mc-text-muted)]">Position: </span>
+                          {lookupExtra.live.x.toFixed(0)}, {lookupExtra.live.y.toFixed(0)}, {lookupExtra.live.z.toFixed(0)} · {lookupExtra.live.dimension}
+                        </div>
+                        <div>
+                          <span className="text-[var(--mc-text-muted)]">Playtime: </span>
+                          {lookupExtra.live.playtimeMinutes} min
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Link
+                    href={route('dashboard.players.profile', lookupResult.username)}
+                    className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[var(--mc-cyan-400)] hover:underline"
+                  >
+                    Full profile →
+                  </Link>
                 </div>
               )}
             </div>
@@ -390,6 +454,13 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
                 <ShieldBan size={14} />
                 Ban
               </button>
+              <Link
+                href={route('dashboard.players.profile', selected.username)}
+                className="mt-1 flex items-center justify-center gap-2 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium hover:bg-[var(--mc-cyan-400)] text-left transition-colors"
+              >
+                <UserCog size={14} />
+                Full profile
+              </Link>
             </div>
           </div>
         </div>

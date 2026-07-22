@@ -10,6 +10,7 @@ use App\Http\Controllers\HologramsController;
 use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
+use App\Http\Controllers\PlayerProfileController;
 use App\Http\Controllers\PublicLookupController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UpdatesController;
@@ -68,6 +69,77 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
             ->middleware('can:players.mute')->name('players.mute');
         Route::post('/players/{uuid}/gamemode', [PlayerController::class, 'gamemode'])
             ->middleware('can:players.gamemode')->name('players.gamemode');
+
+        // Full per-player control page — keyed by username directly (not uuid), works for
+        // offline players wherever the mod's own endpoint supports it. See
+        // PlayerProfileController's class docblock for why this is a separate controller
+        // from PlayerController above (JSON everywhere, not Inertia redirects).
+        Route::get('/players/player/{username}', [PlayerProfileController::class, 'show'])->name('players.profile');
+        Route::prefix('players/player/{username}')->name('players.profile.')->group(function () {
+            Route::get('/lookup', [PlayerProfileController::class, 'lookup'])->name('lookup');
+            Route::get('/balance', [PlayerProfileController::class, 'balance'])->name('balance');
+            Route::get('/permission-info', [PlayerProfileController::class, 'permissionInfo'])->name('permission-info');
+            Route::get('/inventory', [PlayerProfileController::class, 'inventory'])->name('inventory');
+            Route::get('/freeze', [PlayerProfileController::class, 'freezeStatus'])->name('freeze.status');
+            Route::get('/vanish', [PlayerProfileController::class, 'vanishStatus'])->name('vanish.status');
+            Route::get('/jail', [PlayerProfileController::class, 'jailStatus'])->name('jail.status');
+            Route::get('/ptime', [PlayerProfileController::class, 'ptime'])->name('ptime.get');
+            Route::get('/pweather', [PlayerProfileController::class, 'pweather'])->name('pweather.get');
+            Route::get('/bans', [PlayerProfileController::class, 'banHistory'])->name('bans');
+            Route::get('/mutes', [PlayerProfileController::class, 'muteHistory'])->name('mutes');
+            Route::get('/kicks', [PlayerProfileController::class, 'kickHistory'])->name('kicks');
+            Route::get('/warns', [PlayerProfileController::class, 'warns'])->name('warns');
+            Route::get('/notes', [PlayerProfileController::class, 'notes'])->name('notes');
+
+            Route::middleware('can:players.profile.manage')->group(function () {
+                Route::post('/heal', [PlayerProfileController::class, 'heal'])->name('heal');
+                Route::post('/kick', [PlayerProfileController::class, 'kick'])->name('kick');
+                Route::post('/ban', [PlayerProfileController::class, 'ban'])->name('ban');
+                Route::post('/mute', [PlayerProfileController::class, 'mute'])->name('mute');
+                Route::delete('/mute', [PlayerProfileController::class, 'unmute'])->name('unmute');
+                Route::post('/gamemode', [PlayerProfileController::class, 'gamemode'])->name('gamemode');
+                Route::post('/group', [PlayerProfileController::class, 'group'])->name('group');
+                Route::post('/permissions', [PlayerProfileController::class, 'addPermission'])->name('permissions.add');
+                Route::delete('/permissions/{permission}', [PlayerProfileController::class, 'removePermission'])->name('permissions.remove');
+                Route::post('/economy', [PlayerProfileController::class, 'economyAdjust'])->name('economy');
+                Route::post('/teleport', [PlayerProfileController::class, 'teleport'])->name('teleport');
+
+                Route::post('/fly', [PlayerProfileController::class, 'fly'])->name('fly');
+                Route::post('/god', [PlayerProfileController::class, 'god'])->name('god');
+                Route::post('/feed', [PlayerProfileController::class, 'feed'])->name('feed');
+                Route::post('/extinguish', [PlayerProfileController::class, 'extinguish'])->name('extinguish');
+                Route::post('/speed', [PlayerProfileController::class, 'speed'])->name('speed');
+                Route::post('/nickname', [PlayerProfileController::class, 'nickname'])->name('nickname');
+
+                Route::post('/freeze', [PlayerProfileController::class, 'freeze'])->name('freeze');
+                Route::delete('/freeze', [PlayerProfileController::class, 'unfreeze'])->name('unfreeze');
+                Route::post('/vanish', [PlayerProfileController::class, 'vanish'])->name('vanish');
+                Route::delete('/vanish', [PlayerProfileController::class, 'unvanish'])->name('unvanish');
+                Route::post('/jail', [PlayerProfileController::class, 'jail'])->name('jail');
+                Route::delete('/jail', [PlayerProfileController::class, 'unjail'])->name('unjail');
+
+                Route::delete('/ban', [PlayerProfileController::class, 'unban'])->name('unban');
+                Route::delete('/warns/{warnId}', [PlayerProfileController::class, 'removeWarn'])->name('warns.remove');
+                Route::post('/notes', [PlayerProfileController::class, 'createNote'])->name('notes.add');
+                Route::delete('/notes/{noteId}', [PlayerProfileController::class, 'removeNote'])->name('notes.remove');
+
+                Route::post('/give', [PlayerProfileController::class, 'give'])->name('give');
+                Route::post('/burn', [PlayerProfileController::class, 'burn'])->name('burn');
+                Route::post('/kill', [PlayerProfileController::class, 'kill'])->name('kill');
+                Route::post('/effect', [PlayerProfileController::class, 'applyEffect'])->name('effect');
+                Route::delete('/effect', [PlayerProfileController::class, 'clearEffects'])->name('effect.clear');
+                Route::post('/lightning', [PlayerProfileController::class, 'lightning'])->name('lightning');
+                Route::post('/spawnmob', [PlayerProfileController::class, 'spawnMob'])->name('spawnmob');
+
+                Route::post('/sudo', [PlayerProfileController::class, 'sudo'])->name('sudo');
+                Route::post('/clear-inventory', [PlayerProfileController::class, 'clearInventory'])->name('clear-inventory');
+                Route::post('/ptime', [PlayerProfileController::class, 'setPtime'])->name('ptime.set');
+                Route::post('/pweather', [PlayerProfileController::class, 'setPweather'])->name('pweather.set');
+            });
+        });
+        // Shared group list for the profile page's dropdown (same source /permissions uses).
+        Route::get('/players/player-groups', [PlayerProfileController::class, 'groups'])->name('players.profile.groups');
+        Route::get('/players/jails', [PlayerProfileController::class, 'jails'])->name('players.profile.jails');
 
         Route::get('/economy', [EconomyController::class, 'index'])->name('economy.index');
         Route::post('/economy/adjust', [EconomyController::class, 'adjust'])

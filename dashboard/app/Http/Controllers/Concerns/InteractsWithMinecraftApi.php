@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 
 trait InteractsWithMinecraftApi
@@ -35,5 +36,27 @@ trait InteractsWithMinecraftApi
         }
 
         return back()->with('success', $successMessage);
+    }
+
+    /**
+     * Like attempt(), but returns JSON instead of a redirect — for the player profile page,
+     * which fires many small independent actions and shows a toast per response rather than
+     * reloading the whole Inertia page after every click.
+     */
+    protected function attemptJson(callable $fn, string $successMessage): JsonResponse
+    {
+        try {
+            $result = $fn();
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 502);
+        }
+
+        return response()->json(['success' => true, 'message' => $successMessage, 'result' => $result]);
+    }
+
+    /** Like safe(), but returns JSON — for read-only GET endpoints on the player profile page. */
+    protected function safeJson(callable $fn, mixed $fallback): JsonResponse
+    {
+        return response()->json($this->safe($fn, $fallback));
     }
 }

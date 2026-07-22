@@ -65,6 +65,12 @@ class AppServiceProvider extends ServiceProvider
         // Same tier as kick/ban — changing a player's game mode has a comparable blast
         // radius (e.g. handing out creative mode) if a compromised/careless account uses it.
         Gate::define('players.gamemode', fn (User $user) => $user->isAdmin());
+        // Every mutating route on the per-player profile page (fly/god/feed/speed/nickname,
+        // freeze/vanish/jail, give/effect/spawnmob/burn/lightning/kill, sudo/clearinventory/
+        // ptime/pweather, unban/unmute/notes/warns) — the mod requires its own admin session
+        // for every one of these (PlayerEndpoint/ModerationEndpoint's isAdmin() checks), so
+        // one shared gate mirrors that instead of inventing a dozen near-identical gates.
+        Gate::define('players.profile.manage', fn (User $user) => $user->isAdmin());
         Gate::define('economy.manage', fn (User $user) => $user->isAdmin());
         Gate::define('console.run', fn (User $user) => $user->isAdmin());
 

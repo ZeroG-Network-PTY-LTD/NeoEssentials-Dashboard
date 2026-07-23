@@ -121,3 +121,16 @@ body {
   40% { transform: scale(1.02); }
   100% { transform: scale(1); }
 }
+
+/* Animated color-matched gradient blob behind a 3D player render — same idea as
+   BanManager WebUI's PlayerAvatar, shifting a background-position across an
+   oversized (400% 400%) gradient rather than animating the colors themselves. */
+.animate-player-gradient {
+  background-size: 400% 400%;
+  animation: player-gradient-shift 5s ease infinite;
+}
+@keyframes player-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

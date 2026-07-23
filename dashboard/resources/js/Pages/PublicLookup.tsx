@@ -2,6 +2,7 @@ import { PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import { Search, ShieldBan, VolumeX, LogOut, TriangleAlert } from 'lucide-react';
+import PlayerRender from '@/Components/PlayerRender';
 
 interface PunishmentBase {
     id: string;
@@ -186,13 +187,7 @@ export default function PublicLookup({
                                 ) : (
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-4">
-                                            {result.playerId && (
-                                                <img
-                                                    src={`https://mc-heads.net/player/${result.playerId}/72`}
-                                                    alt=""
-                                                    className="h-[72px] shrink-0 [image-rendering:pixelated] drop-shadow-lg"
-                                                />
-                                            )}
+                                            <PlayerRender uuid={result.playerId} size={160} />
                                             <h2 className="font-display text-lg font-semibold">
                                                 {result.playerName}
                                             </h2>

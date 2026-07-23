@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { Copy, Unlink } from 'lucide-react';
+import PlayerRender from '@/Components/PlayerRender';
 
 /**
  * New this pass — no existing equivalent. Lets any dashboard account (however it was created)
@@ -78,11 +79,7 @@ export default function MinecraftLinkForm({ className = '' }: { className?: stri
             <div className="mt-4">
                 {mcUuid ? (
                     <div className="flex items-center gap-4">
-                        <img
-                            src={`https://mc-heads.net/player/${mcUuid}/64`}
-                            alt=""
-                            className="h-16 shrink-0 [image-rendering:pixelated] drop-shadow-lg"
-                        />
+                        <PlayerRender uuid={mcUuid} size={110} />
                         <div className="flex-1 text-[13px] font-medium">{mcUsername}</div>
                         <button
                             type="button"

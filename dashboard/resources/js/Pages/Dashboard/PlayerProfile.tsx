@@ -4,6 +4,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
 import Badge from '@/Components/Dashboard/Badge';
+import PlayerRender from '@/Components/PlayerRender';
 import type {
   BanEntry,
   KickEntry,
@@ -445,11 +446,7 @@ export default function PlayerProfile({ username }: Props) {
       />
 
       <div className="flex items-center gap-4 mb-6">
-        <img
-          src={`https://mc-heads.net/player/${lookup.uuid}/80`}
-          alt=""
-          className="h-20 shrink-0 [image-rendering:pixelated] drop-shadow-lg"
-        />
+        <PlayerRender uuid={lookup.uuid} size={140} />
         <div>
           <div className="font-display text-[16px] font-semibold flex items-center gap-2">
             {lookup.username}

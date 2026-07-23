@@ -13,6 +13,7 @@ import { FormEventHandler } from 'react';
 import Panel from '@/Components/Home/Panel';
 import PageHeader from '@/Components/Home/PageHeader';
 import DiscordAuthButton from '@/Components/DiscordAuthButton';
+import PlayerRender from '@/Components/PlayerRender';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
@@ -213,11 +214,9 @@ export default function Welcome({ auth }: PageProps) {
                                     {auth.user ? (
                                         <>
                                             {auth.user.mc_uuid && (
-                                                <img
-                                                    src={`https://mc-heads.net/player/${auth.user.mc_uuid}/72`}
-                                                    alt=""
-                                                    className="mx-auto h-[72px] shrink-0 [image-rendering:pixelated] drop-shadow-lg"
-                                                />
+                                                <div className="mx-auto mb-1">
+                                                    <PlayerRender uuid={auth.user.mc_uuid} size={140} />
+                                                </div>
                                             )}
                                             <p className="text-center text-sm leading-relaxed text-[var(--mc-text-secondary)]">
                                                 You're signed in as{' '}

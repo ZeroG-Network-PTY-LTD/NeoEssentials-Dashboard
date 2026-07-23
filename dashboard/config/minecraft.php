@@ -31,10 +31,10 @@ return [
     // now" button on the Configuration page becomes worth clicking again.
     'sync_interval_minutes' => (int) env('MC_SYNC_INTERVAL_MINUTES', 60),
 
-    // The in-game permission node (LuckPerms-style, via the mod's PermissionEndpoint)
-    // that grants a linked account admin rights on this dashboard — see
-    // ConfigService::resolveLocalRole(). Change this if your mod's node naming
-    // convention differs; no code change needed.
-    'admin_permission_node' => env('MC_ADMIN_PERMISSION_NODE', 'neoessentials.dashboard.admin'),
+    // The in-game permission GROUP (LuckPerms-style, via the mod's PermissionEndpoint —
+    // matches PermissionUserLookupResult['group']/PermissionUser['group']) that grants a
+    // linked account admin rights on this dashboard — see ConfigService::resolveLocalRole().
+    // Change this if your server's group naming convention differs; no code change needed.
+    'admin_group' => env('MC_ADMIN_GROUP', 'admin'),
 
 ];

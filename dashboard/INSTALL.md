@@ -210,14 +210,13 @@ economy balances, or run console commands).
 automatically.** Every account after that — whether registered with a
 password or via "Login with Discord" — starts as `moderator` and stays that
 way until it links a Minecraft account (from the **Profile** page) whose
-in-game permissions include the node in `config('minecraft.admin_permission_node')`
-(`MC_ADMIN_PERMISSION_NODE` in `.env`, defaults to
-`neoessentials.dashboard.admin`) — checked the next time that account syncs
-(hourly, or immediately via **Configuration → Sync now**). A linked account
-also can't reach any dashboard page besides Profile until it has *both* a
-Minecraft account and a Discord account linked.
+in-game permission GROUP matches `config('minecraft.admin_group')`
+(`MC_ADMIN_GROUP` in `.env`, defaults to `admin`) — checked the next time
+that account syncs (hourly, or immediately via **Configuration → Sync
+now**). A linked account also can't reach any dashboard page besides Profile
+until it has *both* a Minecraft account and a Discord account linked.
 
-To promote/demote someone by hand instead of waiting on a node/sync:
+To promote/demote someone by hand instead of waiting on a group/sync:
 
 ```bash
 php artisan dashboard:set-role someone@example.com admin

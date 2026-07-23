@@ -203,10 +203,11 @@ class ConfigService
 
     /**
      * Whether a Minecraft account should be admin here — decided by the mod's own
-     * LuckPerms-style permission node (config('minecraft.admin_permission_node')),
-     * not the coarser ADMIN/OPERATOR/MODERATOR/VIEWER dashboard-account role the mod
-     * also exposes. Any failure (mod unreachable, player not found, node absent)
-     * falls back to 'moderator' — this must never silently grant admin on ambiguity.
+     * LuckPerms-style permission GROUP (config('minecraft.admin_group'), matches
+     * PermissionUserLookupResult['group']), not the coarser ADMIN/OPERATOR/MODERATOR/
+     * VIEWER dashboard-account role the mod also exposes. Any failure (mod
+     * unreachable, player not found) falls back to 'moderator' — this must never
+     * silently grant admin on ambiguity.
      */
     public function resolveLocalRole(string $mcUsername): string
     {
@@ -220,9 +221,7 @@ class ConfigService
             return 'moderator';
         }
 
-        $node = config('minecraft.admin_permission_node');
-
-        return in_array($node, $result['permissions'] ?? [], true) ? 'admin' : 'moderator';
+        return ($result['group'] ?? null) === config('minecraft.admin_group') ? 'admin' : 'moderator';
     }
 
     public function testMcApi(): array

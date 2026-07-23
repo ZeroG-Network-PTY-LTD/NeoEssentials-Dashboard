@@ -63,6 +63,16 @@ export default function Welcome({ auth }: PageProps) {
         remember: false as boolean,
     });
 
+    // Mirrors EnsureAccountLinked/DashboardLayout's own check — a non-admin who
+    // isn't fully linked yet gets redirected to Profile the moment they hit
+    // /dashboard anyway, so the button here says where they're actually going
+    // instead of always claiming "Dashboard".
+    const isAdmin = auth.user?.role === 'admin';
+    const isLinked = isAdmin || (!!auth.user?.mc_uuid && !!auth.user?.discord_id);
+    const homeDestination = isLinked ? route('dashboard') : route('profile.edit');
+    const homeLabel = isLinked ? 'Dashboard' : 'Profile';
+    const homeCta = isLinked ? 'Open Dashboard' : 'Go to Profile';
+
     const submitLogin: FormEventHandler = (e) => {
         e.preventDefault();
 
@@ -93,10 +103,10 @@ export default function Welcome({ auth }: PageProps) {
                             </Link>
                             {auth.user ? (
                                 <Link
-                                    href={route('dashboard')}
+                                    href={homeDestination}
                                     className="btn-pop rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-4 py-2 text-sm font-medium text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                 >
-                                    Dashboard
+                                    {homeLabel}
                                 </Link>
                             ) : (
                                 <>
@@ -154,14 +164,12 @@ export default function Welcome({ auth }: PageProps) {
                                     <Link
                                         href={
                                             auth.user
-                                                ? route('dashboard')
+                                                ? homeDestination
                                                 : route('register')
                                         }
                                         className="btn-pop mt-auto inline-flex w-full items-center justify-center rounded-3xl bg-[var(--mc-cyan-500)] px-6 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                     >
-                                        {auth.user
-                                            ? 'Open Dashboard'
-                                            : 'Get Started'}
+                                        {auth.user ? homeCta : 'Get Started'}
                                     </Link>
                                 </Panel>
                             </div>
@@ -211,10 +219,10 @@ export default function Welcome({ auth }: PageProps) {
                                                 managing your server.
                                             </p>
                                             <Link
-                                                href={route('dashboard')}
+                                                href={homeDestination}
                                                 className="btn-pop mt-auto inline-flex w-full items-center justify-center rounded-3xl bg-[var(--mc-cyan-500)] px-6 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                                             >
-                                                Open Dashboard
+                                                {homeCta}
                                             </Link>
                                         </>
                                     ) : (

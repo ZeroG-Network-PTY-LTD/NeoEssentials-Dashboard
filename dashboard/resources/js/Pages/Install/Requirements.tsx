@@ -10,7 +10,7 @@ interface Check {
 
 export default function Requirements({ checks, allPassed }: { checks: Check[]; allPassed: boolean }) {
     return (
-        <InstallLayout step={1} title="Requirements check" subtitle="Confirms this hosting environment can run the dashboard.">
+        <InstallLayout step={2} title="Requirements check" subtitle="Confirms this hosting environment can run the dashboard.">
             <Head title="Setup — Requirements" />
 
             <div className="flex flex-col divide-y divide-[var(--mc-border)] rounded-[var(--radius)] border border-[var(--mc-border)] overflow-hidden mb-5">

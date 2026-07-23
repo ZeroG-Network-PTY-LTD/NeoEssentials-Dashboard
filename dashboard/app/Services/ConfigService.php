@@ -70,6 +70,35 @@ class ConfigService
         $this->writeEnv(['MC_API_URL' => $url]);
     }
 
+    /**
+     * Step 1 of /install — the admin pastes a key straight from the mod's own
+     * `/apikey create` console command instead of going through the pairing-code
+     * round trip (that flow still exists, unchanged, from the Configuration page for
+     * anyone who also wants the mod to be able to push webhook updates). Saves the
+     * key first so a fresh MinecraftApiService instance actually picks it up (its
+     * constructor reads McConnection::current() once, at construction time), then
+     * makes a real test call; rolls the fields back out on failure so a bad paste
+     * never lingers as if it were a working connection.
+     */
+    public function connectWithApiKey(string $rawKey): array
+    {
+        $connection = McConnection::current();
+        $connection->update([
+            'api_key' => $rawKey,
+            'api_key_id' => $this->extractKeyId($rawKey),
+        ]);
+
+        try {
+            app(MinecraftApiService::class)->status();
+
+            return ['success' => true, 'message' => 'Connected to the Minecraft server.'];
+        } catch (\Throwable $e) {
+            $connection->update(['api_key' => null, 'api_key_id' => null]);
+
+            return ['success' => false, 'message' => "Could not connect with that key: {$e->getMessage()}"];
+        }
+    }
+
     /** Generates a one-time pairing code the admin pastes into `/dashboard pair` in-game. */
     public function startPairing(): array
     {
@@ -172,6 +201,30 @@ class ConfigService
         return substr($rest, 0, $keyIdLength);
     }
 
+    /**
+     * Whether a Minecraft account should be admin here — decided by the mod's own
+     * LuckPerms-style permission node (config('minecraft.admin_permission_node')),
+     * not the coarser ADMIN/OPERATOR/MODERATOR/VIEWER dashboard-account role the mod
+     * also exposes. Any failure (mod unreachable, player not found, node absent)
+     * falls back to 'moderator' — this must never silently grant admin on ambiguity.
+     */
+    public function resolveLocalRole(string $mcUsername): string
+    {
+        try {
+            $result = $this->mc->permissionUserLookup($mcUsername);
+        } catch (\Throwable $e) {
+            return 'moderator';
+        }
+
+        if (! ($result['success'] ?? false)) {
+            return 'moderator';
+        }
+
+        $node = config('minecraft.admin_permission_node');
+
+        return in_array($node, $result['permissions'] ?? [], true) ? 'admin' : 'moderator';
+    }
+
     public function testMcApi(): array
     {
         if (! McConnection::current()->isPaired()) {
@@ -218,10 +271,7 @@ class ConfigService
                 continue;
             }
 
-            $role = match ($modUser['role'] ?? 'VIEWER') {
-                'ADMIN' => 'admin',
-                default => 'moderator', // OPERATOR / MODERATOR / VIEWER — this app only has two tiers
-            };
+            $role = $this->resolveLocalRole($username);
 
             $existing = User::where('mod_username', $username)->first();
 

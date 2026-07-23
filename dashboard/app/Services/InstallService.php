@@ -57,34 +57,6 @@ class InstallService
         }
     }
 
-    // --- Setup token (proves whoever is running the wizard has file-manager
-    // access to this hosting account, not just the URL) -------------------
-
-    public function ensureToken(): string
-    {
-        $path = $this->tokenPath();
-
-        if (File::exists($path)) {
-            return trim(File::get($path));
-        }
-
-        $token = bin2hex(random_bytes(20));
-        File::ensureDirectoryExists(dirname($path));
-        File::put($path, $token);
-
-        return $token;
-    }
-
-    public function verifyToken(string $given): bool
-    {
-        $path = $this->tokenPath();
-        if (! File::exists($path)) {
-            return false;
-        }
-
-        return hash_equals(trim(File::get($path)), trim($given));
-    }
-
     // --- Requirements --------------------------------------------------
 
     public function checkRequirements(): array
@@ -199,8 +171,6 @@ class InstallService
             'ip' => request()->ip(),
         ], JSON_PRETTY_PRINT));
 
-        File::delete($this->tokenPath());
-
         // So the Updates page's "current version"/"update available" logic
         // is accurate immediately, instead of showing an update available
         // for the exact build this installer package already is.
@@ -213,10 +183,5 @@ class InstallService
     private function lockPath(): string
     {
         return storage_path('installed.lock');
-    }
-
-    private function tokenPath(): string
-    {
-        return storage_path('app/install-token.txt');
     }
 }

@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Install;
 
 use App\Http\Controllers\Controller;
-use App\Models\McConnection;
 use App\Services\ConfigService;
 use App\Services\InstallService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -30,27 +28,31 @@ class InstallController extends Controller
             return redirect('/');
         }
 
-        if ($request->session()->get('install_token_verified')) {
+        if ($request->session()->get('install_api_connected')) {
             return redirect()->route('install.requirements');
         }
 
-        // Generates the token file on first visit — instructions on the page
-        // tell the admin exactly where to find it via their host's file
-        // manager (there's no shell access to assume here).
-        $this->install->ensureToken();
-
-        return Inertia::render('Install/Token');
+        return Inertia::render('Install/ApiKey');
     }
 
-    public function verifyToken(Request $request): RedirectResponse
+    /**
+     * Step 1 — proves whoever is running the wizard actually controls the Minecraft
+     * server, by pasting a key straight from its own `/apikey create` command,
+     * instead of the old "you can read a file on this host" local-token check.
+     * Connecting here also leaves the dashboard fully wired up to the mod (no
+     * separate pairing step needed later) — see ConfigService::connectWithApiKey().
+     */
+    public function apiKeyConnect(Request $request): RedirectResponse
     {
-        $data = $request->validate(['token' => 'required|string']);
+        $data = $request->validate(['apiKey' => 'required|string']);
 
-        if (! $this->install->verifyToken($data['token'])) {
-            return back()->withErrors(['token' => 'That token doesn\'t match. Check storage/app/install-token.txt.']);
+        $result = $this->config->connectWithApiKey($data['apiKey']);
+
+        if (! $result['success']) {
+            return back()->withErrors(['apiKey' => $result['message']]);
         }
 
-        $request->session()->put('install_token_verified', true);
+        $request->session()->put('install_api_connected', true);
 
         return redirect()->route('install.requirements');
     }
@@ -60,7 +62,7 @@ class InstallController extends Controller
         if ($this->install->isInstalled()) {
             return redirect('/');
         }
-        if (! $request->session()->get('install_token_verified')) {
+        if (! $request->session()->get('install_api_connected')) {
             return redirect()->route('install.index');
         }
 
@@ -173,75 +175,7 @@ class InstallController extends Controller
             return back()->with('error', $result['log']);
         }
 
-        return redirect()->route('install.mc-api')->with('success', 'Database migrated.');
-    }
-
-    public function mcApiShow(Request $request): Response|RedirectResponse
-    {
-        if ($redirect = $this->guard($request)) {
-            return $redirect;
-        }
-
-        return Inertia::render('Install/McApi', [
-            'mcApi' => $this->config->mcApiConfig(),
-            'pairing' => session('pairing'),
-        ]);
-    }
-
-    public function mcApiSaveUrl(Request $request): RedirectResponse
-    {
-        if ($redirect = $this->guard($request)) {
-            return $redirect;
-        }
-
-        $data = $request->validate(['url' => 'required|url']);
-
-        $this->config->updateMcApiUrl($data['url']);
-
-        return back()->with('success', 'Minecraft server address saved.');
-    }
-
-    public function mcApiTest(Request $request): RedirectResponse
-    {
-        if ($redirect = $this->guard($request)) {
-            return $redirect;
-        }
-
-        $result = $this->config->testMcApi();
-
-        return back()->with($result['success'] ? 'success' : 'error', $result['message']);
-    }
-
-    /**
-     * Generates a one-time pairing code and redirects back with it flashed to the session —
-     * deliberately a redirect, not a direct Inertia::render() from this POST handler: rendering
-     * here would leave the browser's address bar pointing at this POST-only URL, and any full
-     * page reload after that sends a plain GET to it, which 405s since only POST is registered.
-     */
-    public function mcApiPairingStart(Request $request): RedirectResponse
-    {
-        if ($redirect = $this->guard($request)) {
-            return $redirect;
-        }
-
-        $pairing = $this->config->startPairing();
-
-        return redirect()->route('install.mc-api')->with('pairing', $pairing);
-    }
-
-    /** Polled by the frontend while a pairing code is showing — plain JSON, no CSRF needed. */
-    public function mcApiPairingStatus(): JsonResponse
-    {
-        return response()->json(['paired' => McConnection::current()->isPaired()]);
-    }
-
-    public function mcApiContinue(Request $request): RedirectResponse
-    {
-        if ($redirect = $this->guard($request)) {
-            return $redirect;
-        }
-
-        return redirect()->route('install.finish');
+        return redirect()->route('install.finish')->with('success', 'Database migrated.');
     }
 
     public function finishShow(Request $request): Response|RedirectResponse
@@ -260,7 +194,11 @@ class InstallController extends Controller
         }
 
         $this->install->finish();
-        $request->session()->forget('install_token_verified');
+        $request->session()->forget('install_api_connected');
+        // Consumed once by RegisteredUserController::store() — the only remaining
+        // "first account is admin" shortcut, scoped to the registration that
+        // immediately follows finishing this wizard.
+        $request->session()->put('install_bootstrap_admin', true);
 
         return redirect()->route('register')
             ->with('success', 'Setup complete — create your account below. Since this is a fresh install, the first account becomes admin automatically.');

@@ -6,11 +6,11 @@ use Illuminate\Support\Facades\Route;
 // Deliberately outside the 'auth' middleware — there's no user account to
 // log in as yet on a fresh deploy. App\Http\Middleware\EnsureInstalled
 // forces every other route through here until storage/installed.lock
-// exists; access itself is gated by the one-time setup token instead (see
-// InstallController::verifyToken()).
+// exists; access itself is gated by pasting a working mod API key instead
+// (see InstallController::apiKeyConnect()).
 Route::prefix('install')->name('install.')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('index');
-    Route::post('/token', [InstallController::class, 'verifyToken'])->name('token');
+    Route::post('/api-key', [InstallController::class, 'apiKeyConnect'])->name('api-key');
 
     Route::get('/requirements', [InstallController::class, 'requirements'])->name('requirements');
 
@@ -20,13 +20,6 @@ Route::prefix('install')->name('install.')->group(function () {
 
     Route::get('/migrate', [InstallController::class, 'migrateShow'])->name('migrate');
     Route::post('/migrate', [InstallController::class, 'migrateRun'])->name('migrate.run');
-
-    Route::get('/mc-api', [InstallController::class, 'mcApiShow'])->name('mc-api');
-    Route::post('/mc-api/url', [InstallController::class, 'mcApiSaveUrl'])->name('mc-api.url');
-    Route::post('/mc-api/test', [InstallController::class, 'mcApiTest'])->name('mc-api.test');
-    Route::post('/mc-api/pairing/start', [InstallController::class, 'mcApiPairingStart'])->name('mc-api.pairing.start');
-    Route::get('/mc-api/pairing/status', [InstallController::class, 'mcApiPairingStatus'])->name('mc-api.pairing.status');
-    Route::post('/mc-api/continue', [InstallController::class, 'mcApiContinue'])->name('mc-api.continue');
 
     Route::get('/finish', [InstallController::class, 'finishShow'])->name('finish');
     Route::post('/finish', [InstallController::class, 'finishRun'])->name('finish.run');

@@ -82,6 +82,11 @@ class DiscordAuthController extends Controller
                     'auto-registration is disabled. Ask an admin to create one for you.');
             }
 
+            // Defaults to 'moderator' (User::booted()) — Discord login never grants
+            // admin on its own; that's earned via ConfigService::resolveLocalRole()
+            // once this account links a Minecraft account with the right permission
+            // node (see EnsureAccountLinked). The only auto-admin path is the account
+            // created right after finishing /install (RegisteredUserController::store).
             $user = User::create([
                 'name' => $discordId,
                 'email' => $discordId.'@discord.oauth',
@@ -89,10 +94,6 @@ class DiscordAuthController extends Controller
                 // password still satisfies the column's NOT NULL constraint.
                 'password' => Hash::make(Str::random(40)),
             ]);
-
-            if (User::count() === 1) {
-                $user->forceFill(['role' => 'admin'])->save();
-            }
         }
 
         $user->forceFill(['discord_id' => $discordId])->save();

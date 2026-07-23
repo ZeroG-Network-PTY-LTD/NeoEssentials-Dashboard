@@ -14,8 +14,12 @@ Artisan::command('inspire', function () {
 // (mod unreachable) go to the default log channel via the command's own
 // handle(), not this schedule definition. Requires the server's cron to
 // actually call `php artisan schedule:run` every minute — not automatic on
-// shared hosting without a cron job configured for it.
-Schedule::command('dashboard:sync-mod-users')->hourly();
+// shared hosting without a cron job configured for it. Interval is
+// config('minecraft.sync_interval_minutes') (MC_SYNC_INTERVAL_MINUTES),
+// default 60 — the Configuration page's "Sync now" button covers forcing one
+// immediately without waiting for this.
+Schedule::command('dashboard:sync-mod-users')
+    ->cron('*/'.max(1, (int) config('minecraft.sync_interval_minutes')).' * * * *');
 
 // Keeps the sidebar's "API connected/unreachable" indicator honest even when nobody's actively
 // browsing the dashboard — see MinecraftApiService::checkHealth() for why the page-traffic-only

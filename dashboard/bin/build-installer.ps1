@@ -54,8 +54,7 @@ Write-Host "    Output:  $ZipPath"
 
 # --- 1. Clean copy of the app, excluding dev-only / generated / secret paths ---
 # README.md and INSTALL.md aren't excluded below, so they're carried straight
-# into the package root — extracting the zip drops the install guide right
-# next to storage/app/install-token.txt, before the wizard is even opened.
+# into the package root, right next to the wizard the extracted zip lands on.
 Write-Host "`n==> Copying source (excluding vendor/node_modules/.env/storage logs/tests)..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
 
@@ -66,7 +65,7 @@ $RobocopyExcludeDirs = @(
     (Join-Path (Join-Path 'storage' 'framework') 'views'),
     (Join-Path 'storage' 'logs')
 )
-$RobocopyExcludeFiles = @('.env', '.env.backup', '.env.production', 'database.sqlite', 'installed.lock', 'install-token.txt', 'deployment.json', '*.log')
+$RobocopyExcludeFiles = @('.env', '.env.backup', '.env.production', 'database.sqlite', 'installed.lock', 'deployment.json', '*.log')
 
 $robocopyArgs = @(
     $RepoRoot, $StagingDir, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP',

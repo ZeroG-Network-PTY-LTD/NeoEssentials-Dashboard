@@ -3,7 +3,7 @@ import { usePage } from '@inertiajs/react';
 import type { PageProps } from '@/types';
 import { Check } from 'lucide-react';
 
-const STEPS = ['Requirements', 'Environment', 'Database', 'Mod API', 'Finish'];
+const STEPS = ['Connect', 'Requirements', 'Database', 'Finish'];
 
 export default function InstallLayout({
     step,

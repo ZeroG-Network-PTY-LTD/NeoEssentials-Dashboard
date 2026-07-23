@@ -30,9 +30,9 @@ class RegistrationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
-    public function test_first_registered_user_becomes_admin(): void
+    public function test_first_user_becomes_admin_only_right_after_install_wizard(): void
     {
-        $this->post('/register', [
+        $this->withSession(['install_bootstrap_admin' => true])->post('/register', [
             'name' => 'First User',
             'email' => 'first@example.com',
             'password' => 'password',
@@ -42,11 +42,26 @@ class RegistrationTest extends TestCase
         $this->assertSame('admin', User::where('email', 'first@example.com')->firstOrFail()->role);
     }
 
-    public function test_second_registered_user_stays_moderator(): void
+    public function test_first_user_stays_moderator_without_the_install_wizard_flag(): void
+    {
+        // Registering directly (e.g. Option B's manual bootstrap skipping /install
+        // entirely) no longer grants admin just for being first — see
+        // InstallController::finishRun()'s one-time 'install_bootstrap_admin' flag.
+        $this->post('/register', [
+            'name' => 'First User',
+            'email' => 'first@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $this->assertSame('moderator', User::where('email', 'first@example.com')->firstOrFail()->role);
+    }
+
+    public function test_second_registered_user_stays_moderator_even_with_the_install_flag(): void
     {
         User::factory()->create(); // occupies the "first user" slot
 
-        $this->post('/register', [
+        $this->withSession(['install_bootstrap_admin' => true])->post('/register', [
             'name' => 'Second User',
             'email' => 'second@example.com',
             'password' => 'password',

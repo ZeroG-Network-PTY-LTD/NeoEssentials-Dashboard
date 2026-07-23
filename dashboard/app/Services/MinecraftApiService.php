@@ -506,6 +506,22 @@ class MinecraftApiService
         return $this->delete("api/warps/{$name}");
     }
 
+    /**
+     * Every player's `/pwarp` warps. Unlike public warps, the mod's endpoint requires ADMIN for
+     * this even on GET — player warps are personal, not public. Cached briefly.
+     */
+    public function playerWarps(): array
+    {
+        $data = Cache::remember('mc_api:player_warps', $this->cacheTtl, fn () => $this->get('api/warps/players'));
+
+        return $data['players'] ?? [];
+    }
+
+    public function deletePlayerWarp(string $uuid, string $name): array
+    {
+        return $this->delete("api/warps/players/{$uuid}/{$name}");
+    }
+
     // --- Kits (read-only — the mod's KitsEndpoint has no create/update/delete/
     // give routes, only list/stats/single-view) --------------------------------
 

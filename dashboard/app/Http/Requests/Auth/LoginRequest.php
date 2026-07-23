@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Services\ConfigService;
 use App\Services\MinecraftApiService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -127,11 +128,9 @@ class LoginRequest extends FormRequest
      */
     private function mirrorModUser(array $modUser, string $password): User
     {
-        $role = match ($modUser['role'] ?? 'VIEWER') {
-            'ADMIN' => 'admin',
-            'MODERATOR' => 'moderator',
-            default => 'moderator',
-        };
+        // Deliberately re-resolves via the mod's own permission node rather than trusting
+        // the coarse dashboard-account role tier — see ConfigService::resolveLocalRole().
+        $role = app(ConfigService::class)->resolveLocalRole($modUser['username']);
 
         // Mass assignment ($fillable) deliberately excludes 'mod_username' and 'role' —
         // same reasoning as the class doc comment on User: only ever set directly by

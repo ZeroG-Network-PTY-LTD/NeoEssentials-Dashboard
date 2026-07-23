@@ -63,13 +63,14 @@ never need to run Composer or npm yourself.
 Every request is redirected to `/install` until setup finishes, so just
 visiting your domain is enough to start.
 
-### 4. Verify the setup token
+### 4. Connect to your Minecraft server
 
-The wizard generates a one-time token and writes it to
-`storage/app/install-token.txt` inside the package — this proves whoever is
-running the wizard has file access to the hosting account, not just the URL.
-Open that file with cPanel's File Manager (or FTP/SFTP), copy its contents,
-and paste it into the wizard.
+On the Minecraft server's console (or in-game, if you're OP), run
+`/apikey create` and paste the key it prints into the wizard. This is both
+how the dashboard connects to your server *and* the proof that whoever is
+running the wizard actually controls it — stronger than the old "you can
+read a file on this host" check, and there's no pairing code or in-game
+`/dashboard pair` command to run separately anymore.
 
 ### 5. Requirements check
 
@@ -93,17 +94,18 @@ Set your **App URL** (your domain, `https://...`) and choose a database:
 Click **Run migrations** — this creates every table the dashboard needs. Safe
 to click again if it fails partway through (e.g. a connection hiccup).
 
-### 8. Connect to your Minecraft server
+### 8. Finish
 
-See [Pairing the dashboard with your Minecraft server](#pairing-the-dashboard-with-your-minecraft-server)
-below — you can also skip this step and configure it later from the
-dashboard's own **Updates** page if the server isn't ready yet.
+This writes `storage/installed.lock` (the wizard won't run again after this),
+then sends you to the registration page. **The first account you register
+becomes the admin account automatically** — every account after that has its
+role decided by the Minecraft account it links to (see
+[Roles and permissions](#roles-and-permissions)).
 
-### 9. Finish
-
-This writes `storage/installed.lock` (the wizard won't run again after this)
-and deletes the setup token file, then sends you to the registration page.
-**The first account you register becomes the admin account automatically.**
+If you also want the mod to be able to *push* live account-sync updates to
+the dashboard (instead of it only pulling on a schedule), see
+[Pairing the dashboard with your Minecraft server](#pairing-the-dashboard-with-your-minecraft-server)
+below — optional, and configurable any time from the **Configuration** page.
 
 ---
 
@@ -154,8 +156,11 @@ breaks by skipping it.
 
 ## Pairing the dashboard with your Minecraft server
 
-Both sides authenticate with an API key, exchanged automatically via a
-one-time pairing code — nothing to type in by hand:
+Optional. The API key you pasted during setup (`/apikey create`) already lets
+the dashboard pull data from the mod, including the hourly (configurable)
+account sync — this section is only for also letting the mod *push* live
+updates to the dashboard the moment something changes, via a one-time
+pairing code exchanged automatically:
 
 1. **Generate a code.** In the install wizard's "Connect to the Minecraft
    server" step (or on the dashboard's **Configuration** page after setup),
@@ -199,19 +204,24 @@ Once installed, updates happen from the dashboard's own **Updates** page
 Two roles on the dashboard's own accounts (separate from the mod's own
 dashboard accounts under `/dashboard/users`): `admin` (full access) and
 `moderator` (can view everything and mute players, but not kick/ban, adjust
-economy balances, or run console commands). **The first account ever
-registered becomes `admin` automatically** — every account after that
-defaults to `moderator`. To promote/demote someone later:
+economy balances, or run console commands).
+
+**Only the account created right after finishing `/install` becomes `admin`
+automatically.** Every account after that — whether registered with a
+password or via "Login with Discord" — starts as `moderator` and stays that
+way until it links a Minecraft account (from the **Profile** page) whose
+in-game permissions include the node in `config('minecraft.admin_permission_node')`
+(`MC_ADMIN_PERMISSION_NODE` in `.env`, defaults to
+`neoessentials.dashboard.admin`) — checked the next time that account syncs
+(hourly, or immediately via **Configuration → Sync now**). A linked account
+also can't reach any dashboard page besides Profile until it has *both* a
+Minecraft account and a Discord account linked.
+
+To promote/demote someone by hand instead of waiting on a node/sync:
 
 ```bash
 php artisan dashboard:set-role someone@example.com admin
 ```
-
-(No shell access? Have an existing admin do it from `/dashboard/users`
-instead — that manages the mod's own accounts, not these ones, but is the
-same idea. For this app's own admin/moderator roles specifically, shell
-access via `artisan` is currently the only way to change them after the
-first account.)
 
 ---
 
@@ -229,28 +239,22 @@ your file manager's permissions dialog.
 `.env` was deleted or replaced by hand. Re-extract the original package, or
 if you have shell access, run `php artisan key:generate`.
 
-**Mod API test fails** — check `MC_API_URL` is reachable *from the
-dashboard's server*, not just from your own browser (if the dashboard is on
-different hosting than the Minecraft server, `127.0.0.1` won't resolve to
-the game server — use its public address or a tunnel instead). Also confirm
-pairing actually completed (Configuration page shows "Paired") — if it
-didn't, re-generate a code and make sure the mod can reach *this* dashboard's
-`MC_API_URL`-equivalent address (the URL you gave `/dashboard pair`) over
-the network, same reachability requirement in reverse.
+**"Could not connect with that key" on the API key step** — check `MC_API_URL`
+is reachable *from the dashboard's server*, not just from your own browser
+(if the dashboard is on different hosting than the Minecraft server,
+`127.0.0.1` won't resolve to the game server — use its public address or a
+tunnel instead, and set it correctly on the Environment step). Also
+double-check the key was copied in full and hasn't been revoked — run
+`/apikey create` again on the mod console for a fresh one if unsure.
 
-**I'm on a VPS/SSH box and landed on a screen asking me to open a file over
-FTP** — that's the `/install` wizard's setup-access step (see [Option
-A](#4-verify-the-setup-token)), which means the Option B manual bootstrap
-(`composer install` → `.env` → `key:generate` → `migrate` → register) wasn't
-fully finished — `EnsureInstalled` correctly sends any incomplete install
-through `/install`, but the page's default instructions assume no shell
-access, which isn't your situation. Since you have SSH, either:
-- Run `php artisan install:token` and paste what it prints into the form
-  (the page now shows this option too — no FTP client needed), then continue
-  through the rest of the wizard (it ends at the same mod-pairing step
-  described above); or
-- Skip the wizard entirely and just finish [Option B](#option-b--manual-install-sshcomposernode-available)'s
-  command sequence by hand from where it stopped.
+**I'm on a VPS/SSH box and landed on the setup wizard** — that's expected if
+the Option B manual bootstrap (`composer install` → `.env` → `key:generate`
+→ `migrate` → register) wasn't fully finished by hand — `EnsureInstalled`
+correctly sends any incomplete install through `/install` regardless of
+hosting type. Either run `/apikey create` on your Minecraft server and paste
+the key to continue through the rest of the wizard normally, or skip it
+entirely and just finish [Option B](#option-b--manual-install-sshcomposernode-available)'s
+command sequence by hand from where it stopped.
 
 **Setup wizard won't go away after I already configured everything by
 hand** — it auto-detects an already-configured install (a working `APP_KEY`

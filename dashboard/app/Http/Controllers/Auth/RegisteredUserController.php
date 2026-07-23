@@ -53,12 +53,17 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // The very first account on a fresh install becomes admin automatically —
-        // otherwise a brand-new self-hoster would have no way to grant themselves
-        // kick/ban/economy/console access without dropping into `php artisan
-        // tinker` by hand. Every account after that defaults to 'moderator'
-        // (see the migration) and must be promoted by an existing admin.
-        if (User::count() === 1) {
+        // Only the account created immediately after finishing the /install wizard
+        // becomes admin automatically — InstallController::finishRun() sets this
+        // one-time session flag right before redirecting here. Every other
+        // registration (including any later "first" account on an install that
+        // skipped straight to /register some other way) defaults to 'moderator'
+        // and gets promoted to 'admin' only via ConfigService::resolveLocalRole()
+        // once it links a Minecraft account with the right permission node — see
+        // EnsureAccountLinked. The User::count() === 1 check stays as a belt-and-
+        // braces guard so this can never grant admin to anything but a genuinely
+        // first account, even if the flag somehow leaked.
+        if ($request->session()->pull('install_bootstrap_admin', false) && User::count() === 1) {
             $user->forceFill(['role' => 'admin'])->save();
         }
 

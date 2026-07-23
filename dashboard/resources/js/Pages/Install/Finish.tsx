@@ -12,7 +12,7 @@ export default function Finish() {
     };
 
     return (
-        <InstallLayout step={5} title="Almost done" subtitle="This locks setup — it can't be run again after this.">
+        <InstallLayout step={4} title="Almost done" subtitle="This locks setup — it can't be run again after this.">
             <Head title="Setup — Finish" />
 
             <div className="mb-5 flex items-start gap-3 rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3.5 text-[12.5px] text-[var(--mc-text-secondary)]">

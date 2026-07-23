@@ -35,7 +35,7 @@ export default function Environment({ driver }: { driver: string }) {
     };
 
     return (
-        <InstallLayout step={2} title="Environment" subtitle="App URL and database connection.">
+        <InstallLayout step={3} title="Environment" subtitle="App URL and database connection.">
             <Head title="Setup — Environment" />
 
             <form onSubmit={submit} className="flex flex-col gap-4">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\McConnection;
 use App\Models\User;
+use App\Services\ConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,10 @@ use Illuminate\Support\Str;
  */
 class WebhookController extends Controller
 {
+    public function __construct(private ConfigService $config)
+    {
+    }
+
     public function modUserSync(Request $request): JsonResponse
     {
         if (! $this->verifyToken($request)) {
@@ -48,10 +53,9 @@ class WebhookController extends Controller
             return response()->json(['success' => true]);
         }
 
-        $role = match ($request->input('role', 'VIEWER')) {
-            'ADMIN' => 'admin',
-            default => 'moderator',
-        };
+        // Deliberately re-resolves via the mod's own permission node rather than trusting
+        // the role this push payload carries — see ConfigService::resolveLocalRole().
+        $role = $this->config->resolveLocalRole($username);
         $email = $request->input('email');
 
         $user = User::where('mod_username', $username)->first() ?? new User();

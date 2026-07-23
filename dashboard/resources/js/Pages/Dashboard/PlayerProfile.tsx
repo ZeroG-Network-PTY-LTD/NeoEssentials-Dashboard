@@ -165,8 +165,8 @@ export default function PlayerProfile({ username }: Props) {
           fetch(r('vanish')).then((r) => r.json()),
           fetch(r('jail')).then((r) => r.json()),
           fetch(route('dashboard.players.profile.jails')).then((r) => r.json()),
-          fetch(r('ptime')).then((r) => r.json()),
-          fetch(r('pweather')).then((r) => r.json()),
+          fetch(r('ptime.get')).then((r) => r.json()),
+          fetch(r('pweather.get')).then((r) => r.json()),
         ];
         const [
           bal, perm, grp, inv, banList, muteList, kickList, warnList, noteList,

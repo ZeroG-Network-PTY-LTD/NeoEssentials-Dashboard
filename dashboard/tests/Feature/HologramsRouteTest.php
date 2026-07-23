@@ -13,7 +13,7 @@ class HologramsRouteTest extends TestCase
 
     public function test_moderator_can_view_and_manage_holograms(): void
     {
-        $moderator = User::factory()->create();
+        $moderator = User::factory()->linked()->create();
 
         $this->mock(MinecraftApiService::class, function ($mock) {
             $mock->shouldReceive('holograms')->once()->andReturn([]);

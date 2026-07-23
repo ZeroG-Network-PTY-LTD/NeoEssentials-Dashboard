@@ -47,11 +47,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/discord-status', [ProfileController::class, 'discordStatus'])->name('profile.discord-status');
 });
 
-// All dashboard routes require an authenticated, verified user. The `can:` gates
-// below are defined in AppServiceProvider::registerDashboardGates() against this
+// All dashboard routes require an authenticated, verified user with both a linked Minecraft
+// account and a linked Discord account (EnsureAccountLinked — admins exempt, see its docblock).
+// The `can:` gates below are defined in AppServiceProvider::registerDashboardGates() against this
 // app's own admin/moderator role (see App\Models\User) — not the mod's own
 // dashboard account roles, which are a separate thing managed under /users.
-Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
+Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->group(function () {
 
     // Named 'dashboard' (not 'dashboard.index') because AuthenticatedSessionController
     // redirects here via route('dashboard') after login — keep this name if you

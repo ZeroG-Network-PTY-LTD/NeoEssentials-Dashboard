@@ -30,7 +30,7 @@ class ConsoleRouteTest extends TestCase
 
     public function test_moderator_cannot_run_commands(): void
     {
-        $moderator = User::factory()->create();
+        $moderator = User::factory()->linked()->create();
 
         $this->actingAs($moderator)
             ->post(route('dashboard.commands.run'), ['command' => 'say hi'])

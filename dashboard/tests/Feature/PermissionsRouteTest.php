@@ -26,7 +26,7 @@ class PermissionsRouteTest extends TestCase
 
     public function test_moderator_can_view_but_not_manage(): void
     {
-        $moderator = User::factory()->create();
+        $moderator = User::factory()->linked()->create();
         $this->mockReadOnly();
 
         $this->actingAs($moderator)

@@ -611,17 +611,6 @@ class MinecraftApiService
         return $this->post('api/discord/auth-config', $config);
     }
 
-    /**
-     * Resolve a real Discord ID (from this app's own Socialite OAuth2 login) to its linked
-     * Minecraft account, via the mod's SDLink/Mc2Discord/DCIntegration adapters. The mod never
-     * performs Discord OAuth2 itself — this app does that, then asks "who is this account
-     * linked to" afterward. Returns ['linked' => false] if no companion mod has that link.
-     */
-    public function discordLinkLookup(string $discordId): array
-    {
-        return $this->get('api/discord/link-lookup', ['discordId' => $discordId]);
-    }
-
     // --- Permissions (PermissionEndpoint — GET is open to any logged-in
     // account, every write requires the mod's own admin session, so all
     // mutation methods here are only ever called from gated controller

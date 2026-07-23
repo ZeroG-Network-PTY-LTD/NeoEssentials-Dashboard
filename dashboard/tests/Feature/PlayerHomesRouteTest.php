@@ -13,7 +13,7 @@ class PlayerHomesRouteTest extends TestCase
 
     public function test_returns_homes_for_an_online_player(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->linked()->create();
 
         $this->mock(MinecraftApiService::class, function ($mock) {
             $mock->shouldReceive('players')->once()->andReturn([

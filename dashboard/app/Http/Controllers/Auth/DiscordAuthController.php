@@ -13,10 +13,10 @@ use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 /**
- * "Login with Discord" — this app performs the actual OAuth2 exchange (Socialite), then asks
- * the mod's own API whether the resulting Discord ID is linked to a Minecraft account. The mod
- * itself never talks to Discord directly (see NeoEssentials' DiscordAuthProvider) — that
- * separation is why the OAuth2 dance lives here instead of on the mod side.
+ * "Login with Discord" — this app performs the actual OAuth2 exchange (Socialite) and only ever
+ * identifies/creates the dashboard account from it. It no longer decides dashboard access by
+ * itself: whether a Discord-identified account can reach the dashboard is EnsureAccountLinked's
+ * job (requires mc_uuid too, linked separately via the Profile page's in-game-code flow).
  */
 class DiscordAuthController extends Controller
 {
@@ -64,48 +64,26 @@ class DiscordAuthController extends Controller
             return redirect()->route($errorRoute)->with('error', 'Discord login failed. Please try again.');
         }
 
-        try {
-            $link = $this->mc->discordLinkLookup($discordUser->getId());
-        } catch (\Throwable $e) {
-            Log::warning('Mod API unreachable during Discord link lookup', ['error' => $e->getMessage()]);
-            return redirect()->route($errorRoute)->with('error',
-                'Could not reach the Minecraft server to verify your Discord link. Please try again shortly.');
-        }
-
-        if (! ($link['linked'] ?? false)) {
-            return redirect()->route($errorRoute)->with('error',
-                'Your Discord account isn\'t linked to a Minecraft account yet. Link it in-game '.
-                'using your server\'s Discord link command, then try again.');
-        }
-
-        $mcUuid = $link['minecraftUuid'];
-        $mcUsername = $link['minecraftUsername'];
-
         return Auth::check()
-            ? $this->handleConnect($discordUser->getId(), $mcUuid, $mcUsername)
-            : $this->handleLogin($discordUser->getId(), $mcUuid, $mcUsername);
+            ? $this->handleConnect($discordUser->getId())
+            : $this->handleLogin($discordUser->getId());
     }
 
-    /** Guest flow — log in as (or create) the account this Discord/Minecraft identity resolves to. */
-    private function handleLogin(string $discordId, string $mcUuid, string $mcUsername): RedirectResponse
+    /** Guest flow — log in as (or create) the account this Discord identity resolves to. */
+    private function handleLogin(string $discordId): RedirectResponse
     {
-        // Prefer an existing account already linked to this Discord ID. Otherwise, adopt an
-        // existing password-registered account for the same Minecraft player (matched by
-        // mc_uuid) rather than creating a duplicate — a player who registered manually and
-        // later links Discord should end up with one account, not two.
-        $user = User::where('discord_id', $discordId)->first()
-            ?? User::where('mc_uuid', $mcUuid)->first();
+        $user = User::where('discord_id', $discordId)->first();
 
         if ($user === null) {
             $config = $this->safeAuthConfig();
             if (! ($config['allowAutoRegistration'] ?? true)) {
                 return redirect()->route('login')->with('error',
-                    'No dashboard account exists for your linked Minecraft account, and '.
+                    'No dashboard account is linked to this Discord account, and '.
                     'auto-registration is disabled. Ask an admin to create one for you.');
             }
 
             $user = User::create([
-                'name' => $mcUsername,
+                'name' => $discordId,
                 'email' => $discordId.'@discord.oauth',
                 // Discord-only accounts don't use password login — a random, unusable
                 // password still satisfies the column's NOT NULL constraint.
@@ -117,41 +95,33 @@ class DiscordAuthController extends Controller
             }
         }
 
-        $user->forceFill([
-            'discord_id' => $discordId,
-            'mc_uuid' => $mcUuid,
-            'mc_username' => $mcUsername,
-        ])->save();
+        $user->forceFill(['discord_id' => $discordId])->save();
 
         Auth::login($user, remember: true);
 
         return redirect(route('dashboard', absolute: false));
     }
 
-    /** Authenticated flow — attach this Discord/Minecraft identity to the CURRENT session's account instead of logging in as whoever else it might already belong to. */
-    private function handleConnect(string $discordId, string $mcUuid, string $mcUsername): RedirectResponse
+    /** Authenticated flow — attach this Discord identity to the CURRENT session's account instead of logging in as whoever else it might already belong to. */
+    private function handleConnect(string $discordId): RedirectResponse
     {
         $user = Auth::user();
 
         $claimedBy = User::where('id', '!=', $user->id)
-            ->where(fn ($q) => $q->where('discord_id', $discordId)->orWhere('mc_uuid', $mcUuid))
+            ->where('discord_id', $discordId)
             ->first();
 
         if ($claimedBy) {
             return redirect()->route('profile.edit')->with('error',
-                'That Discord/Minecraft account is already linked to a different dashboard account.');
+                'That Discord account is already linked to a different dashboard account.');
         }
 
-        $user->forceFill([
-            'discord_id' => $discordId,
-            'mc_uuid' => $mcUuid,
-            'mc_username' => $mcUsername,
-        ])->save();
+        $user->forceFill(['discord_id' => $discordId])->save();
 
-        return redirect()->route('profile.edit')->with('success', "Discord connected — linked to {$mcUsername}.");
+        return redirect()->route('profile.edit')->with('success', 'Discord account connected.');
     }
 
-    /** Shared enabled/linkAdapterAvailable gate for both redirect() and connect(). */
+    /** Shared "is Discord login enabled at all" gate for both redirect() and connect(). */
     private function blockedRedirect(): ?RedirectResponse
     {
         $config = $this->safeAuthConfig();
@@ -159,11 +129,6 @@ class DiscordAuthController extends Controller
 
         if (! ($config['enabled'] ?? false)) {
             return redirect()->route($errorRoute)->with('error', 'Discord login is not enabled on this server.');
-        }
-
-        if (! ($config['linkAdapterAvailable'] ?? false)) {
-            return redirect()->route($errorRoute)->with('error',
-                'Discord login is unavailable right now — no Discord bridge mod is connected on the server.');
         }
 
         return null;

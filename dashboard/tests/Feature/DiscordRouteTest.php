@@ -13,7 +13,7 @@ class DiscordRouteTest extends TestCase
 
     public function test_moderator_can_view_status_but_not_manage(): void
     {
-        $moderator = User::factory()->create();
+        $moderator = User::factory()->linked()->create();
 
         $this->mock(MinecraftApiService::class, function ($mock) {
             $mock->shouldReceive('discordStatus')->once()->andReturn([

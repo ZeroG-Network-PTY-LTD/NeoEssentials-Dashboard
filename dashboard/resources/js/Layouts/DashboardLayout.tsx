@@ -77,13 +77,17 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   const isLive = useMcLiveStatus();
   const user = props.auth.user;
   const isAdmin = user.role === 'admin';
+  // Mirrors EnsureAccountLinked's server-side gate exactly (admins exempt) — every /dashboard/*
+  // route already redirects to Profile for anyone failing this, so the nav below just needs to
+  // stay consistent with what's actually reachable rather than dead-ending on a redirect.
+  const isLinked = isAdmin || (!!user.mc_uuid && !!user.discord_id);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Close the mobile drawer on every navigation so it doesn't stay open
   // after tapping a nav link.
   useEffect(() => setMobileNavOpen(false), [url]);
 
-  const nav = [
+  const nav = !isLinked ? [] : [
     { label: 'Overview', href: route('dashboard'), icon: LayoutGrid },
     { label: 'Players', href: route('dashboard.players.index'), icon: Users },
     { label: 'Economy', href: route('dashboard.economy.index'), icon: Coins },

@@ -57,4 +57,18 @@ class UserFactory extends Factory
             'role' => 'admin',
         ]);
     }
+
+    /**
+     * Has both mc_uuid and discord_id set — required by EnsureAccountLinked for any non-admin
+     * user to reach a /dashboard/* route. Admin-factory users don't need this (the middleware
+     * exempts them), but every moderator/default-role user hitting a dashboard route in a test
+     * does.
+     */
+    public function linked(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'mc_uuid' => fake()->uuid(),
+            'discord_id' => (string) fake()->randomNumber(9),
+        ]);
+    }
 }

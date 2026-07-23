@@ -13,7 +13,7 @@ class ModUsersRouteTest extends TestCase
 
     public function test_moderator_cannot_view_mod_user_management(): void
     {
-        $moderator = User::factory()->create();
+        $moderator = User::factory()->linked()->create();
 
         $this->actingAs($moderator)
             ->get(route('dashboard.users.index'))

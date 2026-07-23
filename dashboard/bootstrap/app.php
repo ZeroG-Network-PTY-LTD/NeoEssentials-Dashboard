@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        $middleware->alias([
+            'account.linked' => \App\Http\Middleware\EnsureAccountLinked::class,
+        ]);
+
         // The mod's own DashboardUserSyncWebhook and /dashboard pair command are
         // server-to-server POSTs with no browser session/CSRF token to send —
         // authenticated instead via a Bearer token (WebhookController) or a

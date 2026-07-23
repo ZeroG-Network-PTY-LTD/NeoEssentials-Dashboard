@@ -3,10 +3,10 @@ import InstallLayout from '@/Layouts/InstallLayout';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { Gamepad2, KeyRound } from 'lucide-react';
+import { Gamepad2, Globe, KeyRound } from 'lucide-react';
 
-export default function ApiKey() {
-    const { data, setData, post, processing, errors } = useForm({ apiKey: '' });
+export default function ApiKey({ apiUrl }: { apiUrl: string }) {
+    const { data, setData, post, processing, errors } = useForm({ url: apiUrl, apiKey: '' });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,6 +27,28 @@ export default function ApiKey() {
             </div>
 
             <form onSubmit={submit} className="flex flex-col gap-4">
+                <div>
+                    <InputLabel htmlFor="url" value="Minecraft server API address" />
+                    <div className="relative mt-1">
+                        <Globe size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mc-text-muted)]" />
+                        <TextInput
+                            id="url"
+                            type="text"
+                            value={data.url}
+                            onChange={(e) => setData('url', e.target.value)}
+                            className="block w-full pl-9 font-data"
+                            autoComplete="off"
+                            placeholder="http://127.0.0.1:19019"
+                        />
+                    </div>
+                    <p className="mt-1.5 text-[12px] text-[var(--mc-text-muted)]">
+                        Must be reachable from <em>this server</em>, not just your own browser — the address the
+                        server startup log printed (e.g. <span className="font-data">/api/</span>'s host:port), or a
+                        tunnel/public address if the dashboard and Minecraft server aren't on the same machine.
+                    </p>
+                    <InputError message={errors.url} className="mt-2" />
+                </div>
+
                 <div>
                     <InputLabel htmlFor="apiKey" value="API key" />
                     <TextInput

@@ -32,7 +32,9 @@ class InstallController extends Controller
             return redirect()->route('install.requirements');
         }
 
-        return Inertia::render('Install/ApiKey');
+        return Inertia::render('Install/ApiKey', [
+            'apiUrl' => config('minecraft.api_url'),
+        ]);
     }
 
     /**
@@ -41,10 +43,18 @@ class InstallController extends Controller
      * instead of the old "you can read a file on this host" local-token check.
      * Connecting here also leaves the dashboard fully wired up to the mod (no
      * separate pairing step needed later) — see ConfigService::connectWithApiKey().
+     * Takes the API URL on this same step (rather than defaulting to
+     * config('minecraft.api_url')'s 127.0.0.1 placeholder) since the dashboard and
+     * Minecraft server are very often two different machines entirely.
      */
     public function apiKeyConnect(Request $request): RedirectResponse
     {
-        $data = $request->validate(['apiKey' => 'required|string']);
+        $data = $request->validate([
+            'url' => 'required|url',
+            'apiKey' => 'required|string',
+        ]);
+
+        $this->config->updateMcApiUrl($data['url']);
 
         $result = $this->config->connectWithApiKey($data['apiKey']);
 

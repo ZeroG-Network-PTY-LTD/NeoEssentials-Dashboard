@@ -33,18 +33,30 @@ export function isMcLiveAvailable(): boolean {
   return echoIsConfigured();
 }
 
+// @laravel/echo-react's useEcho (as of 2.4.0) throws synchronously from within its own
+// subscribe effect the moment it mounts if configureEcho() was never called — it does NOT
+// silently no-op on an unconfigured Echo despite what its docs imply. Every call site below
+// must gate on isMcLiveAvailable() itself rather than relying on useEcho to skip cleanly.
+// Safe to call conditionally (breaking rules-of-hooks) only because isMcLiveAvailable() reads a
+// build-time env var baked into the bundle — it can't change across a mounted instance's
+// lifetime, so the hook call is never conditional across re-renders of the same component.
+
 /**
  * Subscribes to the mod's relayed stats pulse (~every 60s) on the shared `mc-dashboard`
- * private channel. No-ops cleanly when Reverb isn't configured (shared/cPanel installs) —
- * `useEcho` itself skips subscribing once `echoIsConfigured()` is false, so callers don't need
- * their own branching around this.
+ * private channel. No-ops cleanly when Reverb isn't configured (shared/cPanel installs).
  */
 export function useMcStats(onStats: (payload: McStatsPayload) => void) {
+  if (!isMcLiveAvailable()) return;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEcho<McStatsPayload>('mc-dashboard', 'stats', onStats, [onStats]);
 }
 
 /** Subscribes to player join/leave/chat/death events on the same live feed. */
 export function useMcEvents(onEvent: (payload: McEventPayload) => void) {
+  if (!isMcLiveAvailable()) return;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEcho<McEventPayload>('mc-dashboard', 'event', onEvent, [onEvent]);
 }
 

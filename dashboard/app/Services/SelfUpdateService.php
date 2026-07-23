@@ -224,6 +224,12 @@ class SelfUpdateService
 
                 $current = $this->currentVersion();
                 $assetUpdatedAt = $asset['updated_at'] ?? null;
+                $tagName = $data['tag_name'] ?? null;
+                // Each release is tagged 'dashboard-<shortsha>' (see the build-packages
+                // workflow) — this is the same short-sha string recordDeployment() writes
+                // to 'label' on every apply, so comparing them directly identifies the
+                // exact version rather than guessing from timestamps (see below).
+                $latestLabel = $tagName ? preg_replace('/^dashboard-/', '', $tagName) : null;
 
                 return [
                     'available' => true,
@@ -231,14 +237,15 @@ class SelfUpdateService
                     'checkedAt' => now()->toIso8601String(),
                     'assetName' => $asset['name'],
                     'downloadUrl' => $asset['browser_download_url'],
-                    'tagName' => $data['tag_name'] ?? null,
+                    'tagName' => $tagName,
                     'publishedAt' => $assetUpdatedAt,
                     'releaseUrl' => $data['html_url'] ?? null,
-                    // If this app has never recorded a deployment, or the
-                    // asset was uploaded after the last one was applied,
-                    // there's a newer package available.
-                    'updateAvailable' => ! $current['appliedAt']
-                        || ($assetUpdatedAt && $assetUpdatedAt > $current['appliedAt']),
+                    // Compares actual version identity, not "was this published after I
+                    // last applied anything" — that timestamp comparison broke the moment
+                    // someone downgraded via the version picker: applying an OLDER release
+                    // still stamps a fresh, recent appliedAt, which used to make a
+                    // genuinely newer release look already-installed.
+                    'updateAvailable' => $latestLabel === null || $current['label'] !== $latestLabel,
                 ];
             } catch (\Throwable $e) {
                 return ['available' => false, 'reachable' => false, 'checkedAt' => now()->toIso8601String(), 'error' => $e->getMessage()];

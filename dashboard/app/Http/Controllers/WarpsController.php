@@ -21,6 +21,7 @@ class WarpsController extends Controller
     {
         return Inertia::render('Dashboard/Warps', [
             'warps' => $this->safe(fn () => $this->mc->warps(), []),
+            'playerWarps' => $this->safe(fn () => $this->mc->playerWarps(), []),
         ]);
     }
 
@@ -45,5 +46,10 @@ class WarpsController extends Controller
     public function destroy(string $name): RedirectResponse
     {
         return $this->attempt(fn () => $this->mc->deleteWarp($name), "Warp '{$name}' deleted.");
+    }
+
+    public function destroyPlayerWarp(string $uuid, string $name): RedirectResponse
+    {
+        return $this->attempt(fn () => $this->mc->deletePlayerWarp($uuid, $name), "Warp '{$name}' deleted.");
     }
 }

@@ -167,6 +167,9 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
         Route::get('/warps', [WarpsController::class, 'index'])->name('warps.index');
         Route::post('/warps', [WarpsController::class, 'store'])->name('warps.store');
         Route::delete('/warps/{name}', [WarpsController::class, 'destroy'])->name('warps.destroy');
+        // Player (/pwarp) warps are personal, not public — the mod's endpoint requires ADMIN for
+        // these routes even on GET, unlike public warps above.
+        Route::delete('/warps/players/{uuid}/{name}', [WarpsController::class, 'destroyPlayerWarp'])->name('warps.players.destroy');
 
         // Read-only — the mod has no create/update/delete/give routes for kits.
         Route::get('/kits', [KitsController::class, 'index'])->name('kits.index');

@@ -51,6 +51,22 @@ export interface Warp {
   createdBy: string;
 }
 
+export interface PlayerWarpEntry {
+  name: string;
+  world: string;
+  x: number;
+  y: number;
+  z: number;
+  timestamp: number;
+}
+
+export interface PlayerWarpGroup {
+  uuid: string;
+  name: string;
+  warpCount: number;
+  warps: PlayerWarpEntry[];
+}
+
 export interface LeaderboardEntry {
   uuid: string;
   username: string;

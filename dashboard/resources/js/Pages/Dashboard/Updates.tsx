@@ -29,6 +29,7 @@ interface CurrentVersion {
 
 interface GithubCheck {
   reachable: boolean;
+  checkedAt?: string;
   error?: string;
   latestSha?: string;
   latestShortSha?: string;
@@ -41,6 +42,7 @@ interface GithubCheck {
 interface ReleaseCheck {
   available: boolean;
   reachable: boolean;
+  checkedAt?: string;
   error?: string;
   assetName?: string;
   downloadUrl?: string;
@@ -125,6 +127,13 @@ export default function Updates({ current, github, release, releases, repo, bran
 
   const maxUploadMb = Math.round(maxUploadKb / 1024);
   const updateAvailable = release.available ? release.updateAvailable : github.updateAvailable;
+  // Whichever check actually drove the badge above — release.checkedAt when the
+  // release path is what's being trusted, github.checkedAt otherwise. Cached for up
+  // to config('selfupdate.check_cache_ttl') (5 min by default), so this can lag a
+  // freshly-published release for a few minutes until "Check now" or the cache
+  // naturally expires — surfacing it here is what makes that lag legible instead of
+  // looking like a wrong/contradictory badge.
+  const checkedAt = release.available ? release.checkedAt : (github.checkedAt ?? release.checkedAt);
 
   return (
     <DashboardLayout>
@@ -135,9 +144,16 @@ export default function Updates({ current, github, release, releases, repo, bran
         subtitle={`Tracking ${repo} @ ${branch}`}
         action={
           (release.reachable || github.reachable) && (
-            <Badge variant={updateAvailable ? 'cyan' : 'moss'} dot={updateAvailable}>
-              {updateAvailable ? 'Update available' : 'Up to date'}
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant={updateAvailable ? 'cyan' : 'moss'} dot={updateAvailable}>
+                {updateAvailable ? 'Update available' : 'Up to date'}
+              </Badge>
+              {checkedAt && (
+                <span className="text-[11px] text-[var(--mc-text-muted)]">
+                  Checked {new Date(checkedAt).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           )
         }
       />
@@ -160,10 +176,20 @@ export default function Updates({ current, github, release, releases, repo, bran
       <div className="grid grid-cols-2 gap-5 mb-5">
         <Card title="Current version" icon={GitBranch} accent="cyan" padded>
           <dl className="flex flex-col gap-2 text-[13px]">
-            <div className="flex justify-between">
-              <dt className="text-[var(--mc-text-secondary)]">Commit</dt>
-              <dd className="font-data">{current.shortCommit ?? '—'}</dd>
-            </div>
+            {current.source === 'git' ? (
+              <div className="flex justify-between">
+                <dt className="text-[var(--mc-text-secondary)]">Commit</dt>
+                <dd className="font-data">{current.shortCommit ?? '—'}</dd>
+              </div>
+            ) : (
+              // Installer/updater packages have no git commit to show — the Label row
+              // below (the build's short SHA baked into version.json) is the
+              // equivalent identifier for a zip-based install.
+              <div className="flex justify-between">
+                <dt className="text-[var(--mc-text-secondary)]">Installed from</dt>
+                <dd>package (no git checkout)</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt className="text-[var(--mc-text-secondary)]">Branch</dt>
               <dd className="font-data">{current.branch ?? '—'}</dd>

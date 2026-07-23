@@ -88,6 +88,7 @@ class SelfUpdateService
 
                 return [
                     'reachable' => true,
+                    'checkedAt' => now()->toIso8601String(),
                     'latestSha' => $latestSha,
                     'latestShortSha' => $latestSha ? substr($latestSha, 0, 7) : null,
                     'latestMessage' => $data['commit']['message'] ?? null,
@@ -98,7 +99,7 @@ class SelfUpdateService
                     'updateAvailable' => $latestSha !== null && $latestSha !== $current['commit'],
                 ];
             } catch (\Throwable $e) {
-                return ['reachable' => false, 'error' => $e->getMessage()];
+                return ['reachable' => false, 'checkedAt' => now()->toIso8601String(), 'error' => $e->getMessage()];
             }
         });
     }
@@ -204,7 +205,7 @@ class SelfUpdateService
                 $response = $request->get("https://api.github.com/repos/{$repo}/releases/latest");
 
                 if (! $response->successful()) {
-                    return ['available' => false, 'reachable' => false, 'error' => "GitHub API returned {$response->status()}."];
+                    return ['available' => false, 'reachable' => false, 'checkedAt' => now()->toIso8601String(), 'error' => "GitHub API returned {$response->status()}."];
                 }
 
                 $data = $response->json();
@@ -218,7 +219,7 @@ class SelfUpdateService
                     ->first();
 
                 if (! $asset) {
-                    return ['available' => false, 'reachable' => true];
+                    return ['available' => false, 'reachable' => true, 'checkedAt' => now()->toIso8601String()];
                 }
 
                 $current = $this->currentVersion();
@@ -227,6 +228,7 @@ class SelfUpdateService
                 return [
                     'available' => true,
                     'reachable' => true,
+                    'checkedAt' => now()->toIso8601String(),
                     'assetName' => $asset['name'],
                     'downloadUrl' => $asset['browser_download_url'],
                     'tagName' => $data['tag_name'] ?? null,
@@ -239,7 +241,7 @@ class SelfUpdateService
                         || ($assetUpdatedAt && $assetUpdatedAt > $current['appliedAt']),
                 ];
             } catch (\Throwable $e) {
-                return ['available' => false, 'reachable' => false, 'error' => $e->getMessage()];
+                return ['available' => false, 'reachable' => false, 'checkedAt' => now()->toIso8601String(), 'error' => $e->getMessage()];
             }
         });
     }

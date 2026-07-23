@@ -309,6 +309,12 @@ class SelfUpdateService
                     ];
                 })
                 ->filter()
+                // GitHub's /releases list isn't reliably newest-first — confirmed live,
+                // out of order when two builds' publish steps race close together (a
+                // release's created_at can land before an earlier-triggered one finishes
+                // publishing). The frontend labels index 0 "(latest)", so this must be
+                // sorted ourselves rather than trusting API response order.
+                ->sortByDesc('publishedAt')
                 ->values()
                 ->all();
         } catch (\Throwable $e) {

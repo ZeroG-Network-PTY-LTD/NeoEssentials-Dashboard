@@ -77,11 +77,11 @@ export default function MinecraftLinkForm({ className = '' }: { className?: stri
 
             <div className="mt-4">
                 {mcUuid ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         <img
-                            src={`https://mc-heads.net/avatar/${mcUuid}/40`}
+                            src={`https://mc-heads.net/player/${mcUuid}/64`}
                             alt=""
-                            className="h-10 w-10 shrink-0 rounded-[8px] border border-[var(--mc-border-strong)] [image-rendering:pixelated]"
+                            className="h-16 shrink-0 [image-rendering:pixelated] drop-shadow-lg"
                         />
                         <div className="flex-1 text-[13px] font-medium">{mcUsername}</div>
                         <button

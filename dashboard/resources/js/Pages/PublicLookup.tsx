@@ -185,9 +185,18 @@ export default function PublicLookup({
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        <h2 className="font-display text-lg font-semibold">
-                                            {result.playerName}
-                                        </h2>
+                                        <div className="flex items-center gap-4">
+                                            {result.playerId && (
+                                                <img
+                                                    src={`https://mc-heads.net/player/${result.playerId}/72`}
+                                                    alt=""
+                                                    className="h-[72px] shrink-0 [image-rendering:pixelated] drop-shadow-lg"
+                                                />
+                                            )}
+                                            <h2 className="font-display text-lg font-semibold">
+                                                {result.playerName}
+                                            </h2>
+                                        </div>
 
                                         <SectionCard icon={ShieldBan} title="Bans" count={result.bans.length}>
                                             {result.bans.map((b) => (

@@ -212,6 +212,13 @@ export default function Welcome({ auth }: PageProps) {
                                     />
                                     {auth.user ? (
                                         <>
+                                            {auth.user.mc_uuid && (
+                                                <img
+                                                    src={`https://mc-heads.net/player/${auth.user.mc_uuid}/72`}
+                                                    alt=""
+                                                    className="mx-auto h-[72px] shrink-0 [image-rendering:pixelated] drop-shadow-lg"
+                                                />
+                                            )}
                                             <p className="text-center text-sm leading-relaxed text-[var(--mc-text-secondary)]">
                                                 You're signed in as{' '}
                                                 {auth.user.email}. Jump back

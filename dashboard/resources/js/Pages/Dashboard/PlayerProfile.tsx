@@ -444,11 +444,11 @@ export default function PlayerProfile({ username }: Props) {
         }
       />
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <img
-          src={`https://mc-heads.net/avatar/${lookup.uuid}/48`}
+          src={`https://mc-heads.net/player/${lookup.uuid}/80`}
           alt=""
-          className="h-11 w-11 rounded-[9px] [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+          className="h-20 shrink-0 [image-rendering:pixelated] drop-shadow-lg"
         />
         <div>
           <div className="font-display text-[16px] font-semibold flex items-center gap-2">

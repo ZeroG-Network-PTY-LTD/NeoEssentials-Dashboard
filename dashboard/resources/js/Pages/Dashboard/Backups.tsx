@@ -21,9 +21,10 @@ interface Props {
   cloudConfig: CloudConfig;
   dropboxFiles: CloudFile[];
   googleFiles: CloudFile[];
+  oneDriveFiles: CloudFile[];
 }
 
-export default function Backups({ status, snapshots, cloudStatus, cloudConfig, dropboxFiles, googleFiles }: Props) {
+export default function Backups({ status, snapshots, cloudStatus, cloudConfig, dropboxFiles, googleFiles, oneDriveFiles }: Props) {
   const { props } = usePage<PageProps>();
   const isAdmin = props.auth.user.role === 'admin';
   const [targets, setTargets] = useState<string[]>((status.availableTargets ?? []).map((t) => t.key));
@@ -31,6 +32,7 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
   const createForm = useForm({ name: '' });
   const dropboxForm = useForm({ accessToken: '', uploadPath: '/NeoEssentials-Backups' });
   const googleForm = useForm({ refreshToken: '', clientId: '', clientSecret: '', folderId: '' });
+  const oneDriveForm = useForm({ refreshToken: '', clientId: '', clientSecret: '', uploadPath: '/NeoEssentials-Backups' });
 
   const toggleTarget = (key: string) => {
     setTargets((t) => (t.includes(key) ? t.filter((k) => k !== key) : [...t, key]));
@@ -63,13 +65,21 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
     googleForm.post(route('dashboard.backups.cloud.google.config'), { onSuccess: () => googleForm.reset() });
   };
 
+  const saveOneDrive = (e: React.FormEvent) => {
+    e.preventDefault();
+    oneDriveForm.post(route('dashboard.backups.cloud.onedrive.config'), { onSuccess: () => oneDriveForm.reset() });
+  };
+
   const testDropbox = () => router.post(route('dashboard.backups.cloud.dropbox.test'), {}, { preserveScroll: true });
   const testGoogle = () => router.post(route('dashboard.backups.cloud.google.test'), {}, { preserveScroll: true });
+  const testOneDrive = () => router.post(route('dashboard.backups.cloud.onedrive.test'), {}, { preserveScroll: true });
 
   const uploadDropbox = (name: string) =>
     router.post(route('dashboard.backups.cloud.dropbox.upload', name), {}, { preserveScroll: true });
   const uploadGoogle = (name: string) =>
     router.post(route('dashboard.backups.cloud.google.upload', name), {}, { preserveScroll: true });
+  const uploadOneDrive = (name: string) =>
+    router.post(route('dashboard.backups.cloud.onedrive.upload', name), {}, { preserveScroll: true });
 
   const deleteDropboxFile = (path: string) => {
     if (!confirm(`Delete '${path}' from Dropbox?`)) return;
@@ -79,6 +89,11 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
   const deleteGoogleFile = (id: string) => {
     if (!confirm('Delete this file from Google Drive?')) return;
     router.delete(route('dashboard.backups.cloud.google.file.delete', id), { preserveScroll: true });
+  };
+
+  const deleteOneDriveFile = (id: string) => {
+    if (!confirm('Delete this file from OneDrive?')) return;
+    router.delete(route('dashboard.backups.cloud.onedrive.file.delete', id), { preserveScroll: true });
   };
 
   return (
@@ -131,6 +146,15 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
                       >
                         <CloudUpload size={12} strokeWidth={2} />
                         Drive
+                      </button>
+                    )}
+                    {cloudStatus.providers.oneDrive.configured && (
+                      <button
+                        onClick={() => uploadOneDrive(s.name)}
+                        className="flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]"
+                      >
+                        <CloudUpload size={12} strokeWidth={2} />
+                        OneDrive
                       </button>
                     )}
                     <button
@@ -187,7 +211,7 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
       </div>
 
       {isAdmin && (
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-3 gap-5">
           <Card title="Dropbox" icon={Cloud} accent="cyan" padded>
             <div className="flex flex-col gap-3">
               <Badge variant={cloudConfig.dropbox.configured ? 'moss' : 'neutral'} className="w-fit">
@@ -278,6 +302,62 @@ export default function Backups({ status, snapshots, cloudStatus, cloudConfig, d
                     <div key={f.id ?? f.name} className="flex items-center text-[12px] font-data rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
                       <span className="flex-1 truncate">{f.name}</span>
                       <button onClick={() => deleteGoogleFile(f.id ?? '')} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card title="OneDrive" icon={Cloud} accent="moss" padded>
+            <div className="flex flex-col gap-3">
+              <Badge variant={cloudConfig.oneDrive.configured ? 'moss' : 'neutral'} className="w-fit">
+                {cloudConfig.oneDrive.configured ? `Configured (${cloudConfig.oneDrive.uploadPath})` : 'Not configured'}
+              </Badge>
+              <form onSubmit={saveOneDrive} className="flex flex-col gap-2">
+                <input
+                  placeholder="Client ID"
+                  value={oneDriveForm.data.clientId}
+                  onChange={(e) => oneDriveForm.setData('clientId', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  type="password"
+                  placeholder="Client secret"
+                  value={oneDriveForm.data.clientSecret}
+                  onChange={(e) => oneDriveForm.setData('clientSecret', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  type="password"
+                  placeholder="Refresh token"
+                  value={oneDriveForm.data.refreshToken}
+                  onChange={(e) => oneDriveForm.setData('refreshToken', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <input
+                  placeholder="Upload path"
+                  value={oneDriveForm.data.uploadPath}
+                  onChange={(e) => oneDriveForm.setData('uploadPath', e.target.value)}
+                  className="font-data text-[13px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] rounded-[8px] px-2.5 py-1.5 text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" className="btn-pop text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium transition-colors hover:bg-[var(--mc-cyan-400)]">
+                    Save
+                  </button>
+                  <button type="button" onClick={testOneDrive} className="text-[13px] px-3 py-1.5 rounded-[var(--radius)] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] transition-colors hover:bg-[var(--mc-bg-surface)]">
+                    Test
+                  </button>
+                </div>
+              </form>
+              {oneDriveFiles.length > 0 && (
+                <div className="flex flex-col gap-1 mt-1">
+                  {oneDriveFiles.map((f) => (
+                    <div key={f.id ?? f.name} className="flex items-center text-[12px] font-data rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <button onClick={() => deleteOneDriveFile(f.id ?? '')} className="text-[var(--mc-ember-500)] transition-colors hover:text-[var(--mc-ember-400)]">
                         Delete
                       </button>
                     </div>

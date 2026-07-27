@@ -855,6 +855,36 @@ class MinecraftApiService
         return $this->delete("api/cloud/files/google/{$fileId}");
     }
 
+    public function configureOneDrive(string $refreshToken, string $clientId, string $clientSecret, string $uploadPath): array
+    {
+        return $this->post('api/cloud/config/onedrive', [
+            'refreshToken' => $refreshToken,
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'uploadPath' => $uploadPath,
+        ]);
+    }
+
+    public function testOneDrive(): array
+    {
+        return $this->post('api/cloud/test/onedrive', []);
+    }
+
+    public function cloudOneDriveFiles(): array
+    {
+        return $this->get('api/cloud/files/onedrive')['files'] ?? [];
+    }
+
+    public function uploadBackupToOneDrive(string $backupId): array
+    {
+        return $this->post("api/cloud/upload/onedrive/{$backupId}", []);
+    }
+
+    public function deleteOneDriveFile(string $itemId): array
+    {
+        return $this->delete("api/cloud/files/onedrive/{$itemId}");
+    }
+
     // --- Mod dashboard accounts (UserManagementEndpoint — entirely admin-only
     // on the mod side; distinct from THIS app's own users table/roles) ---------
 

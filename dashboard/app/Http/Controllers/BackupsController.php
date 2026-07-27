@@ -24,10 +24,11 @@ class BackupsController extends Controller
             'count' => 0, 'totalSizeMb' => '0.00', 'totalSizeBytes' => 0, 'lastBackup' => null,
             'maxSnapshots' => 0, 'backupDir' => '', 'availableTargets' => [],
         ];
-        $fallbackCloudStatus = ['providers' => ['dropbox' => ['configured' => false], 'googleDrive' => ['configured' => false]]];
+        $fallbackCloudStatus = ['providers' => ['dropbox' => ['configured' => false], 'googleDrive' => ['configured' => false], 'oneDrive' => ['configured' => false]]];
         $fallbackCloudConfig = [
             'dropbox' => ['configured' => false, 'tokenMasked' => '', 'uploadPath' => ''],
             'googleDrive' => ['configured' => false, 'clientId' => '', 'folderId' => '', 'refreshTokenMasked' => ''],
+            'oneDrive' => ['configured' => false, 'clientId' => '', 'uploadPath' => '', 'refreshTokenMasked' => ''],
         ];
 
         return Inertia::render('Dashboard/Backups', [
@@ -37,6 +38,7 @@ class BackupsController extends Controller
             'cloudConfig' => $this->safe(fn () => $this->mc->cloudConfig(), $fallbackCloudConfig),
             'dropboxFiles' => $this->safe(fn () => $this->mc->cloudDropboxFiles(), []),
             'googleFiles' => $this->safe(fn () => $this->mc->cloudGoogleFiles(), []),
+            'oneDriveFiles' => $this->safe(fn () => $this->mc->cloudOneDriveFiles(), []),
         ]);
     }
 
@@ -113,6 +115,23 @@ class BackupsController extends Controller
         ), 'Google Drive configuration saved.');
     }
 
+    public function configureOneDrive(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'refreshToken' => ['nullable', 'string'],
+            'clientId' => ['nullable', 'string'],
+            'clientSecret' => ['nullable', 'string'],
+            'uploadPath' => ['nullable', 'string'],
+        ]);
+
+        return $this->attempt(fn () => $this->mc->configureOneDrive(
+            $data['refreshToken'] ?? '',
+            $data['clientId'] ?? '',
+            $data['clientSecret'] ?? '',
+            $data['uploadPath'] ?? '/NeoEssentials-Backups',
+        ), 'OneDrive configuration saved.');
+    }
+
     public function testDropbox(): RedirectResponse
     {
         try {
@@ -155,5 +174,26 @@ class BackupsController extends Controller
     public function deleteGoogleFile(string $fileId): RedirectResponse
     {
         return $this->attempt(fn () => $this->mc->deleteGoogleDriveFile($fileId), 'Deleted from Google Drive.');
+    }
+
+    public function testOneDrive(): RedirectResponse
+    {
+        try {
+            $result = $this->mc->testOneDrive();
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', $result['message'] ?? 'OneDrive connection OK.');
+    }
+
+    public function uploadOneDrive(string $backupId): RedirectResponse
+    {
+        return $this->attempt(fn () => $this->mc->uploadBackupToOneDrive($backupId), "Uploaded '{$backupId}' to OneDrive.");
+    }
+
+    public function deleteOneDriveFile(string $itemId): RedirectResponse
+    {
+        return $this->attempt(fn () => $this->mc->deleteOneDriveFile($itemId), 'Deleted from OneDrive.');
     }
 }

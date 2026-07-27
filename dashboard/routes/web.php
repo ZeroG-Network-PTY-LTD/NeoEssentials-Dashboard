@@ -231,6 +231,10 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
             Route::post('/backups/cloud/google/upload/{backupId}', [BackupsController::class, 'uploadGoogle'])->name('backups.cloud.google.upload');
             Route::delete('/backups/cloud/dropbox/file', [BackupsController::class, 'deleteDropboxFile'])->name('backups.cloud.dropbox.file.delete');
             Route::delete('/backups/cloud/google/file/{fileId}', [BackupsController::class, 'deleteGoogleFile'])->name('backups.cloud.google.file.delete');
+            Route::post('/backups/cloud/onedrive/config', [BackupsController::class, 'configureOneDrive'])->name('backups.cloud.onedrive.config');
+            Route::post('/backups/cloud/onedrive/test', [BackupsController::class, 'testOneDrive'])->name('backups.cloud.onedrive.test');
+            Route::post('/backups/cloud/onedrive/upload/{backupId}', [BackupsController::class, 'uploadOneDrive'])->name('backups.cloud.onedrive.upload');
+            Route::delete('/backups/cloud/onedrive/file/{itemId}', [BackupsController::class, 'deleteOneDriveFile'])->name('backups.cloud.onedrive.file.delete');
             // Grouped after the cloud DELETE routes for readability — {name} only
             // matches a single path segment by default, so it can't actually shadow
             // the multi-segment cloud/* routes above, but keeping specific-before-

@@ -118,7 +118,7 @@ export default function Economy({ stats }: Props) {
                   alt=""
                   className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)] ml-1"
                 />
-                <Link href={route('dashboard.players.profile', entry.username)} className="flex-1 ml-2.5 hover:text-[var(--mc-cyan-400)] hover:underline">
+                <Link href={route('lookup', { player: entry.username })} className="flex-1 ml-2.5 hover:text-[var(--mc-cyan-400)] hover:underline">
                   {entry.username}
                 </Link>
                 <span className="font-data text-[13px] text-[var(--mc-moss-400)]">{stats.currencySymbol}{entry.balance.toLocaleString()}</span>
@@ -209,7 +209,7 @@ export default function Economy({ stats }: Props) {
 
             {lookupResult?.success && lookupResult.username && (
               <Link
-                href={route('dashboard.players.profile', lookupResult.username)}
+                href={route('lookup', { player: lookupResult.username })}
                 className="flex items-center justify-center gap-1.5 text-[12px] text-[var(--mc-cyan-400)] hover:underline"
               >
                 <UserCog size={12} /> Full profile →

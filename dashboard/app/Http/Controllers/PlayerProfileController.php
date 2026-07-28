@@ -6,21 +6,21 @@ use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 /**
- * Full single-player control page — /dashboard/players/player/{username}. Unlike
- * PlayerController's action routes (keyed by uuid, resolved via the online-players list,
- * online-only), everything here is keyed directly by username and works for offline
- * players wherever the mod's own endpoint supports it (freeze, notes, warns, economy,
- * permission group/overrides, ban history) — only routes that need a live ServerPlayer
- * (fly/god/feed/state toggles, items/fun, sudo, ptime/pweather, clear inventory) are
- * online-only, same restriction the mod itself enforces.
+ * Full single-player control API, backing PlayerManagementPanel — mounted on the
+ * public /lookup page (see PublicLookupController's `canManage` prop) for any visitor
+ * who passes can:players.profile.manage, rather than a standalone dashboard page.
+ * Unlike PlayerController's action routes (keyed by uuid, resolved via the
+ * online-players list, online-only), everything here is keyed directly by username and
+ * works for offline players wherever the mod's own endpoint supports it (freeze, notes,
+ * warns, economy, permission group/overrides, ban history) — only routes that need a
+ * live ServerPlayer (fly/god/feed/state toggles, items/fun, sudo, ptime/pweather, clear
+ * inventory) are online-only, same restriction the mod itself enforces.
  *
- * Deliberately all JSON, not Inertia redirects: this page fires many small independent
- * actions and shows a toast per response, mirroring the internal bundled dashboard's
- * PlayerProfile page rather than reloading the whole Inertia page after every click.
+ * Deliberately all JSON, not Inertia redirects: the panel fires many small independent
+ * actions and shows a toast per response rather than reloading the whole Inertia page
+ * after every click.
  */
 class PlayerProfileController extends Controller
 {
@@ -28,14 +28,6 @@ class PlayerProfileController extends Controller
 
     public function __construct(private MinecraftApiService $mc)
     {
-    }
-
-    /** Renders the page shell — the page itself fetches everything else client-side. */
-    public function show(string $username): Response
-    {
-        return Inertia::render('Dashboard/PlayerProfile', [
-            'username' => $username,
-        ]);
     }
 
     // --- Read-only status --------------------------------------------------

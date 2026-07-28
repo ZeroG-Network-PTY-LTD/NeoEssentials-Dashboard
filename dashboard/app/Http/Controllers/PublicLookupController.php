@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\InteractsWithMinecraftApi;
 use App\Services\MinecraftApiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,6 +16,10 @@ use Inertia\Response;
  * bans/IP mutes, staff notes, or player reports — see
  * MinecraftApiService::publicLookup()/publicRecent() and the mod's
  * PublicModerationEndpoint for what's deliberately excluded.
+ *
+ * Also the host page for PlayerManagementPanel — `canManage` tells the frontend
+ * whether to mount it at all; the panel's own routes (PlayerProfileController,
+ * /lookup/{username}/*) enforce the same gate server-side regardless.
  */
 class PublicLookupController extends Controller
 {
@@ -34,6 +39,7 @@ class PublicLookupController extends Controller
                 ? $this->safe(fn () => $this->mc->publicLookup($username), null)
                 : null,
             'recent' => $this->safe(fn () => $this->mc->publicRecent(), []),
+            'canManage' => Gate::allows('players.profile.manage'),
         ]);
     }
 }

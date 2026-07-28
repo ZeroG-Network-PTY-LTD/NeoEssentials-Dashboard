@@ -348,7 +348,7 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
                   </div>
 
                   <Link
-                    href={route('dashboard.players.profile', lookupResult.username)}
+                    href={route('lookup', { player: lookupResult.username })}
                     className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[var(--mc-cyan-400)] hover:underline"
                   >
                     Full profile →
@@ -455,7 +455,7 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
                 Ban
               </button>
               <Link
-                href={route('dashboard.players.profile', selected.username)}
+                href={route('lookup', { player: selected.username })}
                 className="mt-1 flex items-center justify-center gap-2 text-[13px] px-3 py-2 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] text-[#0a1620] font-medium hover:bg-[var(--mc-cyan-400)] text-left transition-colors"
               >
                 <UserCog size={14} />

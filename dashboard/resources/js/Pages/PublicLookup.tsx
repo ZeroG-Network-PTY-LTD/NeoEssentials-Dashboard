@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import { Search, ShieldBan, VolumeX, LogOut, TriangleAlert } from 'lucide-react';
 import PlayerRender from '@/Components/PlayerRender';
+import PlayerManagementPanel from '@/Components/PlayerManagementPanel';
 
 interface PunishmentBase {
     id: string;
@@ -113,10 +114,12 @@ export default function PublicLookup({
     query,
     result,
     recent,
+    canManage,
 }: PageProps<{
     query: string | null;
     result: LookupResult | null;
     recent: RecentEntry[];
+    canManage: boolean;
 }>) {
     const [name, setName] = useState(query ?? '');
 
@@ -131,7 +134,7 @@ export default function PublicLookup({
         <>
             <Head title="Player Lookup" />
             <div className="min-h-screen bg-[var(--mc-bg-base)] text-[var(--mc-text-primary)]">
-                <div className="mx-auto max-w-3xl px-6">
+                <div className="mx-auto max-w-5xl px-6">
                     <header className="flex items-center justify-between py-8">
                         <Link href="/" className="flex items-center gap-2">
                             <img src="/images/logo.png" alt="" className="h-7 w-7 object-contain" />
@@ -192,6 +195,12 @@ export default function PublicLookup({
                                                 {result.playerName}
                                             </h2>
                                         </div>
+
+                                        {canManage && auth.user && (
+                                            <div className="rounded-[var(--radius-lg)] border border-[var(--mc-purple-400)] bg-[var(--mc-bg-surface)] p-5">
+                                                <PlayerManagementPanel username={result.playerName} />
+                                            </div>
+                                        )}
 
                                         <SectionCard icon={ShieldBan} title="Bans" count={result.bans.length}>
                                             {result.bans.map((b) => (

@@ -1,10 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
 import { useEffect, useState, type FormEvent } from 'react';
-import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
-import PageHeading from '@/Components/Dashboard/PageHeading';
 import Badge from '@/Components/Dashboard/Badge';
-import PlayerRender from '@/Components/PlayerRender';
 import type {
   BanEntry,
   KickEntry,
@@ -17,13 +13,11 @@ import type {
   WarnEntry,
 } from '@/types/minecraft';
 import {
-  ArrowLeft,
   Gamepad2,
   UserCog,
   Coins,
   ShieldBan,
   VolumeX,
-  LogOut,
   StickyNote,
   Backpack,
   Shield,
@@ -46,6 +40,7 @@ import {
   Terminal,
   CloudSun,
   Trash2,
+  ShieldCheck,
 } from 'lucide-react';
 
 type Gamemode = 'survival' | 'creative' | 'adventure' | 'spectator';
@@ -54,9 +49,9 @@ interface Props {
   username: string;
 }
 
-// --- Small local toast — this page fires many independent JSON actions and shows a
+// --- Small local toast — this panel fires many independent JSON actions and shows a
 // toast per response, unlike the rest of the app which uses Inertia's session-flash
-// FlashToast (that only fires after a full redirect, which this page never does).
+// FlashToast (that only fires after a full redirect, which this panel never does).
 function useLocalToast() {
   const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null);
   const showToast = (message: string, isError = false) => {
@@ -87,7 +82,14 @@ async function apiFetch(url: string, method: string, body?: unknown): Promise<an
   return data;
 }
 
-export default function PlayerProfile({ username }: Props) {
+/**
+ * Full single-player staff-tools panel — mounted on the public /lookup page (see
+ * PublicLookup.tsx) for any visitor who passes can:players.profile.manage, instead of
+ * living on its own dashboard-only page. Ported near-verbatim from the former
+ * Dashboard/PlayerProfile.tsx page; self-sufficient (does its own `lookup` call for
+ * online-status — the public page's own result has no online/lastSeen field).
+ */
+export default function PlayerManagementPanel({ username }: Props) {
   const { toast, showToast } = useLocalToast();
 
   const [lookup, setLookup] = useState<PlayerLookupResult | null>(null);
@@ -138,12 +140,16 @@ export default function PlayerProfile({ username }: Props) {
   const [economyAmount, setEconomyAmount] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const r = (name: string) => route(`dashboard.players.profile.${name}`, username);
+  // lookup/balance/permission-info deliberately kept at their original
+  // dashboard.players.profile.* routes — Economy.tsx/Players.tsx call them too, for
+  // any authenticated user. Everything else moved to lookup.manage.*.
+  const rShared = (name: string) => route(`dashboard.players.profile.${name}`, username);
+  const r = (name: string) => route(`lookup.manage.${name}`, username);
 
   const load = () => {
     setLoading(true);
     setNotFound(false);
-    fetch(r('lookup'), { headers: { Accept: 'application/json' } })
+    fetch(rShared('lookup'), { headers: { Accept: 'application/json' } })
       .then((res) => res.json())
       .then(async (result: PlayerLookupResult) => {
         setLookup(result);
@@ -153,9 +159,9 @@ export default function PlayerProfile({ username }: Props) {
           return;
         }
         const fetches: Array<Promise<any>> = [
-          fetch(r('balance')).then((r) => r.json()),
-          fetch(r('permission-info')).then((r) => r.json()),
-          fetch(route('dashboard.players.profile.groups')).then((r) => r.json()),
+          fetch(rShared('balance')).then((r) => r.json()),
+          fetch(rShared('permission-info')).then((r) => r.json()),
+          fetch(route('lookup.manage.groups')).then((r) => r.json()),
           fetch(r('inventory')).then((r) => r.json()),
           fetch(r('bans')).then((r) => r.json()),
           fetch(r('mutes')).then((r) => r.json()),
@@ -165,7 +171,7 @@ export default function PlayerProfile({ username }: Props) {
           fetch(r('freeze')).then((r) => r.json()),
           fetch(r('vanish')).then((r) => r.json()),
           fetch(r('jail')).then((r) => r.json()),
-          fetch(route('dashboard.players.profile.jails')).then((r) => r.json()),
+          fetch(route('lookup.manage.jails')).then((r) => r.json()),
           fetch(r('ptime.get')).then((r) => r.json()),
           fetch(r('pweather.get')).then((r) => r.json()),
         ];
@@ -277,7 +283,7 @@ export default function PlayerProfile({ username }: Props) {
   };
 
   const removePermission = (perm: string) =>
-    runAction(`Removed permission '${perm}'.`, () => apiFetch(route('dashboard.players.profile.permissions.remove', [username, perm]), 'DELETE'), () =>
+    runAction(`Removed permission '${perm}'.`, () => apiFetch(route('lookup.manage.permissions.remove', [username, perm]), 'DELETE'), () =>
       setPermInfo((p) => (p ? { ...p, permissions: (p.permissions ?? []).filter((x) => x !== perm) } : p)),
     );
 
@@ -289,7 +295,7 @@ export default function PlayerProfile({ username }: Props) {
       () => apiFetch(r('economy'), 'POST', { action, amount }),
       async () => {
         setEconomyAmount('');
-        const bal = await fetch(r('balance')).then((res) => res.json());
+        const bal = await fetch(rShared('balance')).then((res) => res.json());
         setBalance(bal.balance);
       },
     );
@@ -306,7 +312,7 @@ export default function PlayerProfile({ username }: Props) {
     );
 
   const doRemoveWarn = (id: string) =>
-    runAction('Warning removed.', () => apiFetch(route('dashboard.players.profile.warns.remove', [username, id]), 'DELETE'), () =>
+    runAction('Warning removed.', () => apiFetch(route('lookup.manage.warns.remove', [username, id]), 'DELETE'), () =>
       setWarns((w) => w.filter((x) => x.id !== id)),
     );
 
@@ -321,7 +327,7 @@ export default function PlayerProfile({ username }: Props) {
   };
 
   const doRemoveNote = (id: string) =>
-    runAction('Note removed.', () => apiFetch(route('dashboard.players.profile.notes.remove', [username, id]), 'DELETE'), () =>
+    runAction('Note removed.', () => apiFetch(route('lookup.manage.notes.remove', [username, id]), 'DELETE'), () =>
       setNotes((n) => n.filter((x) => x.id !== id)),
     );
 
@@ -385,26 +391,14 @@ export default function PlayerProfile({ username }: Props) {
   const resetPweather = () => runAction('Pweather reset.', () => apiFetch(r('pweather.set'), 'POST', { type: null }), () => setPweatherState(null));
 
   if (loading) {
-    return (
-      <DashboardLayout>
-        <Head title={`${username} — Profile`} />
-        <div className="text-[13px] text-[var(--mc-text-muted)]">Loading…</div>
-      </DashboardLayout>
-    );
+    return <div className="text-[13px] text-[var(--mc-text-muted)]">Loading staff tools…</div>;
   }
 
   if (notFound || !lookup) {
     return (
-      <DashboardLayout>
-        <Head title={`${username} — Profile`} />
-        <PageHeading title={username} icon={UserCog} />
-        <div className="text-[13px] text-[var(--mc-ember-500)]">
-          {lookup?.message ?? `Could not find a player named '${username}'.`}
-        </div>
-        <Link href={route('dashboard.players.index')} className="mt-3 inline-block text-[13px] text-[var(--mc-cyan-400)]">
-          <ArrowLeft size={13} className="inline -mt-0.5 mr-1" /> Back to players
-        </Link>
-      </DashboardLayout>
+      <div className="text-[13px] text-[var(--mc-ember-500)]">
+        {lookup?.message ?? `Could not find a player named '${username}'.`}
+      </div>
     );
   }
 
@@ -417,9 +411,7 @@ export default function PlayerProfile({ username }: Props) {
   ];
 
   return (
-    <DashboardLayout>
-      <Head title={`${username} — Profile`} />
-
+    <div>
       {toast && (
         <div
           className={`fixed top-4 right-4 z-50 rounded-[var(--radius)] px-4 py-2.5 text-[13px] shadow-lg ${
@@ -430,38 +422,19 @@ export default function PlayerProfile({ username }: Props) {
         </div>
       )}
 
-      <PageHeading
-        title={lookup.username ?? username}
-        icon={UserCog}
-        subtitle="Full single-player control — moderation history, economy, permissions, and inventory."
-        action={
-          <Link
-            href={route('dashboard.players.index')}
-            className="flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] transition-colors"
-          >
-            <ArrowLeft size={13} />
-            Back to players
-          </Link>
-        }
-      />
-
-      <div className="flex items-center gap-4 mb-6">
-        <PlayerRender uuid={lookup.uuid} size={140} />
-        <div>
-          <div className="font-display text-[16px] font-semibold flex items-center gap-2">
-            {lookup.username}
-            <Badge variant={lookup.online ? 'moss' : 'neutral'} dot={lookup.online}>
-              {lookup.online ? 'online' : 'offline'}
-            </Badge>
-            {activeBans.length > 0 && <Badge variant="ember">banned</Badge>}
-            {activeMutes.length > 0 && <Badge variant="purple">muted</Badge>}
-          </div>
-          <div className="font-data text-[12px] text-[var(--mc-text-muted)]">
-            {lookup.uuid}
-            {!lookup.online && lookup.lastSeen && ` · Last seen ${lookup.lastSeen}`}
-          </div>
-        </div>
+      <div className="flex items-center gap-2 mb-1">
+        <ShieldCheck size={16} className="text-[var(--mc-purple-400)]" />
+        <h2 className="font-display text-[15px] font-semibold">Staff tools</h2>
+        <Badge variant={lookup.online ? 'moss' : 'neutral'} dot={lookup.online}>
+          {lookup.online ? 'online' : 'offline'}
+        </Badge>
+        {activeBans.length > 0 && <Badge variant="ember">banned</Badge>}
+        {activeMutes.length > 0 && <Badge variant="purple">muted</Badge>}
       </div>
+      {!lookup.online && lookup.lastSeen && (
+        <div className="font-data text-[12px] text-[var(--mc-text-muted)] mb-4">Last seen {lookup.lastSeen}</div>
+      )}
+      {lookup.online && <div className="mb-4" />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="Quick actions" icon={Shield} padded>
@@ -478,7 +451,7 @@ export default function PlayerProfile({ username }: Props) {
               onClick={() => runAction('Kicked.', () => apiFetch(r('kick'), 'POST', { reason: 'Kicked from dashboard' }), load)}
               className="flex items-center gap-1 text-[12px] px-2.5 py-1.5 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] disabled:opacity-50 transition-colors"
             >
-              <LogOut size={12} /> Kick
+              Kick
             </button>
             {activeMutes.length > 0 ? (
               <button
@@ -973,6 +946,6 @@ export default function PlayerProfile({ username }: Props) {
           </div>
         </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

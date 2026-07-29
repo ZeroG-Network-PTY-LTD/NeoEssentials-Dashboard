@@ -320,7 +320,7 @@ export default function PublicLookup({
                             </Badge>
                         </div>
 
-                        <form onSubmit={submit} className="mt-6 flex max-w-md gap-2">
+                        <form onSubmit={submit} className="relative z-20 mt-6 flex max-w-md gap-2">
                             <div ref={searchBoxRef} className="relative flex-1">
                                 <Search
                                     size={16}
@@ -343,7 +343,7 @@ export default function PublicLookup({
                                 />
 
                                 {showSuggestions && name.trim().length >= 2 && (
-                                    <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] shadow-lg">
+                                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] shadow-lg">
                                         {suggestions.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-[var(--mc-text-muted)]">
                                                 No players found.

@@ -14,6 +14,8 @@ export interface McPlayer {
   z: number;
   playtimeMinutes: number;
   balance: number;
+  firstJoined?: string | null;
+  gamemode?: string | null;
 }
 
 /** A player who's played before but isn't online right now — no live stats, just identity. */
@@ -21,6 +23,9 @@ export interface OfflinePlayer {
   uuid: string;
   username: string;
   lastSeen: string;
+  playtimeMinutes?: number;
+  firstJoined?: string | null;
+  gamemode?: string | null;
 }
 
 export interface PlayerLookupResult {

@@ -88,6 +88,27 @@ interface NameSuggestion {
 interface StatusInfo {
     online: boolean;
     lastSeen: string | null;
+    playtimeMinutes: number | null;
+    firstJoined: string | number | null;
+    gamemode: string | null;
+}
+
+function formatPlaytime(minutes: number | null): string {
+    if (minutes === null || minutes === undefined) return '—';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function formatJoined(value: string | number | null): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+}
+
+function formatGamemode(mode: string | null): string {
+    if (!mode) return '—';
+    return mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
 }
 
 type Tab = 'overview' | 'staff' | 'moderation' | 'permissions' | 'economy' | 'inventory' | 'notes';
@@ -388,7 +409,7 @@ export default function PublicLookup({
                                                 </div>
                                                 <div className="mt-0.5 text-xs text-[var(--mc-text-muted)]">
                                                     {status?.online ? 'Online now' : status?.lastSeen ? `Last seen ${status.lastSeen}` : 'Offline'}
-                                                    {' · '}Joined —
+                                                    {' · '}Joined {formatJoined(status?.firstJoined ?? null)}
                                                 </div>
                                             </div>
                                         </div>
@@ -402,9 +423,9 @@ export default function PublicLookup({
                                                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                                                     {[
                                                         ['Status', status?.online ? 'Online' : 'Offline'],
-                                                        ['Playtime', '—'],
-                                                        ['Game mode', '—'],
-                                                        ['Joined', '—'],
+                                                        ['Playtime', formatPlaytime(status?.playtimeMinutes ?? null)],
+                                                        ['Game mode', formatGamemode(status?.gamemode ?? null)],
+                                                        ['Joined', formatJoined(status?.firstJoined ?? null)],
                                                     ].map(([label, value]) => (
                                                         <div
                                                             key={label}

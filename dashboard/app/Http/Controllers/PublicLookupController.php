@@ -78,26 +78,37 @@ class PublicLookupController extends Controller
     }
 
     /**
-     * Online/last-seen for a single player, sourced the same way as suggest() — needed by
-     * the Overview tab for every visitor, not just staff (staff gets richer data via
-     * PlayerManagementPanel's own authenticated lookup call).
+     * Online/last-seen + overview stats (playtime/join date/game mode) for a single player,
+     * sourced the same way as suggest() — needed by the Overview tab for every visitor, not
+     * just staff (staff gets richer data via PlayerManagementPanel's own authenticated lookup
+     * call). Falls back to lookupPlayer() for anyone outside the online/recent-offline rosters,
+     * since that endpoint resolves any player by name.
      */
     private function onlineStatus(string $username): array
     {
         $needle = strtolower($username);
+        $shape = fn (array $p, bool $online, ?string $lastSeen = null) => [
+            'online' => $online,
+            'lastSeen' => $lastSeen,
+            'playtimeMinutes' => $p['playtimeMinutes'] ?? null,
+            'firstJoined' => $p['firstJoined'] ?? null,
+            'gamemode' => $p['gamemode'] ?? null,
+        ];
 
         foreach ($this->mc->players() as $p) {
             if (strtolower($p['username']) === $needle) {
-                return ['online' => true, 'lastSeen' => null];
+                return $shape($p, true);
             }
         }
 
         foreach ($this->mc->offlinePlayers() as $p) {
             if (strtolower($p['username']) === $needle) {
-                return ['online' => false, 'lastSeen' => $p['lastSeen'] ?? null];
+                return $shape($p, false, $p['lastSeen'] ?? null);
             }
         }
 
-        return ['online' => false, 'lastSeen' => null];
+        $looked = $this->safe(fn () => $this->mc->lookupPlayer($username), []);
+
+        return $shape($looked, false);
     }
 }

@@ -91,8 +91,10 @@ class MinecraftApiService
             'x' => (float) ($p['x'] ?? 0),
             'y' => (float) ($p['y'] ?? 0),
             'z' => (float) ($p['z'] ?? 0),
-            'playtimeMinutes' => 0, // not exposed by the mod's online-player list
-            'balance' => 0,          // fetch via economyLeaderboard() if needed
+            'playtimeMinutes' => (int) ($p['playtimeMinutes'] ?? 0),
+            'firstJoined' => $p['firstJoined'] ?? null,
+            'gamemode' => $p['gamemode'] ?? null,
+            'balance' => 0, // fetch via economyLeaderboard() if needed
         ], $online);
     }
 
@@ -109,6 +111,9 @@ class MinecraftApiService
             'uuid' => $p['uuid'],
             'username' => $p['username'],
             'lastSeen' => $p['lastSeen'] ?? 'Unknown',
+            'playtimeMinutes' => (int) ($p['playtimeMinutes'] ?? 0),
+            'firstJoined' => $p['firstJoined'] ?? null,
+            'gamemode' => $p['gamemode'] ?? null,
         ], $offline);
     }
 

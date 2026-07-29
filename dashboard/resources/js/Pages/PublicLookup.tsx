@@ -1,6 +1,6 @@
 import { PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Search, ShieldBan, VolumeX, LogOut, TriangleAlert } from 'lucide-react';
 import PlayerRender from '@/Components/PlayerRender';
 import PlayerManagementPanel from '@/Components/PlayerManagementPanel';
@@ -64,6 +64,11 @@ type RecentEntry =
     | (BanRecord & { type: 'ban' })
     | (MuteRecord & { type: 'mute' });
 
+interface NameSuggestion {
+    username: string;
+    uuid: string;
+}
+
 function formatDate(ms: number) {
     return ms ? new Date(ms).toLocaleString() : '—';
 }
@@ -123,13 +128,48 @@ export default function PublicLookup({
     canManage: boolean;
 }>) {
     const [name, setName] = useState(query ?? '');
+    const [suggestions, setSuggestions] = useState<NameSuggestion[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchBoxRef = useRef<HTMLDivElement>(null);
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-        router.get(route('lookup'), name.trim() ? { player: name.trim() } : {}, {
+    const go = (player: string) => {
+        setShowSuggestions(false);
+        router.get(route('lookup'), player.trim() ? { player: player.trim() } : {}, {
             preserveState: true,
         });
     };
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        go(name);
+    };
+
+    useEffect(() => {
+        const trimmed = name.trim();
+        if (trimmed.length < 2) {
+            setSuggestions([]);
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            fetch(route('lookup.suggest', { q: trimmed }))
+                .then((res) => res.json())
+                .then((data: NameSuggestion[]) => setSuggestions(data))
+                .catch(() => setSuggestions([]));
+        }, 200);
+
+        return () => clearTimeout(timeout);
+    }, [name]);
+
+    useEffect(() => {
+        const onClickOutside = (e: MouseEvent) => {
+            if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', onClickOutside);
+        return () => document.removeEventListener('mousedown', onClickOutside);
+    }, []);
 
     return (
         <>
@@ -159,7 +199,7 @@ export default function PublicLookup({
                         />
 
                         <form onSubmit={submit} className="flex gap-2">
-                            <div className="relative flex-1">
+                            <div ref={searchBoxRef} className="relative flex-1">
                                 <Search
                                     size={16}
                                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mc-text-muted)]"
@@ -167,10 +207,36 @@ export default function PublicLookup({
                                 <input
                                     type="text"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        setName(e.target.value);
+                                        setShowSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowSuggestions(true)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Escape') setShowSuggestions(false);
+                                    }}
                                     placeholder="Player name"
+                                    autoComplete="off"
                                     className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-transparent py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-cyan-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-cyan-500)]"
                                 />
+
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] shadow-lg">
+                                        {suggestions.map((s) => (
+                                            <button
+                                                key={s.uuid}
+                                                type="button"
+                                                onClick={() => {
+                                                    setName(s.username);
+                                                    go(s.username);
+                                                }}
+                                                className="flex w-full items-center px-3 py-2 text-left text-sm text-[var(--mc-text-secondary)] transition hover:bg-[var(--mc-bg-surface-raised)] hover:text-[var(--mc-text-primary)]"
+                                            >
+                                                {s.username}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <button
                                 type="submit"

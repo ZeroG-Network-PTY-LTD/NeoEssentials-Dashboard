@@ -37,6 +37,7 @@ Route::get('/', function () {
 // the visitor is authenticated and passes can:players.profile.manage, PublicLookup.tsx
 // also mounts PlayerManagementPanel, which talks to the gated API below.
 Route::get('/lookup', [PublicLookupController::class, 'index'])->name('lookup');
+Route::get('/lookup-suggest', [PublicLookupController::class, 'suggest'])->name('lookup.suggest');
 
 // Full per-player control — the former /dashboard/players/player/{username} page,
 // moved here so it's reachable from /lookup instead of requiring a trip through the

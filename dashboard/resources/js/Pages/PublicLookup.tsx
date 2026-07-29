@@ -1,12 +1,27 @@
 import { PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
-import { Search, ShieldBan, VolumeX, LogOut, TriangleAlert } from 'lucide-react';
+import {
+    Search,
+    ShieldBan,
+    VolumeX,
+    LogOut,
+    TriangleAlert,
+    LayoutDashboard,
+    Settings,
+    UserCircle,
+    Gauge,
+    ShieldCheck,
+    Shield,
+    Coins,
+    Backpack,
+    StickyNote,
+} from 'lucide-react';
 import PlayerRender from '@/Components/PlayerRender';
 import PlayerManagementPanel from '@/Components/PlayerManagementPanel';
 import Card from '@/Components/Dashboard/Card';
 import Badge from '@/Components/Dashboard/Badge';
-import PageHeading from '@/Components/Dashboard/PageHeading';
+import SegmentedTabs, { SegmentedTabOption } from '@/Components/SegmentedTabs';
 
 interface PunishmentBase {
     id: string;
@@ -67,63 +82,100 @@ type RecentEntry =
 interface NameSuggestion {
     username: string;
     uuid: string;
+    online: boolean;
 }
+
+interface StatusInfo {
+    online: boolean;
+    lastSeen: string | null;
+}
+
+type Tab = 'overview' | 'staff' | 'moderation' | 'permissions' | 'economy' | 'inventory' | 'notes';
+
+const STAFF_TABS: SegmentedTabOption<Tab>[] = [
+    { id: 'overview', label: 'Overview', icon: Gauge },
+    { id: 'staff', label: 'Staff tools', icon: ShieldCheck },
+    { id: 'moderation', label: 'Moderation', icon: ShieldBan },
+    { id: 'permissions', label: 'Permissions', icon: Shield },
+    { id: 'economy', label: 'Economy', icon: Coins },
+    { id: 'inventory', label: 'Inventory', icon: Backpack },
+    { id: 'notes', label: 'Notes', icon: StickyNote },
+];
+
+const PUBLIC_TABS: SegmentedTabOption<Tab>[] = [
+    { id: 'overview', label: 'Overview', icon: Gauge },
+    { id: 'moderation', label: 'Moderation', icon: ShieldBan },
+];
 
 function formatDate(ms: number) {
     return ms ? new Date(ms).toLocaleString() : '—';
 }
 
-function StatusPill({ active, permanent }: { active: boolean; permanent: boolean }) {
-    if (!active) {
-        return <Badge variant="moss">lifted</Badge>;
-    }
-    return (
-        <Badge variant="ember" dot>
-            {permanent ? 'active · permanent' : 'active'}
-        </Badge>
-    );
+interface ModRow {
+    id: string;
+    type: 'Ban' | 'Mute' | 'Kick' | 'Warning';
+    reason: string;
+    staff: string;
+    duration: string;
+    date: number;
 }
 
-function SectionCard({
-    icon: Icon,
-    title,
-    count,
-    children,
-    last = false,
-}: {
-    icon: typeof ShieldBan;
-    title: string;
-    count: number;
-    children: React.ReactNode;
-    last?: boolean;
-}) {
-    return (
-        <div className={last ? 'py-5' : 'border-b border-[var(--mc-border)] py-5'}>
-            <div className="flex items-center gap-2">
-                <Icon size={15} strokeWidth={1.75} className="text-[var(--mc-cyan-500)]" />
-                <h2 className="font-display text-base font-semibold">{title}</h2>
-                <span className="text-xs text-[var(--mc-text-muted)]">{count}</span>
-            </div>
-            <div className="mt-3 space-y-0">
-                {count === 0 ? (
-                    <p className="text-sm text-[var(--mc-text-muted)]">No records.</p>
-                ) : (
-                    children
-                )}
-            </div>
-        </div>
-    );
+const MOD_TAG_VARIANT: Record<ModRow['type'], 'ember' | 'purple' | 'neutral' | 'cyan'> = {
+    Ban: 'ember',
+    Mute: 'purple',
+    Kick: 'neutral',
+    Warning: 'cyan',
+};
+
+function buildModerationRows(result: LookupResult): ModRow[] {
+    const rows: ModRow[] = [
+        ...result.bans.map((b): ModRow => ({
+            id: `ban-${b.id}`,
+            type: 'Ban',
+            reason: b.reason || 'No reason given',
+            staff: b.bannedBy,
+            duration: !b.active ? 'Lifted' : b.permanent ? 'Permanent' : `Until ${formatDate(b.expireTime)}`,
+            date: b.banTime,
+        })),
+        ...result.mutes.map((m): ModRow => ({
+            id: `mute-${m.id}`,
+            type: 'Mute',
+            reason: m.reason || 'No reason given',
+            staff: m.mutedBy,
+            duration: !m.active ? 'Lifted' : m.permanent ? 'Permanent' : `Until ${formatDate(m.expireTime)}`,
+            date: m.muteTime,
+        })),
+        ...result.kicks.map((k): ModRow => ({
+            id: `kick-${k.id}`,
+            type: 'Kick',
+            reason: k.reason || 'No reason given',
+            staff: k.kickedBy,
+            duration: '—',
+            date: k.kickTime,
+        })),
+        ...result.warns.map((w): ModRow => ({
+            id: `warn-${w.id}`,
+            type: 'Warning',
+            reason: w.reason || 'No reason given',
+            staff: w.warnedBy,
+            duration: '—',
+            date: w.timestamp,
+        })),
+    ];
+    return rows.sort((a, b) => b.date - a.date);
 }
 
 export default function PublicLookup({
     auth,
     query,
     result,
+    status,
     recent,
     canManage,
 }: PageProps<{
     query: string | null;
     result: LookupResult | null;
+    status: StatusInfo | null;
     recent: RecentEntry[];
     canManage: boolean;
 }>) {
@@ -131,6 +183,12 @@ export default function PublicLookup({
     const [suggestions, setSuggestions] = useState<NameSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const searchBoxRef = useRef<HTMLDivElement>(null);
+    const isStaff = canManage && !!auth.user;
+    const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+    useEffect(() => {
+        setActiveTab('overview');
+    }, [result?.playerName]);
 
     const go = (player: string) => {
         setShowSuggestions(false);
@@ -171,12 +229,15 @@ export default function PublicLookup({
         return () => document.removeEventListener('mousedown', onClickOutside);
     }, []);
 
+    const tabs = isStaff ? STAFF_TABS : PUBLIC_TABS;
+    const moderationRows = result ? buildModerationRows(result) : [];
+
     return (
         <>
             <Head title="Player Lookup" />
             <div className="min-h-screen bg-[var(--mc-bg-base)] text-[var(--mc-text-primary)]">
                 <div className="mx-auto max-w-5xl px-6">
-                    <header className="flex items-center justify-between border-b border-[var(--mc-border)] py-6">
+                    <header className="flex items-center gap-4 border-b border-[var(--mc-border)] py-4">
                         <Link href="/" className="flex items-center gap-2">
                             <img src="/images/logo.png" alt="" className="h-7 w-7 object-contain" />
                             <span className="font-display text-lg font-semibold tracking-tight">
@@ -184,21 +245,61 @@ export default function PublicLookup({
                             </span>
                         </Link>
 
-                        <Link
-                            href={auth.user ? route('dashboard') : route('login')}
-                            className="rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"
-                        >
-                            {auth.user ? 'Dashboard' : 'Staff log in'}
-                        </Link>
+                        {auth.user ? (
+                            <>
+                                <nav className="flex items-center gap-4 text-sm">
+                                    <Link
+                                        href={route('dashboard')}
+                                        className="flex items-center gap-1.5 text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"
+                                    >
+                                        <LayoutDashboard size={15} strokeWidth={2} />
+                                        Dashboard
+                                    </Link>
+                                    <span className="flex items-center gap-1.5 font-medium text-[var(--mc-cyan-400)]">
+                                        <Search size={15} strokeWidth={2} />
+                                        Player Lookup
+                                    </span>
+                                    <Link
+                                        href={route('profile.edit')}
+                                        className="flex items-center gap-1.5 text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"
+                                    >
+                                        <Settings size={15} strokeWidth={2} />
+                                        Settings
+                                    </Link>
+                                </nav>
+                                <Link
+                                    href={route('profile.edit')}
+                                    className="ml-auto flex items-center gap-2 text-sm text-[var(--mc-text-primary)]"
+                                >
+                                    <UserCircle size={17} strokeWidth={2} />
+                                    {auth.user.name}
+                                </Link>
+                            </>
+                        ) : (
+                            <Link
+                                href={route('login')}
+                                className="ml-auto rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"
+                            >
+                                Staff log in
+                            </Link>
+                        )}
                     </header>
 
                     <main className="pb-20">
-                        <PageHeading
-                            title="Player Lookup"
-                            subtitle="Search any player to see their public moderation record — bans, mutes, kicks, and warnings, with full history."
-                        />
+                        <div className="flex items-baseline justify-between gap-4 pt-8">
+                            <div>
+                                <h1 className="font-display text-2xl font-semibold">Player Lookup</h1>
+                                <p className="mt-1 text-sm italic text-[var(--mc-text-secondary)]">
+                                    Search any player to view their record
+                                    {isStaff ? ' and manage them with staff tools' : ''}.
+                                </p>
+                            </div>
+                            <Badge variant={isStaff ? 'cyan' : 'neutral'}>
+                                {isStaff ? 'Staff view' : 'Public view'}
+                            </Badge>
+                        </div>
 
-                        <form onSubmit={submit} className="flex gap-2">
+                        <form onSubmit={submit} className="mt-6 flex max-w-md gap-2">
                             <div ref={searchBoxRef} className="relative flex-1">
                                 <Search
                                     size={16}
@@ -215,26 +316,42 @@ export default function PublicLookup({
                                     onKeyDown={(e) => {
                                         if (e.key === 'Escape') setShowSuggestions(false);
                                     }}
-                                    placeholder="Player name"
+                                    placeholder="Start typing a username…"
                                     autoComplete="off"
                                     className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-transparent py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-cyan-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-cyan-500)]"
                                 />
 
-                                {showSuggestions && suggestions.length > 0 && (
+                                {showSuggestions && name.trim().length >= 2 && (
                                     <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] shadow-lg">
-                                        {suggestions.map((s) => (
-                                            <button
-                                                key={s.uuid}
-                                                type="button"
-                                                onClick={() => {
-                                                    setName(s.username);
-                                                    go(s.username);
-                                                }}
-                                                className="flex w-full items-center px-3 py-2 text-left text-sm text-[var(--mc-text-secondary)] transition hover:bg-[var(--mc-bg-surface-raised)] hover:text-[var(--mc-text-primary)]"
-                                            >
-                                                {s.username}
-                                            </button>
-                                        ))}
+                                        {suggestions.length === 0 ? (
+                                            <div className="px-3 py-2 text-sm text-[var(--mc-text-muted)]">
+                                                No players found.
+                                            </div>
+                                        ) : (
+                                            suggestions.map((s) => (
+                                                <button
+                                                    key={s.uuid}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setName(s.username);
+                                                        go(s.username);
+                                                    }}
+                                                    className="flex w-full items-center gap-3 border-b border-[var(--mc-border)] px-3 py-2 text-left text-sm text-[var(--mc-text-secondary)] transition last:border-b-0 hover:bg-[var(--mc-bg-surface-raised)] hover:text-[var(--mc-text-primary)]"
+                                                >
+                                                    <img
+                                                        src={`https://mc-heads.net/avatar/${s.username}/64`}
+                                                        alt=""
+                                                        className="h-7 w-7 shrink-0 rounded-[var(--radius-sm)]"
+                                                    />
+                                                    <span className="flex-1">{s.username}</span>
+                                                    <span
+                                                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                                            s.online ? 'bg-[var(--mc-cyan-500)]' : 'bg-[var(--mc-text-muted)]'
+                                                        }`}
+                                                    />
+                                                </button>
+                                            ))
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -254,110 +371,126 @@ export default function PublicLookup({
                                         shortly.
                                     </div>
                                 ) : (
-                                    <div className="space-y-6">
-                                        <Card>
-                                            <div className="flex items-center gap-4 p-4">
-                                                <PlayerRender uuid={result.playerId} size={120} />
-                                                <div>
-                                                    <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
-                                                        Player
-                                                    </span>
-                                                    <h2 className="font-display text-lg font-semibold">
+                                    <div>
+                                        <div className="flex items-center gap-6 border-b border-[var(--mc-border)] pb-6">
+                                            <PlayerRender uuid={result.playerId} size={120} />
+                                            <div>
+                                                <div className="flex items-center gap-3">
+                                                    <h2 className="font-display text-xl font-semibold">
                                                         {result.playerName}
                                                     </h2>
+                                                    <Badge variant={status?.online ? 'moss' : 'neutral'} dot={status?.online}>
+                                                        {status?.online ? 'online' : 'offline'}
+                                                    </Badge>
+                                                </div>
+                                                <div className="mt-1 font-data text-xs text-[var(--mc-text-muted)]">
+                                                    {result.playerId ?? '—'}
+                                                </div>
+                                                <div className="mt-0.5 text-xs text-[var(--mc-text-muted)]">
+                                                    {status?.online ? 'Online now' : status?.lastSeen ? `Last seen ${status.lastSeen}` : 'Offline'}
+                                                    {' · '}Joined —
                                                 </div>
                                             </div>
-                                        </Card>
+                                        </div>
 
-                                        {canManage && auth.user && (
-                                            <div className="rounded-[var(--radius-lg)] border border-[var(--mc-purple-400)] bg-[var(--mc-bg-surface)] p-5">
-                                                <PlayerManagementPanel username={result.playerName} />
+                                        <div className="mt-6">
+                                            <SegmentedTabs name="lookup-tab" tabs={tabs} value={activeTab} onChange={setActiveTab} />
+                                        </div>
+
+                                        {activeTab === 'overview' && (
+                                            <div className="mt-6">
+                                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                                    {[
+                                                        ['Status', status?.online ? 'Online' : 'Offline'],
+                                                        ['Playtime', '—'],
+                                                        ['Game mode', '—'],
+                                                        ['Joined', '—'],
+                                                    ].map(([label, value]) => (
+                                                        <div
+                                                            key={label}
+                                                            className="rounded-[var(--radius-md)] border border-[var(--mc-border)] p-4"
+                                                        >
+                                                            <div className="text-[11px] uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                                                {label}
+                                                            </div>
+                                                            <div className="mt-1 font-display text-lg font-semibold [font-variant-numeric:tabular-nums]">
+                                                                {value}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {!isStaff && (
+                                                    <p className="mt-6 max-w-[60ch] text-sm text-[var(--mc-text-muted)]">
+                                                        Sign in with a staff account to view balance, permissions,
+                                                        inventory, and moderation tools for this player.
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
 
-                                        <Card padded>
-                                        <SectionCard icon={ShieldBan} title="Bans" count={result.bans.length}>
-                                            {result.bans.map((b) => (
-                                                <div
-                                                    key={b.id}
-                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
-                                                >
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-[var(--mc-text-secondary)]">
-                                                            {b.reason || 'No reason given'}
-                                                        </span>
-                                                        <StatusPill active={b.active} permanent={b.permanent} />
-                                                    </div>
-                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
-                                                        Banned by {b.bannedBy} · {formatDate(b.banTime)}
-                                                        {b.active && !b.permanent && (
-                                                            <> · Expires {formatDate(b.expireTime)}</>
-                                                        )}
-                                                        {!b.active && b.unbannedBy && (
-                                                            <> · Unbanned by {b.unbannedBy}</>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </SectionCard>
+                                        {activeTab === 'moderation' && (
+                                            <div className="mt-6">
+                                                <Card padded>
+                                                    {moderationRows.length === 0 ? (
+                                                        <p className="text-sm text-[var(--mc-text-muted)]">
+                                                            No moderation history on file.
+                                                        </p>
+                                                    ) : (
+                                                        <div className="overflow-x-auto">
+                                                            <table className="w-full text-left text-sm">
+                                                                <thead>
+                                                                    <tr className="border-b border-[var(--mc-border)] text-[11px] uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                                                        <th className="pb-2 pr-3 font-medium">Type</th>
+                                                                        <th className="pb-2 pr-3 font-medium">Reason</th>
+                                                                        <th className="pb-2 pr-3 font-medium">Staff</th>
+                                                                        <th className="pb-2 pr-3 font-medium">Duration</th>
+                                                                        <th className="pb-2 font-medium">Date</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {moderationRows.map((row) => (
+                                                                        <tr
+                                                                            key={row.id}
+                                                                            className="border-b border-[var(--mc-border)] last:border-b-0"
+                                                                        >
+                                                                            <td className="py-2.5 pr-3">
+                                                                                <Badge variant={MOD_TAG_VARIANT[row.type]}>
+                                                                                    {row.type}
+                                                                                </Badge>
+                                                                            </td>
+                                                                            <td className="py-2.5 pr-3 text-[var(--mc-text-secondary)]">
+                                                                                {row.reason}
+                                                                            </td>
+                                                                            <td className="py-2.5 pr-3 text-[var(--mc-text-muted)]">
+                                                                                {row.staff}
+                                                                            </td>
+                                                                            <td className="py-2.5 pr-3 text-[var(--mc-text-muted)]">
+                                                                                {row.duration}
+                                                                            </td>
+                                                                            <td className="py-2.5 text-[var(--mc-text-muted)]">
+                                                                                {formatDate(row.date)}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </Card>
+                                            </div>
+                                        )}
 
-                                        <SectionCard icon={VolumeX} title="Mutes" count={result.mutes.length}>
-                                            {result.mutes.map((m) => (
-                                                <div
-                                                    key={m.id}
-                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
-                                                >
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-[var(--mc-text-secondary)]">
-                                                            {m.reason || 'No reason given'}
-                                                        </span>
-                                                        <StatusPill active={m.active} permanent={m.permanent} />
-                                                    </div>
-                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
-                                                        Muted by {m.mutedBy} · {formatDate(m.muteTime)}
-                                                        {m.active && !m.permanent && (
-                                                            <> · Expires {formatDate(m.expireTime)}</>
-                                                        )}
-                                                        {!m.active && m.unmutedBy && (
-                                                            <> · Unmuted by {m.unmutedBy}</>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </SectionCard>
-
-                                        <SectionCard icon={LogOut} title="Kicks" count={result.kicks.length}>
-                                            {result.kicks.map((k) => (
-                                                <div
-                                                    key={k.id}
-                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
-                                                >
-                                                    <span className="text-[var(--mc-text-secondary)]">
-                                                        {k.reason || 'No reason given'}
-                                                    </span>
-                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
-                                                        Kicked by {k.kickedBy} · {formatDate(k.kickTime)}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </SectionCard>
-
-                                        <SectionCard icon={TriangleAlert} title="Warnings" count={result.warns.length} last>
-                                            {result.warns.map((w) => (
-                                                <div
-                                                    key={w.id}
-                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
-                                                >
-                                                    <span className="text-[var(--mc-text-secondary)]">
-                                                        {w.reason || 'No reason given'}
-                                                    </span>
-                                                    <div className="mt-1 text-xs text-[var(--mc-text-muted)]">
-                                                        Warned by {w.warnedBy} · {formatDate(w.timestamp)}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </SectionCard>
-                                        </Card>
+                                        {isStaff && activeTab !== 'overview' && activeTab !== 'moderation' && (
+                                            <div
+                                                className={`mt-6 rounded-[var(--radius-lg)] p-5 ${
+                                                    activeTab === 'staff'
+                                                        ? 'border border-[var(--mc-purple-400)] bg-[var(--mc-bg-surface)]'
+                                                        : 'border border-[var(--mc-border)] bg-[var(--mc-bg-surface)]'
+                                                }`}
+                                            >
+                                                <PlayerManagementPanel username={result.playerName} activeTab={activeTab} />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

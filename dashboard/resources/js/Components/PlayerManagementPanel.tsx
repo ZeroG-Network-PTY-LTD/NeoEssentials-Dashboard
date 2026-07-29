@@ -45,8 +45,11 @@ import {
 
 type Gamemode = 'survival' | 'creative' | 'adventure' | 'spectator';
 
+type ManageTab = 'staff' | 'permissions' | 'economy' | 'inventory' | 'notes';
+
 interface Props {
   username: string;
+  activeTab: ManageTab;
 }
 
 // --- Small local toast — this panel fires many independent JSON actions and shows a
@@ -89,7 +92,7 @@ async function apiFetch(url: string, method: string, body?: unknown): Promise<an
  * Dashboard/PlayerProfile.tsx page; self-sufficient (does its own `lookup` call for
  * online-status — the public page's own result has no online/lastSeen field).
  */
-export default function PlayerManagementPanel({ username }: Props) {
+export default function PlayerManagementPanel({ username, activeTab }: Props) {
   const { toast, showToast } = useLocalToast();
 
   const [lookup, setLookup] = useState<PlayerLookupResult | null>(null);
@@ -422,6 +425,8 @@ export default function PlayerManagementPanel({ username }: Props) {
         </div>
       )}
 
+      {activeTab === 'staff' && (
+      <>
       <div className="flex items-center gap-2 mb-1">
         <ShieldCheck size={16} className="text-[var(--mc-purple-400)]" />
         <h2 className="font-display text-[15px] font-semibold">Staff tools</h2>
@@ -497,24 +502,6 @@ export default function PlayerManagementPanel({ username }: Props) {
               </button>
             ))}
           </div>
-
-          <div className="flex items-center gap-2 text-[11px] text-[var(--mc-text-muted)] mb-1.5">
-            <UserCog size={13} />
-            Permission group
-          </div>
-          <select
-            value={permInfo?.group ?? ''}
-            disabled={busy || groups.length === 0}
-            onChange={(e) => changeGroup(e.target.value)}
-            className="w-full text-[13px] px-2.5 py-1.5 rounded-[6px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] outline-none focus:border-[var(--mc-cyan-400)] disabled:opacity-50"
-          >
-            <option value="" disabled>
-              {groups.length === 0 ? 'Loading groups…' : 'Select group'}
-            </option>
-            {groups.map((g) => (
-              <option key={g.name} value={g.name}>{g.name}</option>
-            ))}
-          </select>
         </Card>
 
         <Card title="Player state" icon={Sparkles} padded>
@@ -810,7 +797,12 @@ export default function PlayerManagementPanel({ username }: Props) {
             <Trash2 size={12} /> Clear inventory
           </button>
         </Card>
+      </div>
+      </>
+      )}
 
+      {activeTab === 'economy' && (
+      <div className="grid grid-cols-1 gap-4 max-w-lg">
         <Card title="Economy" icon={Coins} padded>
           <div className="text-[20px] font-display font-semibold mb-3">
             {balance !== null ? `$${balance}` : '…'}
@@ -828,6 +820,26 @@ export default function PlayerManagementPanel({ username }: Props) {
             <button disabled={busy} onClick={() => adjustBalance('take')} className="text-[12px] px-2.5 py-1.5 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] disabled:opacity-50 transition-colors">Take</button>
             <button disabled={busy} onClick={() => adjustBalance('set')} className="text-[12px] px-2.5 py-1.5 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface-raised)] disabled:opacity-50 transition-colors">Set</button>
           </div>
+        </Card>
+      </div>
+      )}
+
+      {activeTab === 'permissions' && (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card title="Permission group" icon={UserCog} padded>
+          <select
+            value={permInfo?.group ?? ''}
+            disabled={busy || groups.length === 0}
+            onChange={(e) => changeGroup(e.target.value)}
+            className="w-full text-[13px] px-2.5 py-1.5 rounded-[6px] bg-[var(--mc-bg-surface-raised)] border border-[var(--mc-border-strong)] outline-none focus:border-[var(--mc-cyan-400)] disabled:opacity-50"
+          >
+            <option value="" disabled>
+              {groups.length === 0 ? 'Loading groups…' : 'Select group'}
+            </option>
+            {groups.map((g) => (
+              <option key={g.name} value={g.name}>{g.name}</option>
+            ))}
+          </select>
         </Card>
 
         <Card title="Individual permissions" icon={Shield} padded>
@@ -856,7 +868,11 @@ export default function PlayerManagementPanel({ username }: Props) {
             ))}
           </div>
         </Card>
+      </div>
+      )}
 
+      {activeTab === 'inventory' && (
+      <div className="grid grid-cols-1 gap-4 max-w-lg">
         <Card title="Inventory" icon={Backpack} padded>
           {inventory?.error && <div className="text-[12px] text-[var(--mc-text-muted)]">{inventory.error}</div>}
           {!inventory?.error && inventorySlots.length === 0 && (
@@ -873,7 +889,11 @@ export default function PlayerManagementPanel({ username }: Props) {
             </div>
           )}
         </Card>
+      </div>
+      )}
 
+      {activeTab === 'staff' && (
+      <div className="grid grid-cols-1 gap-4 mt-4">
         <Card title={`Moderation history (${bans.length + mutes.length + kicks.length + warns.length})`} icon={ShieldBan} padded>
           <div className="flex flex-col gap-3 max-h-72 overflow-y-auto text-[12px]">
             {bans.map((b) => (
@@ -917,7 +937,11 @@ export default function PlayerManagementPanel({ username }: Props) {
             )}
           </div>
         </Card>
+      </div>
+      )}
 
+      {activeTab === 'notes' && (
+      <div className="grid grid-cols-1 gap-4 max-w-lg">
         <Card title="Notes" icon={StickyNote} padded>
           <form onSubmit={addNote} className="flex gap-1.5 mb-3">
             <input
@@ -946,6 +970,7 @@ export default function PlayerManagementPanel({ username }: Props) {
           </div>
         </Card>
       </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Card from '@/Components/Dashboard/Card';
 import PageHeading from '@/Components/Dashboard/PageHeading';
@@ -39,6 +39,102 @@ const ACTION_LABEL: Record<ActionType, string> = {
   mute: 'Mute',
 };
 
+/**
+ * The inline "dropdown" preview shown when expanding a row in Online now / Recently
+ * offline, or after a "Look up a player" search — one shared body so all three give the
+ * same effect instead of three separately-built previews. `live` (an already-known
+ * McPlayer) skips the balance fetch and unlocks health/position/playtime; without it,
+ * both balance and group are fetched on mount.
+ */
+function PlayerPreview({
+  uuid,
+  username,
+  online,
+  lastSeen,
+  live,
+}: {
+  uuid: string;
+  username: string;
+  online: boolean;
+  lastSeen?: string;
+  live?: McPlayer;
+}) {
+  const [balance, setBalance] = useState<number | string | undefined>(live?.balance);
+  const [group, setGroup] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    setGroup(undefined);
+    setBalance(live?.balance);
+    Promise.allSettled([
+      live
+        ? Promise.resolve(null)
+        : fetch(route('dashboard.players.profile.balance', username)).then((r) => r.json()),
+      fetch(route('dashboard.players.profile.permission-info', username)).then((r) => r.json()),
+    ]).then(([balRes, groupRes]) => {
+      if (balRes.status === 'fulfilled' && balRes.value) setBalance(balRes.value.balance);
+      if (groupRes.status === 'fulfilled' && groupRes.value.success) setGroup(groupRes.value.group);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username]);
+
+  return (
+    <div className="text-[13px]">
+      <div className="flex items-center gap-2.5">
+        <img
+          src={`https://mc-heads.net/avatar/${uuid}/32`}
+          alt=""
+          className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+        />
+        <span className="font-medium">{username}</span>
+        <Badge variant={online ? 'moss' : 'neutral'} dot={online}>
+          {online ? 'online' : 'offline'}
+        </Badge>
+        {!online && lastSeen && (
+          <span className="text-[12px] text-[var(--mc-text-muted)]">Last seen {lastSeen}</span>
+        )}
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-[var(--mc-border)] grid grid-cols-2 gap-x-4 gap-y-2 font-data text-[12px]">
+        <div>
+          <span className="text-[var(--mc-text-muted)]">UUID: </span>
+          <span className="break-all">{uuid}</span>
+        </div>
+        <div>
+          <span className="text-[var(--mc-text-muted)]">Balance: </span>
+          {balance !== undefined ? `$${balance}` : '…'}
+        </div>
+        <div>
+          <span className="text-[var(--mc-text-muted)]">Group: </span>
+          {group ?? '…'}
+        </div>
+        {live && (
+          <>
+            <div>
+              <span className="text-[var(--mc-text-muted)]">Health: </span>
+              {live.health.toFixed(0)}/{live.maxHealth.toFixed(0)}
+            </div>
+            <div>
+              <span className="text-[var(--mc-text-muted)]">Position: </span>
+              {live.x.toFixed(0)}, {live.y.toFixed(0)}, {live.z.toFixed(0)} · {live.dimension}
+            </div>
+            <div>
+              <span className="text-[var(--mc-text-muted)]">Playtime: </span>
+              {live.playtimeMinutes} min
+            </div>
+          </>
+        )}
+      </div>
+
+      <Link
+        href={route('lookup', { player: username })}
+        className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[var(--mc-cyan-400)] hover:underline"
+      >
+        Full profile →
+      </Link>
+    </div>
+  );
+}
+
 export default function Players({ players, offlinePlayers, lookupQuery, lookupResult, groups }: Props) {
   const [selected, setSelected] = useState<McPlayer | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -52,7 +148,9 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
   const [currentGroup, setCurrentGroup] = useState<string | null>(null);
   const [groupSaving, setGroupSaving] = useState(false);
   const [gamemodeSaving, setGamemodeSaving] = useState(false);
-  const [lookupExtra, setLookupExtra] = useState<{ balance?: string; group?: string; live?: McPlayer } | null>(null);
+  // Which player's inline "dropdown" preview (PlayerPreview) is expanded, in either the
+  // Online now table or the Recently offline list — null when none is.
+  const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
 
   // Live join/leave only tells us *that* it happened, not the full player record — a partial
   // reload of just these two props is the cheapest correct way to reflect it (no-ops when
@@ -67,35 +165,12 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
     e.preventDefault();
     const q = lookupInput.trim();
     if (!q) return;
-    setLookupExtra(null);
     router.get(route('dashboard.players.index'), { lookup: q }, {
       preserveState: true,
       preserveScroll: true,
       only: ['lookupQuery', 'lookupResult'],
     });
   };
-
-  // Balance/group aren't part of the mod's own lookup response — fetched separately here,
-  // for online and offline players alike (unlike the "More" panel, which only ever targets
-  // online players via resolveUsername()).
-  useEffect(() => {
-    if (!lookupResult?.success || !lookupResult.username) {
-      setLookupExtra(null);
-      return;
-    }
-    const username = lookupResult.username;
-    const live = players.find((p) => p.uuid === lookupResult.uuid);
-    Promise.allSettled([
-      fetch(route('dashboard.players.profile.balance', username)).then((r) => r.json()),
-      fetch(route('dashboard.players.profile.permission-info', username)).then((r) => r.json()),
-    ]).then(([balanceRes, groupRes]) => {
-      setLookupExtra({
-        balance: balanceRes.status === 'fulfilled' ? balanceRes.value.balance : undefined,
-        group: groupRes.status === 'fulfilled' && groupRes.value.success ? groupRes.value.group : undefined,
-        live,
-      });
-    });
-  }, [lookupResult, players]);
 
   const heal = (uuid: string) => router.post(route('dashboard.players.heal', uuid));
 
@@ -200,49 +275,61 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
             </thead>
             <tbody>
               {players.map((p) => (
-                <tr key={p.uuid} className="border-b border-[var(--mc-border)] last:border-0 transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={`https://mc-heads.net/avatar/${p.uuid}/32`}
-                        alt=""
-                        className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
-                      />
-                      {p.username}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${RANK_STYLE[p.rank]}`}>
-                      {p.rank}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 font-data text-[12px]">
-                    <span className="inline-flex items-center gap-1.5">
-                      <HeartPulse size={12} className="text-[var(--mc-ember-400)]" />
-                      {p.health.toFixed(0)}/{p.maxHealth.toFixed(0)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 font-data text-[12px] text-[var(--mc-text-secondary)]">
-                    {p.x.toFixed(0)}, {p.y.toFixed(0)}, {p.z.toFixed(0)} · {p.dimension}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => heal(p.uuid)}
-                        className="text-[11px] px-2 py-1 rounded-[6px] border border-[var(--mc-border-strong)] hover:border-[var(--mc-cyan-400)] hover:text-[var(--mc-cyan-400)] transition-colors"
-                      >
-                        Heal
-                      </button>
-                      <button
-                        onClick={() => openMore(p)}
-                        className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface)] transition-colors"
-                      >
-                        <MoreHorizontal size={12} />
-                        More
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <Fragment key={p.uuid}>
+                  <tr
+                    onClick={() => setExpandedUuid((cur) => (cur === p.uuid ? null : p.uuid))}
+                    className="cursor-pointer border-b border-[var(--mc-border)] last:border-0 transition-colors hover:bg-[var(--mc-bg-surface-raised)]"
+                  >
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={`https://mc-heads.net/avatar/${p.uuid}/32`}
+                          alt=""
+                          className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
+                        />
+                        {p.username}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${RANK_STYLE[p.rank]}`}>
+                        {p.rank}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 font-data text-[12px]">
+                      <span className="inline-flex items-center gap-1.5">
+                        <HeartPulse size={12} className="text-[var(--mc-ember-400)]" />
+                        {p.health.toFixed(0)}/{p.maxHealth.toFixed(0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 font-data text-[12px] text-[var(--mc-text-secondary)]">
+                      {p.x.toFixed(0)}, {p.y.toFixed(0)}, {p.z.toFixed(0)} · {p.dimension}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => heal(p.uuid)}
+                          className="text-[11px] px-2 py-1 rounded-[6px] border border-[var(--mc-border-strong)] hover:border-[var(--mc-cyan-400)] hover:text-[var(--mc-cyan-400)] transition-colors"
+                        >
+                          Heal
+                        </button>
+                        <button
+                          onClick={() => openMore(p)}
+                          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-[6px] border border-[var(--mc-border-strong)] hover:bg-[var(--mc-bg-surface)] transition-colors"
+                        >
+                          <MoreHorizontal size={12} />
+                          More
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedUuid === p.uuid && (
+                    <tr className="border-b border-[var(--mc-border)] last:border-0 bg-[var(--mc-bg-surface-raised)]">
+                      <td colSpan={5} className="px-4 py-3.5">
+                        <PlayerPreview uuid={p.uuid} username={p.username} online live={p} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -263,14 +350,24 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
             </div>
           )}
           {offlinePlayers.map((p) => (
-            <div key={p.uuid} className="flex items-center gap-2.5 px-4 py-2.5 border-b border-[var(--mc-border)] last:border-0 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]">
-              <img
-                src={`https://mc-heads.net/avatar/${p.uuid}/28`}
-                alt=""
-                className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)] grayscale opacity-80"
-              />
-              <span className="font-medium">{p.username}</span>
-              <span className="ml-auto text-[12px] text-[var(--mc-text-muted)]">Last seen {p.lastSeen}</span>
+            <div key={p.uuid} className="border-b border-[var(--mc-border)] last:border-0">
+              <div
+                onClick={() => setExpandedUuid((cur) => (cur === p.uuid ? null : p.uuid))}
+                className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 text-[13px] transition-colors hover:bg-[var(--mc-bg-surface-raised)]"
+              >
+                <img
+                  src={`https://mc-heads.net/avatar/${p.uuid}/28`}
+                  alt=""
+                  className="h-5 w-5 rounded-[4px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)] grayscale opacity-80"
+                />
+                <span className="font-medium">{p.username}</span>
+                <span className="ml-auto text-[12px] text-[var(--mc-text-muted)]">Last seen {p.lastSeen}</span>
+              </div>
+              {expandedUuid === p.uuid && (
+                <div className="bg-[var(--mc-bg-surface-raised)] px-4 py-3.5">
+                  <PlayerPreview uuid={p.uuid} username={p.username} online={false} lastSeen={p.lastSeen} />
+                </div>
+              )}
             </div>
           ))}
         </Card>
@@ -294,66 +391,19 @@ export default function Players({ players, offlinePlayers, lookupQuery, lookupRe
             </button>
           </form>
           {lookupQuery && (
-            <div className="mt-3 pt-3 border-t border-[var(--mc-border)] text-[13px]">
+            <div className="mt-3 pt-3 border-t border-[var(--mc-border)]">
               {!lookupResult?.success ? (
-                <div className="text-[var(--mc-ember-500)]">
+                <div className="text-[13px] text-[var(--mc-ember-500)]">
                   {lookupResult?.message ?? `Could not find a player named '${lookupQuery}'.`}
                 </div>
               ) : (
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={`https://mc-heads.net/avatar/${lookupResult.uuid}/32`}
-                      alt=""
-                      className="h-6 w-6 rounded-[5px] shrink-0 [image-rendering:pixelated] border border-[var(--mc-border-strong)]"
-                    />
-                    <span className="font-medium">{lookupResult.username}</span>
-                    <Badge variant={lookupResult.online ? 'moss' : 'neutral'} dot={lookupResult.online}>
-                      {lookupResult.online ? 'online' : 'offline'}
-                    </Badge>
-                    {!lookupResult.online && lookupResult.lastSeen && (
-                      <span className="text-[12px] text-[var(--mc-text-muted)]">Last seen {lookupResult.lastSeen}</span>
-                    )}
-                  </div>
-
-                  <div className="mt-3 pt-3 border-t border-[var(--mc-border)] grid grid-cols-2 gap-x-4 gap-y-2 font-data text-[12px]">
-                    <div>
-                      <span className="text-[var(--mc-text-muted)]">UUID: </span>
-                      <span className="break-all">{lookupResult.uuid}</span>
-                    </div>
-                    <div>
-                      <span className="text-[var(--mc-text-muted)]">Balance: </span>
-                      {lookupExtra?.balance !== undefined ? `$${lookupExtra.balance}` : '…'}
-                    </div>
-                    <div>
-                      <span className="text-[var(--mc-text-muted)]">Group: </span>
-                      {lookupExtra?.group ?? '…'}
-                    </div>
-                    {lookupResult.online && lookupExtra?.live && (
-                      <>
-                        <div>
-                          <span className="text-[var(--mc-text-muted)]">Health: </span>
-                          {lookupExtra.live.health.toFixed(0)}/{lookupExtra.live.maxHealth.toFixed(0)}
-                        </div>
-                        <div>
-                          <span className="text-[var(--mc-text-muted)]">Position: </span>
-                          {lookupExtra.live.x.toFixed(0)}, {lookupExtra.live.y.toFixed(0)}, {lookupExtra.live.z.toFixed(0)} · {lookupExtra.live.dimension}
-                        </div>
-                        <div>
-                          <span className="text-[var(--mc-text-muted)]">Playtime: </span>
-                          {lookupExtra.live.playtimeMinutes} min
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <Link
-                    href={route('lookup', { player: lookupResult.username })}
-                    className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[var(--mc-cyan-400)] hover:underline"
-                  >
-                    Full profile →
-                  </Link>
-                </div>
+                <PlayerPreview
+                  uuid={lookupResult.uuid!}
+                  username={lookupResult.username!}
+                  online={!!lookupResult.online}
+                  lastSeen={lookupResult.lastSeen}
+                  live={players.find((p) => p.uuid === lookupResult.uuid)}
+                />
               )}
             </div>
           )}

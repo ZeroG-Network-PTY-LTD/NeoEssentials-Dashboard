@@ -4,6 +4,9 @@ import { FormEventHandler, useState } from 'react';
 import { Search, ShieldBan, VolumeX, LogOut, TriangleAlert } from 'lucide-react';
 import PlayerRender from '@/Components/PlayerRender';
 import PlayerManagementPanel from '@/Components/PlayerManagementPanel';
+import Card from '@/Components/Dashboard/Card';
+import Badge from '@/Components/Dashboard/Badge';
+import PageHeading from '@/Components/Dashboard/PageHeading';
 
 interface PunishmentBase {
     id: string;
@@ -67,16 +70,12 @@ function formatDate(ms: number) {
 
 function StatusPill({ active, permanent }: { active: boolean; permanent: boolean }) {
     if (!active) {
-        return (
-            <span className="rounded-full bg-[var(--mc-bg-surface-raised)] px-2 py-0.5 text-xs text-[var(--mc-text-muted)]">
-                lifted
-            </span>
-        );
+        return <Badge variant="moss">lifted</Badge>;
     }
     return (
-        <span className="rounded-full bg-[var(--mc-ember-50)] px-2 py-0.5 text-xs text-[var(--mc-ember-500)]">
+        <Badge variant="ember" dot>
             {permanent ? 'active · permanent' : 'active'}
-        </span>
+        </Badge>
     );
 }
 
@@ -85,20 +84,22 @@ function SectionCard({
     title,
     count,
     children,
+    last = false,
 }: {
     icon: typeof ShieldBan;
     title: string;
     count: number;
     children: React.ReactNode;
+    last?: boolean;
 }) {
     return (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5">
+        <div className={last ? 'py-5' : 'border-b border-[var(--mc-border)] py-5'}>
             <div className="flex items-center gap-2">
-                <Icon size={16} strokeWidth={1.75} className="text-[var(--mc-cyan-500)]" />
-                <h2 className="font-display text-sm font-semibold">{title}</h2>
-                <span className="ml-auto text-xs text-[var(--mc-text-muted)]">{count}</span>
+                <Icon size={15} strokeWidth={1.75} className="text-[var(--mc-cyan-500)]" />
+                <h2 className="font-display text-base font-semibold">{title}</h2>
+                <span className="text-xs text-[var(--mc-text-muted)]">{count}</span>
             </div>
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-0">
                 {count === 0 ? (
                     <p className="text-sm text-[var(--mc-text-muted)]">No records.</p>
                 ) : (
@@ -135,7 +136,7 @@ export default function PublicLookup({
             <Head title="Player Lookup" />
             <div className="min-h-screen bg-[var(--mc-bg-base)] text-[var(--mc-text-primary)]">
                 <div className="mx-auto max-w-5xl px-6">
-                    <header className="flex items-center justify-between py-8">
+                    <header className="flex items-center justify-between border-b border-[var(--mc-border)] py-6">
                         <Link href="/" className="flex items-center gap-2">
                             <img src="/images/logo.png" alt="" className="h-7 w-7 object-contain" />
                             <span className="font-display text-lg font-semibold tracking-tight">
@@ -152,13 +153,12 @@ export default function PublicLookup({
                     </header>
 
                     <main className="pb-20">
-                        <h1 className="font-display text-2xl font-semibold">Player Lookup</h1>
-                        <p className="mt-1 text-sm text-[var(--mc-text-secondary)]">
-                            Search any player to see their public moderation record — bans,
-                            mutes, kicks, and warnings, with full history.
-                        </p>
+                        <PageHeading
+                            title="Player Lookup"
+                            subtitle="Search any player to see their public moderation record — bans, mutes, kicks, and warnings, with full history."
+                        />
 
-                        <form onSubmit={submit} className="mt-6 flex gap-2">
+                        <form onSubmit={submit} className="flex gap-2">
                             <div className="relative flex-1">
                                 <Search
                                     size={16}
@@ -169,12 +169,12 @@ export default function PublicLookup({
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Player name"
-                                    className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-cyan-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-cyan-500)]"
+                                    className="w-full rounded-[var(--radius)] border border-[var(--mc-border)] bg-transparent py-2 pl-9 pr-3 text-sm text-[var(--mc-text-primary)] placeholder:text-[var(--mc-text-muted)] focus:border-[var(--mc-cyan-500)] focus:outline-none focus:ring-1 focus:ring-[var(--mc-cyan-500)]"
                                 />
                             </div>
                             <button
                                 type="submit"
-                                className="rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-5 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
+                                className="btn-pop rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-5 py-2 text-sm font-semibold text-[#12151a] transition hover:bg-[var(--mc-cyan-400)]"
                             >
                                 Search
                             </button>
@@ -188,13 +188,20 @@ export default function PublicLookup({
                                         shortly.
                                     </div>
                                 ) : (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-4">
-                                            <PlayerRender uuid={result.playerId} size={160} />
-                                            <h2 className="font-display text-lg font-semibold">
-                                                {result.playerName}
-                                            </h2>
-                                        </div>
+                                    <div className="space-y-6">
+                                        <Card>
+                                            <div className="flex items-center gap-4 p-4">
+                                                <PlayerRender uuid={result.playerId} size={120} />
+                                                <div>
+                                                    <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                                        Player
+                                                    </span>
+                                                    <h2 className="font-display text-lg font-semibold">
+                                                        {result.playerName}
+                                                    </h2>
+                                                </div>
+                                            </div>
+                                        </Card>
 
                                         {canManage && auth.user && (
                                             <div className="rounded-[var(--radius-lg)] border border-[var(--mc-purple-400)] bg-[var(--mc-bg-surface)] p-5">
@@ -202,11 +209,12 @@ export default function PublicLookup({
                                             </div>
                                         )}
 
+                                        <Card padded>
                                         <SectionCard icon={ShieldBan} title="Bans" count={result.bans.length}>
                                             {result.bans.map((b) => (
                                                 <div
                                                     key={b.id}
-                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
                                                 >
                                                     <div className="flex items-center justify-between gap-2">
                                                         <span className="text-[var(--mc-text-secondary)]">
@@ -231,7 +239,7 @@ export default function PublicLookup({
                                             {result.mutes.map((m) => (
                                                 <div
                                                     key={m.id}
-                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
                                                 >
                                                     <div className="flex items-center justify-between gap-2">
                                                         <span className="text-[var(--mc-text-secondary)]">
@@ -256,7 +264,7 @@ export default function PublicLookup({
                                             {result.kicks.map((k) => (
                                                 <div
                                                     key={k.id}
-                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
                                                 >
                                                     <span className="text-[var(--mc-text-secondary)]">
                                                         {k.reason || 'No reason given'}
@@ -268,11 +276,11 @@ export default function PublicLookup({
                                             ))}
                                         </SectionCard>
 
-                                        <SectionCard icon={TriangleAlert} title="Warnings" count={result.warns.length}>
+                                        <SectionCard icon={TriangleAlert} title="Warnings" count={result.warns.length} last>
                                             {result.warns.map((w) => (
                                                 <div
                                                     key={w.id}
-                                                    className="rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface-raised)] p-3 text-sm"
+                                                    className="border-b border-[var(--mc-border)] py-2.5 text-sm last:border-b-0"
                                                 >
                                                     <span className="text-[var(--mc-text-secondary)]">
                                                         {w.reason || 'No reason given'}
@@ -283,60 +291,63 @@ export default function PublicLookup({
                                                 </div>
                                             ))}
                                         </SectionCard>
+                                        </Card>
                                     </div>
                                 )}
                             </div>
                         )}
 
                         <div className="mt-10">
-                            <h2 className="font-display text-sm font-semibold text-[var(--mc-text-secondary)]">
+                            <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
                                 Recent activity
-                            </h2>
-                            <div className="mt-3 divide-y divide-[var(--mc-border)] rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)]">
-                                {recent.length === 0 ? (
-                                    <p className="p-4 text-sm text-[var(--mc-text-muted)]">
-                                        Nothing recent.
-                                    </p>
-                                ) : (
-                                    recent.map((entry) => (
-                                        <div
-                                            key={`${entry.type}-${entry.id}`}
-                                            className="flex items-center gap-3 p-3 text-sm"
-                                        >
-                                            {entry.type === 'ban' ? (
-                                                <ShieldBan size={15} className="text-[var(--mc-ember-500)]" />
-                                            ) : (
-                                                <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
-                                            )}
-                                            <button
-                                                onClick={() =>
-                                                    router.get(
-                                                        route('lookup'),
-                                                        {
-                                                            player:
-                                                                entry.type === 'ban'
-                                                                    ? entry.playerName
-                                                                    : entry.target,
-                                                        },
-                                                        { preserveState: true },
-                                                    )
-                                                }
-                                                className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-cyan-500)]"
+                            </span>
+                            <Card className="mt-2">
+                                <div className="divide-y divide-[var(--mc-border)]">
+                                    {recent.length === 0 ? (
+                                        <p className="p-4 text-sm text-[var(--mc-text-muted)]">
+                                            Nothing recent.
+                                        </p>
+                                    ) : (
+                                        recent.map((entry) => (
+                                            <div
+                                                key={`${entry.type}-${entry.id}`}
+                                                className="flex items-center gap-3 p-3 text-sm"
                                             >
-                                                {entry.type === 'ban' ? entry.playerName : entry.target}
-                                            </button>
-                                            <span className="text-[var(--mc-text-muted)]">
-                                                {entry.reason || 'No reason given'}
-                                            </span>
-                                            <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
-                                                {formatDate(
-                                                    entry.type === 'ban' ? entry.banTime : entry.muteTime,
+                                                {entry.type === 'ban' ? (
+                                                    <ShieldBan size={15} className="text-[var(--mc-ember-500)]" />
+                                                ) : (
+                                                    <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
                                                 )}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                                                <button
+                                                    onClick={() =>
+                                                        router.get(
+                                                            route('lookup'),
+                                                            {
+                                                                player:
+                                                                    entry.type === 'ban'
+                                                                        ? entry.playerName
+                                                                        : entry.target,
+                                                            },
+                                                            { preserveState: true },
+                                                        )
+                                                    }
+                                                    className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-cyan-500)]"
+                                                >
+                                                    {entry.type === 'ban' ? entry.playerName : entry.target}
+                                                </button>
+                                                <span className="text-[var(--mc-text-muted)]">
+                                                    {entry.reason || 'No reason given'}
+                                                </span>
+                                                <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
+                                                    {formatDate(
+                                                        entry.type === 'ban' ? entry.banTime : entry.muteTime,
+                                                    )}
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </Card>
                         </div>
                     </main>
                 </div>

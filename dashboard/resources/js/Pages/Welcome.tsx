@@ -87,7 +87,7 @@ export default function Welcome({ auth }: PageProps) {
             <Head title="ZeroG Network Dashboard" />
             <div className="min-h-screen bg-[var(--mc-bg-base)] text-[var(--mc-text-primary)]">
                 <div className="mx-auto max-w-6xl px-6">
-                    <header className="flex items-center justify-between py-8">
+                    <header className="flex items-center justify-between border-b border-[var(--mc-border)] py-6">
                         <div className="flex items-center gap-2">
                             <img src="/images/logo.png" alt="" className="h-7 w-7 object-contain" />
                             <span className="font-display text-lg font-semibold tracking-tight">
@@ -95,7 +95,7 @@ export default function Welcome({ auth }: PageProps) {
                             </span>
                         </div>
 
-                        <nav className="flex items-center gap-2">
+                        <nav className="flex items-center gap-4">
                             <Link
                                 href={route('lookup')}
                                 className="rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:text-[var(--mc-text-primary)]"

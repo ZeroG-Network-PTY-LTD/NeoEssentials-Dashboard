@@ -134,3 +134,16 @@ body {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* Fade + slide-down for popovers/dropdowns (search suggestions, etc.) so they
+   ease into place instead of snapping in on mount. */
+.animate-dropdown-in {
+  animation: dropdown-in 0.16s ease-out;
+}
+@keyframes dropdown-in {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-dropdown-in { animation: none; }
+}

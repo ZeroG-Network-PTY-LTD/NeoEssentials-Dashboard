@@ -343,7 +343,7 @@ export default function PublicLookup({
                                 />
 
                                 {showSuggestions && name.trim().length >= 2 && (
-                                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] shadow-lg">
+                                    <div className="animate-dropdown-in absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[var(--radius)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] shadow-lg">
                                         {suggestions.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-[var(--mc-text-muted)]">
                                                 No players found.

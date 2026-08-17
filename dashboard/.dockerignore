@@ -1,0 +1,40 @@
+# Real secrets — never bake these into an image. Runtime config comes from
+# docker-compose.yml's environment: block / a real deployment's own env vars,
+# not a copy of whatever .env happens to be sitting in the build context.
+.env
+.env.*
+!.env.example
+
+# Host-side dependency trees — the Dockerfile does its own composer install /
+# npm ci in a clean layer; copying these wastes build time/image layers and
+# risks host-specific native bindings (e.g. node_modules) leaking in.
+/vendor
+/node_modules
+
+# VCS / editor / CI metadata — irrelevant to the runtime image.
+.git
+.github
+.gitattributes
+.gitignore
+.editorconfig
+.claude
+.agents
+
+# Local dev artifacts — public/hot in particular is the Vite dev-server
+# marker file; if it's present in the build context it gets copied into the
+# image and the app permanently tries to load assets from a nonexistent
+# localhost:5173 dev server instead of the built public/build/ assets.
+/public/hot
+/public/build
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/testing/*
+.phpunit.result.cache
+/tests
+
+# Docs/build-only files not needed at runtime.
+*.md
+Dockerfile
+docker-compose.yml

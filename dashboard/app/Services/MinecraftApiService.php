@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\McConnection;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,22 @@ class MinecraftApiService
         $this->baseUrl = rtrim((string) config('minecraft.api_url'), '/');
         // Pairing credentials live in the mc_connection table, not .env/config — see the
         // mc_connection migration for why (filesystem-write requirements, concurrency safety).
-        $this->serviceApiKey = (string) (McConnection::current()->api_key ?? '');
+        // api_key is an encrypted cast column, decrypted against the app's CURRENT APP_KEY —
+        // if that key ever changes (key rotation, or a fresh key baked into a redeployed
+        // container image while the DB/volume persists across the rebuild) any previously
+        // stored pairing becomes permanently undecryptable and throws DecryptException. Every
+        // controller resolves this service, so left uncaught this took down the ENTIRE app
+        // (every page, including the public unauthenticated player lookup) with a 500 the
+        // moment the encryption key and the stored ciphertext stopped matching. Treat it the
+        // same as "never paired" instead — surfaces as the normal re-pair prompt, not a crash.
+        try {
+            $this->serviceApiKey = (string) (McConnection::current()->api_key ?? '');
+        } catch (DecryptException $e) {
+            Log::warning('Stored Minecraft API key could not be decrypted (APP_KEY changed since pairing?) — treating as unpaired.', [
+                'error' => $e->getMessage(),
+            ]);
+            $this->serviceApiKey = '';
+        }
         $this->timeout = (int) config('minecraft.timeout');
         $this->cacheTtl = (int) config('minecraft.cache_ttl');
     }

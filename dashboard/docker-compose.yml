@@ -7,11 +7,23 @@ services:
       # Point at your NeoEssentials server's dashboard API. Use host.docker.internal
       # if the mod runs on the same machine as Docker (Linux: add
       # "extra_hosts: - host.docker.internal:host-gateway" below).
-      MC_API_URL: "http://host.docker.internal:8642"
+      MC_API_URL: "http://host.docker.internal:8090"
       # Pairing credentials (API key, webhook token, WS port) live in the mc_connection DB
       # table, not env vars — persisted by the dashboard-data volume below across restarts.
+      #
+      # APP_KEY: the Dockerfile bakes a FRESH RANDOM key into the image on every build
+      # (it needs one to boot at all) — that key is NOT covered by the volumes below, so
+      # rebuilding the image (e.g. to pick up an app update) silently generates a new one.
+      # Since mc_connection.api_key above is an encrypted column, the OLD key's ciphertext
+      # then becomes permanently undecryptable under the NEW key, which used to 500 the
+      # entire app (every page resolves MinecraftApiService) until it was made to fail soft
+      # as "not paired" instead. Still: to avoid having to re-pair after every rebuild,
+      # generate one real key ONCE (`php artisan key:generate --show`) and set it here — a
+      # value supplied here always wins over whatever got baked in at build time.
+      # APP_KEY: "base64:...replace-with-a-real-generated-key..."
     volumes:
-      # Persist the SQLite DB and app key across container restarts/rebuilds.
+      # Persist the SQLite DB (including mc_connection's pairing) and Laravel's writable
+      # storage dirs across container restarts/rebuilds. Does NOT cover APP_KEY — see above.
       - dashboard-data:/app/database
       - dashboard-storage:/app/storage
 

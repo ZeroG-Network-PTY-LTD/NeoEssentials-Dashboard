@@ -28,8 +28,23 @@ class SelfUpdateService
 
     public function __construct()
     {
-        $this->repoRoot = rtrim((string) config('selfupdate.repo_root'), '/\\');
-        $this->appRoot = rtrim(base_path(), '/\\');
+        $this->repoRoot = $this->rtrimPath((string) config('selfupdate.repo_root'));
+        $this->appRoot = $this->rtrimPath(base_path());
+    }
+
+    /**
+     * rtrim($path, '/\\') on a path that's ENTIRELY slashes (e.g. "/", the default
+     * selfupdate.repo_root — dirname(base_path()) — whenever this app is installed directly
+     * under the filesystem root, as it is in this Docker image's /app layout) strips every
+     * character and returns "". Process::path("") then throws "The provided cwd \"\" does not
+     * exist" the moment any self-update action (even just checking the current version) runs.
+     * Trim, but fall back to the un-trimmed root path if that would otherwise empty it out.
+     */
+    private function rtrimPath(string $path): string
+    {
+        $trimmed = rtrim($path, '/\\');
+
+        return $trimmed !== '' ? $trimmed : $path;
     }
 
     /**

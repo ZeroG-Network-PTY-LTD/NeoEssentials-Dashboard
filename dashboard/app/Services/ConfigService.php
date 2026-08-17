@@ -285,12 +285,27 @@ class ConfigService
             }
 
             $role = $this->resolveLocalRole($username);
+            $email = $modUser['email'] ?: "{$username}@mod.local";
 
             $existing = User::where('mod_username', $username)->first();
 
+            if (! $existing) {
+                // WebhookController unlinks (mod_username -> null) rather than deleting the
+                // local row when the mod reports an account removed, so a re-created/reappeared
+                // mod account with the same (or same generated) email would otherwise collide
+                // with that orphaned row's UNIQUE email constraint on a plain insert below. Treat
+                // it the same as WebhookController's own re-link path: reattach mod_username to
+                // the orphan instead of trying to create a duplicate.
+                $existing = User::where('email', $email)->whereNull('mod_username')->first();
+                if ($existing) {
+                    $existing->mod_username = $username;
+                }
+            }
+
             if ($existing) {
-                $changed = $existing->role !== $role
-                    || ($modUser['email'] ?? null) && $existing->email !== $modUser['email'];
+                $changed = $existing->isDirty('mod_username')
+                    || $existing->role !== $role
+                    || (($modUser['email'] ?? null) && $existing->email !== $modUser['email']);
 
                 if ($changed) {
                     $existing->role = $role;
@@ -311,7 +326,7 @@ class ConfigService
             $user = new User();
             $user->mod_username = $username;
             $user->name = $username;
-            $user->email = $modUser['email'] ?: "{$username}@mod.local";
+            $user->email = $email;
             $user->password = bcrypt(Str::random(40));
             $user->role = $role;
             $user->save();

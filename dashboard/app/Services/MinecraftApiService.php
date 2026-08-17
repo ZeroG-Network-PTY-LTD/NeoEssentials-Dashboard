@@ -400,6 +400,25 @@ class MinecraftApiService
         return $this->deleteWithBody("api/moderation/note/{$noteId}", ['targetName' => $targetName]);
     }
 
+    // --- Player reports (in-game /report — GET routes are readable by any logged-in
+    // dashboard account per ModerationEndpoint's own doc comment; reviewing one is
+    // admin-only, enforced by the mod itself) -----------------------------------------
+
+    public function pendingReports(): array
+    {
+        return $this->get('api/moderation/reports')['reports'] ?? [];
+    }
+
+    public function allReports(): array
+    {
+        return $this->get('api/moderation/reports/all')['reports'] ?? [];
+    }
+
+    public function reviewReport(string $id, string $status, ?string $notes = null): array
+    {
+        return $this->post("api/moderation/reports/{$id}/review", ['status' => $status, 'notes' => $notes]);
+    }
+
     // --- Public moderation lookup (no dashboard login required on either side —
     // the mod's /api/public/moderation/* routes are registered without the
     // Bearer-token check, so these deliberately skip the service-account session

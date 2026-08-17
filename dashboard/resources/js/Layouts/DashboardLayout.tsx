@@ -24,6 +24,7 @@ import {
   X,
   ArrowLeft,
   RefreshCw,
+  Flag,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 import { isMcLiveAvailable, useMcLiveStatus } from '@/lib/useMcLive';
@@ -111,6 +112,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { label: 'Backups', href: route('dashboard.backups.index'), icon: DatabaseBackup },
     { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
     { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },
+    // Reviewing player reports requires the mod's admin session (ModerationEndpoint) —
+    // same admin-only gate as Users/Updates/Configuration below, hidden rather than 403ing.
+    ...(isAdmin ? [{ label: 'Reports', href: route('dashboard.reports.index'), icon: Flag }] : []),
     // Mod dashboard account management is admin-only (mirrors the mod's own
     // UserManagementEndpoint) — hide the link entirely for moderators rather
     // than showing a dead end that 403s.

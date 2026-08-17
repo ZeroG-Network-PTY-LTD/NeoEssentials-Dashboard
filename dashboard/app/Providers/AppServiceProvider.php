@@ -90,6 +90,11 @@ class AppServiceProvider extends ServiceProvider
         // session (self-escalation risk otherwise) — mirror that here too.
         Gate::define('permissions.manage', fn (User $user) => $user->isAdmin());
 
+        // Player-filed reports (in-game /report) — the mod's own GET routes are readable by
+        // any logged-in dashboard account, but reviewing one requires the mod's admin session
+        // (ModerationEndpoint), so admin-only here too; nothing a non-admin could act on anyway.
+        Gate::define('reports.manage', fn (User $user) => $user->isAdmin());
+
         // BackupEndpoint/CloudStorageEndpoint gate every mutating route behind
         // admin on the mod side; status/list/file-browsing stay readable by
         // any logged-in account.

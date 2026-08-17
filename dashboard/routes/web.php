@@ -13,6 +13,7 @@ use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerProfileController;
 use App\Http\Controllers\PublicLookupController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\UpdatesController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WarpsController;
@@ -259,6 +260,13 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
             // the multi-segment cloud/* routes above, but keeping specific-before-
             // generic here avoids having to re-verify that fact later.
             Route::delete('/backups/{name}', [BackupsController::class, 'destroy'])->name('backups.destroy');
+        });
+
+        // Player-filed reports — admin-only in this app (see reports.manage's own
+        // comment for why: reviewing requires the mod's admin session anyway).
+        Route::middleware('can:reports.manage')->group(function () {
+            Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+            Route::post('/reports/{id}/review', [ReportsController::class, 'review'])->name('reports.review');
         });
 
         // Mod dashboard accounts — admin-only in this app, mirroring the mod's

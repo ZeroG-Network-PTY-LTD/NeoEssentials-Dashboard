@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Exceptions\MinecraftApiUnreachableException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 
@@ -47,8 +48,17 @@ trait InteractsWithMinecraftApi
     {
         try {
             $result = $fn();
-        } catch (\Throwable $e) {
+        } catch (MinecraftApiUnreachableException $e) {
+            // The mod's API is genuinely unreachable (connection failure) or rejected our
+            // paired key — an actual gateway failure, not the player/request being rejected.
             return response()->json(['success' => false, 'message' => $e->getMessage()], 502);
+        } catch (\Throwable $e) {
+            // The mod was reached fine but rejected the request on its own terms (e.g. "player
+            // not online", "unsafe_location") — a normal, expected rejection, not a server
+            // failure. Confirmed live: this used to come back as 502 for every one of these
+            // (nickname on an offline player, etc.), which is misleading for anything inspecting
+            // status codes even though the frontend only reads the JSON body either way.
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 
         return response()->json(['success' => true, 'message' => $successMessage, 'result' => $result]);

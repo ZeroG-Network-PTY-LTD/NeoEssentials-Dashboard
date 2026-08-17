@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\MinecraftApiUnreachableException;
 use App\Models\McConnection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -421,10 +422,10 @@ class MinecraftApiService
     private function publicGet(string $path): array
     {
         try {
-            $response = Http::timeout($this->timeout)->retry(2, 150)->get("{$this->baseUrl}/{$path}");
+            $response = Http::timeout($this->timeout)->retry(2, 150, throw: false)->get("{$this->baseUrl}/{$path}");
         } catch (\Throwable $e) {
             Log::warning('Minecraft public API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
-            throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
+            throw new MinecraftApiUnreachableException('Could not reach the Minecraft server API. Is the server online?');
         }
 
         if ($response->failed()) {
@@ -1073,7 +1074,7 @@ class MinecraftApiService
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable during user login', ['username' => $username, 'error' => $e->getMessage()]);
             $this->markReachable(false);
-            throw new RuntimeException('Could not reach the Minecraft server API to log in.');
+            throw new MinecraftApiUnreachableException('Could not reach the Minecraft server API to log in.');
         }
 
         $this->markReachable(true);
@@ -1146,11 +1147,11 @@ class MinecraftApiService
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
             $this->markReachable(false);
-            throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
+            throw new MinecraftApiUnreachableException('Could not reach the Minecraft server API. Is the server online?');
         }
 
         if ($response->status() === 401) {
-            throw new RuntimeException('Minecraft API rejected our paired API key — it may have been revoked on the server. Re-pair from Configuration → Minecraft Server Connection.');
+            throw new MinecraftApiUnreachableException('Minecraft API rejected our paired API key — it may have been revoked on the server. Re-pair from Configuration → Minecraft Server Connection.');
         }
 
         if ($response->failed()) {
@@ -1176,15 +1177,15 @@ class MinecraftApiService
         $token = $this->serviceToken();
 
         try {
-            $response = Http::withToken($token)->timeout($this->timeout)->retry(2, 150)->get("{$this->baseUrl}/{$path}");
+            $response = Http::withToken($token)->timeout($this->timeout)->retry(2, 150, throw: false)->get("{$this->baseUrl}/{$path}");
         } catch (\Throwable $e) {
             Log::warning('Minecraft API unreachable', ['path' => $path, 'error' => $e->getMessage()]);
             $this->markReachable(false);
-            throw new RuntimeException('Could not reach the Minecraft server API. Is the server online?');
+            throw new MinecraftApiUnreachableException('Could not reach the Minecraft server API. Is the server online?');
         }
 
         if ($response->status() === 401) {
-            throw new RuntimeException('Minecraft API rejected our paired API key — it may have been revoked on the server. Re-pair from Configuration → Minecraft Server Connection.');
+            throw new MinecraftApiUnreachableException('Minecraft API rejected our paired API key — it may have been revoked on the server. Re-pair from Configuration → Minecraft Server Connection.');
         }
 
         if ($response->failed()) {

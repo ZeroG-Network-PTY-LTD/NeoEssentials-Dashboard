@@ -32,34 +32,43 @@ type DashboardPageProps = PageProps<{ apiReachable?: boolean; permissionsUsingEx
 
 function FlashToast() {
   const { props } = usePage<DashboardPageProps>();
-  const [dismissed, setDismissed] = useState(false);
-  const message = props.flash?.success ?? props.flash?.error ?? null;
-  const isError = !props.flash?.success && !!props.flash?.error;
-
-  // Re-arm whenever a new flash message arrives (Inertia keeps re-sending the
-  // same prop reference across unrelated navigations otherwise wouldn't matter,
-  // but a fresh redirect always produces a new string here).
-  useEffect(() => setDismissed(false), [message]);
+  // Captured into local state the moment a non-null flash is seen, instead of deriving render
+  // output directly from props.flash every render. Laravel flash messages are one-request-only
+  // — the very next request (e.g. a background reload some pages trigger right after their own
+  // mutation, or simply React re-rendering this shared layout for an unrelated prop change) sees
+  // an already-cleared session and comes back with flash.error/success back to null. If the
+  // toast derived straight from props, that follow-up render can null it out before the browser
+  // ever paints the frame that had it — confirmed live: the server-sent response body correctly
+  // contained flash.error, but the toast never appeared in the DOM. Local state holds onto
+  // whatever was last seen until its own 5s timer or a manual dismiss clears it, so a later
+  // props update reverting to null can't erase a message that hasn't been shown yet.
+  const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null);
 
   useEffect(() => {
+    const message = props.flash?.success ?? props.flash?.error ?? null;
     if (!message) return;
-    const timer = setTimeout(() => setDismissed(true), 5000);
-    return () => clearTimeout(timer);
-  }, [message]);
+    setToast({ message, isError: !props.flash?.success && !!props.flash?.error });
+  }, [props.flash?.success, props.flash?.error]);
 
-  if (!message || dismissed) return null;
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  if (!toast) return null;
 
   return (
     <div
       className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-[var(--radius-lg)] border text-[13px] shadow-lg ${
-        isError
+        toast.isError
           ? 'bg-[var(--mc-ember-50)] border-[var(--mc-ember-400)] text-[var(--mc-ember-500)]'
           : 'bg-[var(--mc-moss-50)] border-[var(--mc-moss-400,var(--mc-moss-500))] text-[var(--mc-moss-500)]'
       }`}
     >
-      {isError ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
-      {message}
-      <button onClick={() => setDismissed(true)} className="ml-2 opacity-60 hover:opacity-100">
+      {toast.isError ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+      {toast.message}
+      <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">
         &times;
       </button>
     </div>

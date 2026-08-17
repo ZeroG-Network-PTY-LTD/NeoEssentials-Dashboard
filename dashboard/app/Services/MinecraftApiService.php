@@ -1149,7 +1149,14 @@ class MinecraftApiService
 
         if ($response->failed()) {
             Log::warning('Minecraft API error', ['path' => $path, 'status' => $response->status(), 'body' => $response->body()]);
-            throw new RuntimeException("Minecraft API returned an error ({$response->status()}).");
+            // The mod's own error payloads (e.g. {"success":false,"error":"Failed to create
+            // warp: unsafe_location"}) carry a specific, actionable reason — surface that
+            // instead of just the bare HTTP status where one exists, since "the server said no"
+            // with no explanation isn't enough for an admin to know what to actually change.
+            $reason = $response->json('error');
+            throw new RuntimeException($reason
+                ? "Minecraft API: {$reason}"
+                : "Minecraft API returned an error ({$response->status()}).");
         }
 
         $this->markReachable(true);

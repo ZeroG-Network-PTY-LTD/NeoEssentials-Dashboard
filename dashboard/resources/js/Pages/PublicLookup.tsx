@@ -1,5 +1,5 @@
 import { PageProps } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import {
     Search,
@@ -16,6 +16,9 @@ import {
     Coins,
     Backpack,
     StickyNote,
+    Flag,
+    Send,
+    X as XIcon,
 } from 'lucide-react';
 import PlayerRender from '@/Components/PlayerRender';
 import PlayerManagementPanel from '@/Components/PlayerManagementPanel';
@@ -193,12 +196,14 @@ export default function PublicLookup({
     status,
     recent,
     canManage,
+    canSeeReports,
 }: PageProps<{
     query: string | null;
     result: LookupResult | null;
     status: StatusInfo | null;
     recent: RecentEntry[];
     canManage: boolean;
+    canSeeReports: boolean;
 }>) {
     const [name, setName] = useState(query ?? '');
     const [suggestions, setSuggestions] = useState<NameSuggestion[]>([]);
@@ -206,6 +211,7 @@ export default function PublicLookup({
     const searchBoxRef = useRef<HTMLDivElement>(null);
     const isStaff = canManage && !!auth.user;
     const [activeTab, setActiveTab] = useState<Tab>('overview');
+    const [showReportModal, setShowReportModal] = useState(false);
 
     useEffect(() => {
         setActiveTab('overview');
@@ -412,6 +418,18 @@ export default function PublicLookup({
                                                     {' · '}Joined {formatJoined(status?.firstJoined ?? null)}
                                                 </div>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    auth.user
+                                                        ? setShowReportModal(true)
+                                                        : router.visit(route('login'))
+                                                }
+                                                className="btn-pop ml-auto flex shrink-0 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--mc-border-strong)] px-3 py-1.5 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:border-[var(--mc-ember-500)] hover:text-[var(--mc-ember-500)]"
+                                            >
+                                                <Flag size={14} strokeWidth={2} />
+                                                Report
+                                            </button>
                                         </div>
 
                                         <div className="mt-6">
@@ -509,7 +527,11 @@ export default function PublicLookup({
                                                         : 'border border-[var(--mc-border)] bg-[var(--mc-bg-surface)]'
                                                 }`}
                                             >
-                                                <PlayerManagementPanel username={result.playerName} activeTab={activeTab} />
+                                                <PlayerManagementPanel
+                                                    username={result.playerName}
+                                                    activeTab={activeTab}
+                                                    canSeeReports={canSeeReports}
+                                                />
                                             </div>
                                         )}
                                     </div>
@@ -572,6 +594,72 @@ export default function PublicLookup({
                     </main>
                 </div>
             </div>
+
+            {showReportModal && result && (
+                <ReportModal playerName={result.playerName} onClose={() => setShowReportModal(false)} />
+            )}
         </>
+    );
+}
+
+/** Quick-report modal launched from the Report button on a looked-up player — files
+ *  the same way the dedicated /report page does, just pre-filled with the target and
+ *  without leaving the lookup page. Only ever mounted for a logged-in visitor (see the
+ *  Report button's onClick above), so no auth gate needed here. */
+function ReportModal({ playerName, onClose }: { playerName: string; onClose: () => void }) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        targetName: playerName,
+        reason: '',
+    });
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        post(route('dashboard.reports.store'), {
+            onSuccess: () => {
+                reset();
+                onClose();
+            },
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-sm rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5 shadow-lg">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-display text-lg font-semibold">Report {playerName}</h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-[var(--mc-text-muted)] transition hover:text-[var(--mc-text-primary)]"
+                    >
+                        <XIcon size={18} />
+                    </button>
+                </div>
+
+                <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+                    <label className="flex flex-col gap-1 text-[12px] text-[var(--mc-text-secondary)]">
+                        Reason
+                        <textarea
+                            value={data.reason}
+                            onChange={(e) => setData('reason', e.target.value)}
+                            rows={4}
+                            autoFocus
+                            placeholder="What happened?"
+                            className="resize-none rounded-[8px] border border-[var(--mc-border-strong)] bg-[var(--mc-bg-surface-raised)] px-2.5 py-1.5 text-[13px] text-[var(--mc-text-primary)] outline-none transition-colors focus:border-[var(--mc-cyan-400)]"
+                        />
+                        {errors.reason && <span className="text-[var(--mc-ember-500)]">{errors.reason}</span>}
+                    </label>
+
+                    <button
+                        type="submit"
+                        disabled={processing}
+                        className="btn-pop mt-1 flex items-center justify-center gap-1.5 rounded-[var(--radius)] bg-[var(--mc-cyan-500)] px-3 py-2 text-[13px] font-medium text-[#0a1620] transition-colors hover:bg-[var(--mc-cyan-400)] disabled:opacity-50"
+                    >
+                        <Send size={13} strokeWidth={2} />
+                        File report
+                    </button>
+                </form>
+            </div>
+        </div>
     );
 }

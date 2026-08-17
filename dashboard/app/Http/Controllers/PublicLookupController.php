@@ -16,7 +16,9 @@ use Inertia\Response;
  * Matches ban-management plugins' public transparency page. Never exposes IP
  * bans/IP mutes, staff notes, or player reports — see
  * MinecraftApiService::publicLookup()/publicRecent() and the mod's
- * PublicModerationEndpoint for what's deliberately excluded.
+ * PublicModerationEndpoint for what's deliberately excluded. Reports ARE reachable
+ * from this page, but only via PlayerManagementPanel's own admin-gated fetch (see
+ * `canSeeReports` below) — never through this controller's own public props.
  *
  * Also the host page for PlayerManagementPanel — `canManage` tells the frontend
  * whether to mount it at all; the panel's own routes (PlayerProfileController,
@@ -44,6 +46,11 @@ class PublicLookupController extends Controller
                 : null,
             'recent' => $this->safe(fn () => $this->mc->publicRecent(), []),
             'canManage' => Gate::allows('players.profile.manage'),
+            // Staff-only — controls whether PlayerManagementPanel's Notes tab fetches and
+            // shows the Reports section (via its own admin-gated /lookup/{username}/reports
+            // route). An anonymous visitor or non-admin account gets false regardless of
+            // what's on file for this player.
+            'canSeeReports' => Gate::allows('reports.manage'),
         ]);
     }
 

@@ -25,6 +25,7 @@ import {
   ArrowLeft,
   RefreshCw,
   Flag,
+  Send,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 import { isMcLiveAvailable, useMcLiveStatus } from '@/lib/useMcLive';
@@ -112,6 +113,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { label: 'Backups', href: route('dashboard.backups.index'), icon: DatabaseBackup },
     { label: 'Commands', href: route('dashboard.commands.index'), icon: Terminal },
     { label: 'Logs', href: route('dashboard.logs.index'), icon: ScrollText },
+    // Filing a report is open to everyone (matches the in-game /report command, whose
+    // permission node is granted to every player by default). Reviewing the queue is
+    // staff-only, same as /reports and /reviewreport in-game — separate nav item below.
+    { label: 'Report', href: route('dashboard.reports.create'), icon: Send },
     // Reviewing player reports requires the mod's admin session (ModerationEndpoint) —
     // same admin-only gate as Users/Updates/Configuration below, hidden rather than 403ing.
     ...(isAdmin ? [{ label: 'Reports', href: route('dashboard.reports.index'), icon: Flag }] : []),

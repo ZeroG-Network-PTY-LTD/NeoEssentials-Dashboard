@@ -10,10 +10,11 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Player-filed reports (in-game /report command) — surfaced here so an admin doesn't have to
- * dig through the mod's own console/log to see what's been reported. Reviewing a report
- * (marking it reviewed or dismissed) requires the mod's admin session (ModerationEndpoint),
- * mirrored by the reports.manage gate on every route below.
+ * Player-filed reports (in-game /report command). Filing (create/store) is open to any
+ * logged-in dashboard user, matching the in-game /report command's permission node being
+ * granted to every player by default. Viewing the queue and reviewing a report (marking it
+ * reviewed or dismissed) requires the mod's admin session (ModerationEndpoint), mirrored by
+ * the reports.manage gate on index/review below.
  */
 class ReportsController extends Controller
 {
@@ -21,6 +22,11 @@ class ReportsController extends Controller
 
     public function __construct(private MinecraftApiService $mc)
     {
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Dashboard/ReportPlayer');
     }
 
     public function index(Request $request): Response

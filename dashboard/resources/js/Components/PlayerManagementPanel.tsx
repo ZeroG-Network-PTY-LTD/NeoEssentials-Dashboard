@@ -10,6 +10,7 @@ import type {
   PermissionUserLookupResult,
   PlayerInventory,
   PlayerLookupResult,
+  ReportEntry,
   WarnEntry,
 } from '@/types/minecraft';
 import {
@@ -41,6 +42,7 @@ import {
   CloudSun,
   Trash2,
   ShieldCheck,
+  Flag,
 } from 'lucide-react';
 
 type Gamemode = 'survival' | 'creative' | 'adventure' | 'spectator';
@@ -50,6 +52,10 @@ type ManageTab = 'staff' | 'permissions' | 'economy' | 'inventory' | 'notes';
 interface Props {
   username: string;
   activeTab: ManageTab;
+  /** Extra gate on top of the players.profile.manage check that mounts this whole panel —
+   *  reports.manage is admin-only, so a moderator sees the Notes tab without the Reports
+   *  section below it. Defaults to false so callers must opt in explicitly. */
+  canSeeReports?: boolean;
 }
 
 // --- Small local toast — this panel fires many independent JSON actions and shows a
@@ -92,7 +98,7 @@ async function apiFetch(url: string, method: string, body?: unknown): Promise<an
  * Dashboard/PlayerProfile.tsx page; self-sufficient (does its own `lookup` call for
  * online-status — the public page's own result has no online/lastSeen field).
  */
-export default function PlayerManagementPanel({ username, activeTab }: Props) {
+export default function PlayerManagementPanel({ username, activeTab, canSeeReports = false }: Props) {
   const { toast, showToast } = useLocalToast();
 
   const [lookup, setLookup] = useState<PlayerLookupResult | null>(null);
@@ -109,6 +115,7 @@ export default function PlayerManagementPanel({ username, activeTab }: Props) {
   const [kicks, setKicks] = useState<KickEntry[]>([]);
   const [warns, setWarns] = useState<WarnEntry[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
+  const [reports, setReports] = useState<ReportEntry[]>([]);
 
   const [frozen, setFrozen] = useState(false);
   const [vanished, setVanished] = useState(false);
@@ -171,6 +178,10 @@ export default function PlayerManagementPanel({ username, activeTab }: Props) {
           fetch(r('kicks')).then((r) => r.json()),
           fetch(r('warns')).then((r) => r.json()),
           fetch(r('notes')).then((r) => r.json()),
+          // Only fetched at all when the viewer passes reports.manage — the route itself
+          // also enforces this server-side, but skipping the call avoids a pointless 403
+          // for every moderator who opens this panel.
+          canSeeReports ? fetch(r('reports')).then((r) => r.json()) : Promise.resolve([]),
           fetch(r('freeze')).then((r) => r.json()),
           fetch(r('vanish')).then((r) => r.json()),
           fetch(r('jail')).then((r) => r.json()),
@@ -179,7 +190,7 @@ export default function PlayerManagementPanel({ username, activeTab }: Props) {
           fetch(r('pweather.get')).then((r) => r.json()),
         ];
         const [
-          bal, perm, grp, inv, banList, muteList, kickList, warnList, noteList,
+          bal, perm, grp, inv, banList, muteList, kickList, warnList, noteList, reportList,
           freeze, vanish, jail, jailList, ptimeRes, pweatherRes,
         ] = await Promise.allSettled(fetches);
 
@@ -192,6 +203,7 @@ export default function PlayerManagementPanel({ username, activeTab }: Props) {
         if (kickList.status === 'fulfilled') setKicks(kickList.value);
         if (warnList.status === 'fulfilled') setWarns(warnList.value);
         if (noteList.status === 'fulfilled') setNotes(noteList.value);
+        if (reportList.status === 'fulfilled') setReports(reportList.value ?? []);
         if (freeze.status === 'fulfilled') setFrozen(freeze.value.frozen);
         if (vanish.status === 'fulfilled') setVanished(vanish.value.vanished);
         if (jail.status === 'fulfilled') setJailed(jail.value.jailed);
@@ -969,6 +981,28 @@ export default function PlayerManagementPanel({ username, activeTab }: Props) {
             ))}
           </div>
         </Card>
+
+        {canSeeReports && (
+          <Card title="Reports" icon={Flag} padded>
+            <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+              {reports.length === 0 && (
+                <div className="text-[12px] text-[var(--mc-text-muted)]">No reports filed against this player.</div>
+              )}
+              {reports.map((rep) => (
+                <div key={rep.id} className="text-[12px] px-2 py-1.5 rounded-[5px] bg-[var(--mc-bg-surface-raised)]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{rep.reporterName}</span>
+                    <Badge variant={rep.status === 'PENDING' ? 'ember' : rep.status === 'REVIEWED' ? 'moss' : 'neutral'}>
+                      {rep.status.toLowerCase()}
+                    </Badge>
+                  </div>
+                  <div className="mt-0.5 text-[var(--mc-text-secondary)] break-words">{rep.reason}</div>
+                  <div className="text-[var(--mc-text-muted)] mt-0.5">{new Date(rep.timestamp).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
       )}
     </div>

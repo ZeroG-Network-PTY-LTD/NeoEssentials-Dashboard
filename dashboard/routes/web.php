@@ -64,6 +64,11 @@ Route::middleware(['auth', 'verified', 'can:players.profile.manage'])
         Route::get('/kicks', [PlayerProfileController::class, 'kickHistory'])->name('kicks');
         Route::get('/warns', [PlayerProfileController::class, 'warns'])->name('warns');
         Route::get('/notes', [PlayerProfileController::class, 'notes'])->name('notes');
+        // Extra reports.manage gate on top of this group's players.profile.manage — a
+        // moderator can manage a player without seeing reports filed against them, matching
+        // reports.manage being admin-only everywhere else (viewing/reviewing the queue).
+        Route::get('/reports', [PlayerProfileController::class, 'reports'])
+            ->middleware('can:reports.manage')->name('reports');
 
         Route::post('/heal', [PlayerProfileController::class, 'heal'])->name('heal');
         Route::post('/kick', [PlayerProfileController::class, 'kick'])->name('kick');
@@ -262,11 +267,16 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
             Route::delete('/backups/{name}', [BackupsController::class, 'destroy'])->name('backups.destroy');
         });
 
-        // Player-filed reports — admin-only in this app (see reports.manage's own
-        // comment for why: reviewing requires the mod's admin session anyway).
+        // Filing a report is open to any logged-in dashboard user — matches the in-game
+        // /report command, whose permission node is granted to every player by default.
+        // Only guarded by the outer auth/verified/account.linked middleware above.
+        Route::get('/report', [ReportsController::class, 'create'])->name('reports.create');
+        Route::post('/reports', [ReportsController::class, 'store'])->name('reports.store');
+
+        // Viewing and reviewing the report queue is admin-only, same as /reports and
+        // /reviewreport in-game (staff-only permission node).
         Route::middleware('can:reports.manage')->group(function () {
             Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
-            Route::post('/reports', [ReportsController::class, 'store'])->name('reports.store');
             Route::post('/reports/{id}/review', [ReportsController::class, 'review'])->name('reports.review');
         });
 

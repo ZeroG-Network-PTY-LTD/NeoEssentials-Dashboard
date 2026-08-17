@@ -400,9 +400,9 @@ class MinecraftApiService
         return $this->deleteWithBody("api/moderation/note/{$noteId}", ['targetName' => $targetName]);
     }
 
-    // --- Player reports (in-game /report — GET routes are readable by any logged-in
-    // dashboard account per ModerationEndpoint's own doc comment; reviewing one is
-    // admin-only, enforced by the mod itself) -----------------------------------------
+    // --- Player reports (in-game /report — filing is open to any logged-in dashboard
+    // account, matching the in-game permission node's default grant; every GET route plus
+    // reviewing one is admin-only, enforced by the mod itself) -------------------------
 
     public function pendingReports(): array
     {
@@ -417,6 +417,11 @@ class MinecraftApiService
     public function allReports(): array
     {
         return $this->get('api/moderation/reports/all')['reports'] ?? [];
+    }
+
+    public function reportsForPlayer(string $username): array
+    {
+        return $this->get('api/moderation/reports/player/' . urlencode($username))['reports'] ?? [];
     }
 
     public function reviewReport(string $id, string $status, ?string $notes = null): array

@@ -116,6 +116,11 @@ class PlayerProfileController extends Controller
         return $this->safeJson(fn () => $this->mc->notesForPlayer($username), []);
     }
 
+    public function reports(string $username): JsonResponse
+    {
+        return $this->safeJson(fn () => $this->mc->reportsForPlayer($username), []);
+    }
+
     // --- Quick actions -------------------------------------------------------
 
     public function heal(string $username): JsonResponse

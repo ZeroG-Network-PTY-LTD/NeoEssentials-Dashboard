@@ -1132,8 +1132,14 @@ class MinecraftApiService
             // Only GETs are safe to retry blind — a read timeout on a POST/PUT/DELETE can mean
             // the mod already applied the change (economy grant, ban, etc.) and only the
             // response got lost, so retrying it here could double it up. GETs have no such risk.
+            // throw: false — retry()'s default throws a RequestException on any non-2xx status
+            // once retries are exhausted, which the catch below can't tell apart from a genuine
+            // connection failure and would misreport as "API unreachable" (confirmed live: an
+            // expected 400 "Dropbox not configured" response on the Backups page flipped the
+            // whole app's connectivity badge). Let it return the response instead, so ordinary
+            // error statuses fall through to the $response->failed() handling below.
             if ($method === 'get') {
-                $request = $request->retry(2, 150);
+                $request = $request->retry(2, 150, throw: false);
             }
 
             $response = $request->{$method}("{$this->baseUrl}/{$path}", $data);

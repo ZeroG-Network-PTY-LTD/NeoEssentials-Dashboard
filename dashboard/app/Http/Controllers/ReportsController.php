@@ -44,4 +44,17 @@ class ReportsController extends Controller
             $data['status'] === 'DISMISSED' ? 'Report dismissed.' : 'Report marked reviewed.',
         );
     }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'targetName' => ['required', 'string', 'max:32'],
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        return $this->attempt(
+            fn () => $this->mc->fileReport($data['targetName'], $data['reason']),
+            "Report filed against '{$data['targetName']}'.",
+        );
+    }
 }

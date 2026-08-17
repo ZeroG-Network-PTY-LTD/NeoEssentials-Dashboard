@@ -266,6 +266,7 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
         // comment for why: reviewing requires the mod's admin session anyway).
         Route::middleware('can:reports.manage')->group(function () {
             Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+            Route::post('/reports', [ReportsController::class, 'store'])->name('reports.store');
             Route::post('/reports/{id}/review', [ReportsController::class, 'review'])->name('reports.review');
         });
 

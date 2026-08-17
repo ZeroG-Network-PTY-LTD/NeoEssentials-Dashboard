@@ -409,6 +409,11 @@ class MinecraftApiService
         return $this->get('api/moderation/reports')['reports'] ?? [];
     }
 
+    public function fileReport(string $targetName, string $reason): array
+    {
+        return $this->post('api/moderation/report', ['targetName' => $targetName, 'reason' => $reason]);
+    }
+
     public function allReports(): array
     {
         return $this->get('api/moderation/reports/all')['reports'] ?? [];

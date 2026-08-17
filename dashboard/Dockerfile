@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Minimal single-container image: PHP built-in server + SQLite, no nginx/php-fpm
 # needed. Fine for a single-admin-team dashboard; swap to php-fpm+nginx yourself
 # if you need to serve many concurrent users.
@@ -11,9 +12,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
-COPY . .
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# composer.json/lock copied (and installed) before the rest of the source, so this layer
+# only re-runs — and only re-hits GitHub's codeload — when a dependency actually changed,
+# not on every source-only edit. Was previously COPY . . before composer install, which
+# meant literally any file change forced a full re-download of every package on every
+# build; combined with GitHub's unauthenticated codeload rate limit (60/hr), a handful of
+# rebuilds in quick succession reliably 429'd every subsequent build. --mount=type=cache
+# additionally persists Composer's own download cache across builds (even ones that DO
+# touch composer.lock), so only genuinely new/changed packages ever re-download.
+COPY composer.json composer.lock ./
+# Optional: mount a GitHub token (docker build --secret id=github_token,src=<file>, or
+# `docker compose build` with a matching secrets: entry) to raise Composer's GitHub API rate
+# limit from the unauthenticated ~60/hr to ~5000/hr for packages that fall back to fetching
+# straight from GitHub instead of Packagist's own mirror. Note this only helps the
+# api.github.com/repos/.../zipball fallback path specifically — codeload.github.com's
+# separate legacy-archive endpoint (used for some older/unreleased package refs) doesn't
+# check auth at all, authenticated or not, so a token won't rescue every possible 429 here.
+# Silently unauthenticated if the secret isn't supplied — this is a reliability improvement
+# for one failure path, not a requirement.
+RUN --mount=type=cache,target=/root/.composer/cache \
+    --mount=type=secret,id=github_token \
+    if [ -s /run/secrets/github_token ]; then \
+        composer config -g github-oauth.github.com "$(cat /run/secrets/github_token)"; \
+    fi; \
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+COPY . .
+RUN composer dump-autoload --optimize --no-interaction
 
 # Node is only needed to build the frontend assets; the final image doesn't need it.
 FROM node:22-slim AS assets

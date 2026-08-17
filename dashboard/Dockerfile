@@ -42,4 +42,10 @@ RUN cp .env.example .env \
     && chown -R www-data:www-data storage bootstrap/cache database
 
 EXPOSE 8000
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000
+# --no-reload: without it, `php artisan serve` watches .env for changes and restarts the
+# whole process the moment it changes — including when a request TO THIS SERVER is the one
+# writing that change (e.g. Configuration's "Save" on the Mod API URL, which writes straight
+# to .env). The restart kills the in-flight response mid-request, so the save actually
+# succeeds but the browser sees a network error/empty response and the admin has no way to
+# tell it worked short of reloading the page and checking.
+CMD php artisan migrate --force && php artisan serve --no-reload --host=0.0.0.0 --port=8000

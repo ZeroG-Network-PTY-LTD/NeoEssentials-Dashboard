@@ -131,7 +131,21 @@ class ConfigService
 
         $dashboardToken = Str::random(40);
 
-        McConnection::current()->update([
+        $connection = McConnection::current();
+        // If a previous pairing's ciphertext can't be decrypted under the current APP_KEY
+        // (e.g. a fresh key baked into a redeployed container image while this row's DB
+        // volume persists across the rebuild), update()/save() below throws — NOT from
+        // reading api_key directly (McConnection::getAttribute() already guards that), but
+        // from Eloquent's own internal dirty-checking, which decrypts the OLD value to decide
+        // whether these columns changed before writing the new one. Since we're overwriting
+        // both encrypted columns unconditionally anyway, wipe their raw stored values first
+        // so there's nothing stale left for that internal check to fail on.
+        $connection->setRawAttributes(array_merge($connection->getAttributes(), [
+            'api_key' => null,
+            'webhook_token' => null,
+        ]), true);
+
+        $connection->update([
             'api_key' => $modToken,
             'api_key_id' => $this->extractKeyId($modToken),
             'webhook_token' => $dashboardToken,

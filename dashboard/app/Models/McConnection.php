@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Singleton row holding the mod-pairing state — see the mc_connection migration for why this
@@ -21,6 +23,8 @@ class McConnection extends Model
         'webhook_token' => 'encrypted',
     ];
 
+    private const ENCRYPTED_ATTRIBUTES = ['api_key', 'webhook_token'];
+
     public static function current(): self
     {
         return static::firstOrCreate(['id' => 1]);
@@ -29,5 +33,30 @@ class McConnection extends Model
     public function isPaired(): bool
     {
         return filled($this->api_key);
+    }
+
+    /**
+     * The encrypted cast throws DecryptException if the stored ciphertext can't be decrypted
+     * under the CURRENT APP_KEY — which happens whenever the key changes after pairing (key
+     * rotation, or a fresh key baked into a redeployed container image while this table's
+     * volume persists across the rebuild). Every consumer of this model (isPaired(),
+     * MinecraftApiService's constructor, etc.) would otherwise crash with an uncaught 500 the
+     * moment the key and the stored ciphertext stop matching — treat it the same as "this
+     * credential was never set" instead, since from the app's perspective that's functionally
+     * true: it can no longer use whatever was stored there.
+     */
+    public function getAttribute($key)
+    {
+        try {
+            return parent::getAttribute($key);
+        } catch (DecryptException $e) {
+            if (in_array($key, self::ENCRYPTED_ATTRIBUTES, true)) {
+                Log::warning("McConnection.{$key} could not be decrypted (APP_KEY changed since pairing?) — treating as unset.", [
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+            throw $e;
+        }
     }
 }

@@ -8,6 +8,14 @@ services:
       # if the mod runs on the same machine as Docker (Linux: add
       # "extra_hosts: - host.docker.internal:host-gateway" below).
       MC_API_URL: "http://host.docker.internal:8090"
+      # Without this it defaults to bare "http://localhost" (no port) — the pairing code
+      # Configuration generates (`/dashboard pair "<APP_URL>" <code>`) embeds this exact
+      # value, and the mod (running on the HOST, not in this container) tries to reach it
+      # directly, so a portless URL just fails with "Could not reach the dashboard". This is
+      # the reverse direction from MC_API_URL above: that's this container reaching OUT to
+      # the host's mod port, this is the mod reaching IN to this container's published port.
+      # Change to your actual externally-reachable address/domain for a real deployment.
+      APP_URL: "http://localhost:8000"
       # Pairing credentials (API key, webhook token, WS port) live in the mc_connection DB
       # table, not env vars — persisted by the dashboard-data volume below across restarts.
       #

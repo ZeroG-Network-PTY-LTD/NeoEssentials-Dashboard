@@ -20,6 +20,7 @@ import {
     Send,
     X as XIcon,
     Ban,
+    History,
 } from 'lucide-react';
 import PlayerRender from '@/Components/PlayerRender';
 import PlayerManagementPanel from '@/Components/PlayerManagementPanel';
@@ -116,8 +117,10 @@ function formatGamemode(mode: string | null): string {
     return mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
 }
 
-type Tab = 'overview' | 'staff' | 'moderation' | 'permissions' | 'economy' | 'inventory' | 'notes';
+type Tab = 'overview' | 'staff' | 'moderation' | 'permissions' | 'economy' | 'inventory' | 'notes' | 'recent' | 'ipbans';
 
+// 'recent' and 'ipbans' are server-wide, not player-specific — always present and never
+// require a player to have been searched, unlike every other tab here.
 const STAFF_TABS: SegmentedTabOption<Tab>[] = [
     { id: 'overview', label: 'Overview', icon: Gauge },
     { id: 'staff', label: 'Staff tools', icon: ShieldCheck },
@@ -126,12 +129,18 @@ const STAFF_TABS: SegmentedTabOption<Tab>[] = [
     { id: 'economy', label: 'Economy', icon: Coins },
     { id: 'inventory', label: 'Inventory', icon: Backpack },
     { id: 'notes', label: 'Notes', icon: StickyNote },
+    { id: 'recent', label: 'Recent Activity', icon: History },
+    { id: 'ipbans', label: 'IP Bans', icon: Ban },
 ];
 
 const PUBLIC_TABS: SegmentedTabOption<Tab>[] = [
     { id: 'overview', label: 'Overview', icon: Gauge },
     { id: 'moderation', label: 'Moderation', icon: ShieldBan },
+    { id: 'recent', label: 'Recent Activity', icon: History },
+    { id: 'ipbans', label: 'IP Bans', icon: Ban },
 ];
+
+const PLAYER_TABS: readonly Tab[] = ['overview', 'staff', 'moderation', 'permissions', 'economy', 'inventory', 'notes'];
 
 function formatDate(ms: number) {
     return ms ? new Date(ms).toLocaleString() : '—';
@@ -220,7 +229,10 @@ export default function PublicLookup({
     const [showReportModal, setShowReportModal] = useState(false);
 
     useEffect(() => {
-        setActiveTab('overview');
+        // Only reset to Overview for player-specific tabs — Recent Activity/IP Bans aren't
+        // about the searched player at all, so switching players shouldn't kick the visitor
+        // out of either if that's what they were looking at.
+        setActiveTab((current) => (PLAYER_TABS.includes(current) ? 'overview' : current));
     }, [result?.playerName]);
 
     const go = (player: string) => {
@@ -396,257 +408,263 @@ export default function PublicLookup({
                             </button>
                         </form>
 
-                        {query && (
-                            <div className="mt-8">
+                        {query && !result && (
+                            <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5 text-sm text-[var(--mc-text-secondary)]">
+                                Couldn't reach the moderation lookup service. Try again shortly.
+                            </div>
+                        )}
+
+                        {result && (
+                            <div className="mt-8 flex items-center gap-6 border-b border-[var(--mc-border)] pb-6">
+                                <PlayerRender uuid={result.playerId} size={120} />
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="font-display text-xl font-semibold">
+                                            {result.playerName}
+                                        </h2>
+                                        <Badge variant={status?.online ? 'moss' : 'neutral'} dot={status?.online}>
+                                            {status?.online ? 'online' : 'offline'}
+                                        </Badge>
+                                    </div>
+                                    <div className="mt-1 font-data text-xs text-[var(--mc-text-muted)]">
+                                        {result.playerId ?? '—'}
+                                    </div>
+                                    <div className="mt-0.5 text-xs text-[var(--mc-text-muted)]">
+                                        {status?.online ? 'Online now' : status?.lastSeen ? `Last seen ${status.lastSeen}` : 'Offline'}
+                                        {' · '}Joined {formatJoined(status?.firstJoined ?? null)}
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        auth.user
+                                            ? setShowReportModal(true)
+                                            : router.visit(route('login'))
+                                    }
+                                    className="btn-pop ml-auto flex shrink-0 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--mc-border-strong)] px-3 py-1.5 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:border-[var(--mc-ember-500)] hover:text-[var(--mc-ember-500)]"
+                                >
+                                    <Flag size={14} strokeWidth={2} />
+                                    Report
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="mt-6">
+                            <SegmentedTabs name="lookup-tab" tabs={tabs} value={activeTab} onChange={setActiveTab} />
+                        </div>
+
+                        {activeTab === 'overview' && (
+                            <div className="mt-6">
                                 {!result ? (
-                                    <div className="rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] p-5 text-sm text-[var(--mc-text-secondary)]">
-                                        Couldn't reach the moderation lookup service. Try again
-                                        shortly.
-                                    </div>
+                                    <p className="text-sm text-[var(--mc-text-muted)]">Search for a player above to see their overview.</p>
                                 ) : (
-                                    <div>
-                                        <div className="flex items-center gap-6 border-b border-[var(--mc-border)] pb-6">
-                                            <PlayerRender uuid={result.playerId} size={120} />
-                                            <div>
-                                                <div className="flex items-center gap-3">
-                                                    <h2 className="font-display text-xl font-semibold">
-                                                        {result.playerName}
-                                                    </h2>
-                                                    <Badge variant={status?.online ? 'moss' : 'neutral'} dot={status?.online}>
-                                                        {status?.online ? 'online' : 'offline'}
-                                                    </Badge>
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                            {[
+                                                ['Status', status?.online ? 'Online' : 'Offline'],
+                                                ['Playtime', formatPlaytime(status?.playtimeMinutes ?? null)],
+                                                ['Game mode', formatGamemode(status?.gamemode ?? null)],
+                                                ['Joined', formatJoined(status?.firstJoined ?? null)],
+                                            ].map(([label, value]) => (
+                                                <div
+                                                    key={label}
+                                                    className="rounded-[var(--radius-md)] border border-[var(--mc-border)] p-4"
+                                                >
+                                                    <div className="text-[11px] uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                                        {label}
+                                                    </div>
+                                                    <div className="mt-1 font-display text-lg font-semibold [font-variant-numeric:tabular-nums]">
+                                                        {value}
+                                                    </div>
                                                 </div>
-                                                <div className="mt-1 font-data text-xs text-[var(--mc-text-muted)]">
-                                                    {result.playerId ?? '—'}
-                                                </div>
-                                                <div className="mt-0.5 text-xs text-[var(--mc-text-muted)]">
-                                                    {status?.online ? 'Online now' : status?.lastSeen ? `Last seen ${status.lastSeen}` : 'Offline'}
-                                                    {' · '}Joined {formatJoined(status?.firstJoined ?? null)}
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    auth.user
-                                                        ? setShowReportModal(true)
-                                                        : router.visit(route('login'))
-                                                }
-                                                className="btn-pop ml-auto flex shrink-0 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--mc-border-strong)] px-3 py-1.5 text-sm font-medium text-[var(--mc-text-secondary)] transition hover:border-[var(--mc-ember-500)] hover:text-[var(--mc-ember-500)]"
-                                            >
-                                                <Flag size={14} strokeWidth={2} />
-                                                Report
-                                            </button>
+                                            ))}
                                         </div>
-
-                                        <div className="mt-6">
-                                            <SegmentedTabs name="lookup-tab" tabs={tabs} value={activeTab} onChange={setActiveTab} />
-                                        </div>
-
-                                        {activeTab === 'overview' && (
-                                            <div className="mt-6">
-                                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                                                    {[
-                                                        ['Status', status?.online ? 'Online' : 'Offline'],
-                                                        ['Playtime', formatPlaytime(status?.playtimeMinutes ?? null)],
-                                                        ['Game mode', formatGamemode(status?.gamemode ?? null)],
-                                                        ['Joined', formatJoined(status?.firstJoined ?? null)],
-                                                    ].map(([label, value]) => (
-                                                        <div
-                                                            key={label}
-                                                            className="rounded-[var(--radius-md)] border border-[var(--mc-border)] p-4"
-                                                        >
-                                                            <div className="text-[11px] uppercase tracking-widest text-[var(--mc-text-muted)]">
-                                                                {label}
-                                                            </div>
-                                                            <div className="mt-1 font-display text-lg font-semibold [font-variant-numeric:tabular-nums]">
-                                                                {value}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {!isStaff && (
-                                                    <p className="mt-6 max-w-[60ch] text-sm text-[var(--mc-text-muted)]">
-                                                        Sign in with a staff account to view balance, permissions,
-                                                        inventory, and moderation tools for this player.
-                                                    </p>
-                                                )}
-                                            </div>
+                                        {!isStaff && (
+                                            <p className="mt-6 max-w-[60ch] text-sm text-[var(--mc-text-muted)]">
+                                                Sign in with a staff account to view balance, permissions,
+                                                inventory, and moderation tools for this player.
+                                            </p>
                                         )}
-
-                                        {activeTab === 'moderation' && (
-                                            <div className="mt-6">
-                                                <Card padded>
-                                                    {moderationRows.length === 0 ? (
-                                                        <p className="text-sm text-[var(--mc-text-muted)]">
-                                                            No moderation history on file.
-                                                        </p>
-                                                    ) : (
-                                                        <div className="overflow-x-auto">
-                                                            <table className="w-full text-left text-sm">
-                                                                <thead>
-                                                                    <tr className="border-b border-[var(--mc-border)] text-[11px] uppercase tracking-widest text-[var(--mc-text-muted)]">
-                                                                        <th className="pb-2 pr-3 font-medium">Type</th>
-                                                                        <th className="pb-2 pr-3 font-medium">Reason</th>
-                                                                        <th className="pb-2 pr-3 font-medium">Staff</th>
-                                                                        <th className="pb-2 pr-3 font-medium">Duration</th>
-                                                                        <th className="pb-2 font-medium">Date</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {moderationRows.map((row) => (
-                                                                        <tr
-                                                                            key={row.id}
-                                                                            className="border-b border-[var(--mc-border)] last:border-b-0"
-                                                                        >
-                                                                            <td className="py-2.5 pr-3">
-                                                                                <Badge variant={MOD_TAG_VARIANT[row.type]}>
-                                                                                    {row.type}
-                                                                                </Badge>
-                                                                            </td>
-                                                                            <td className="py-2.5 pr-3 text-[var(--mc-text-secondary)]">
-                                                                                {row.reason}
-                                                                            </td>
-                                                                            <td className="py-2.5 pr-3 text-[var(--mc-text-muted)]">
-                                                                                {row.staff}
-                                                                            </td>
-                                                                            <td className="py-2.5 pr-3 text-[var(--mc-text-muted)]">
-                                                                                {row.duration}
-                                                                            </td>
-                                                                            <td className="py-2.5 text-[var(--mc-text-muted)]">
-                                                                                {formatDate(row.date)}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    )}
-                                                </Card>
-                                            </div>
-                                        )}
-
-                                        {isStaff && activeTab !== 'overview' && activeTab !== 'moderation' && (
-                                            <div
-                                                className={`mt-6 rounded-[var(--radius-lg)] p-5 ${
-                                                    activeTab === 'staff'
-                                                        ? 'border border-[var(--mc-purple-400)] bg-[var(--mc-bg-surface)]'
-                                                        : 'border border-[var(--mc-border)] bg-[var(--mc-bg-surface)]'
-                                                }`}
-                                            >
-                                                <PlayerManagementPanel
-                                                    username={result.playerName}
-                                                    activeTab={activeTab}
-                                                    canSeeReports={canSeeReports}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
+                                    </>
                                 )}
                             </div>
                         )}
 
-                        <div className="mt-10">
-                            <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
-                                Recent activity
-                            </span>
-                            <Card className="mt-2">
-                                <div className="divide-y divide-[var(--mc-border)]">
-                                    {recent.length === 0 ? (
-                                        <p className="p-4 text-sm text-[var(--mc-text-muted)]">
-                                            Nothing recent.
-                                        </p>
-                                    ) : (
-                                        recent.map((entry) => (
-                                            <div
-                                                key={`${entry.type}-${entry.id}`}
-                                                className="flex items-center gap-3 p-3 text-sm"
-                                            >
-                                                {entry.type === 'ban' ? (
-                                                    <ShieldBan size={15} className="text-[var(--mc-ember-500)]" />
-                                                ) : (
-                                                    <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
-                                                )}
-                                                <button
-                                                    onClick={() =>
-                                                        router.get(
-                                                            route('lookup'),
-                                                            {
-                                                                player:
-                                                                    entry.type === 'ban'
-                                                                        ? entry.playerName
-                                                                        : entry.target,
-                                                            },
-                                                            { preserveState: true },
-                                                        )
-                                                    }
-                                                    className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-cyan-500)]"
-                                                >
-                                                    {entry.type === 'ban' ? entry.playerName : entry.target}
-                                                </button>
-                                                <span className="text-[var(--mc-text-muted)]">
-                                                    {entry.reason || 'No reason given'}
-                                                </span>
-                                                <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
-                                                    {formatDate(
-                                                        entry.type === 'ban' ? entry.banTime : entry.muteTime,
-                                                    )}
-                                                </span>
+                        {activeTab === 'moderation' && (
+                            <div className="mt-6">
+                                {!result ? (
+                                    <p className="text-sm text-[var(--mc-text-muted)]">Search for a player above to see their moderation history.</p>
+                                ) : (
+                                    <Card padded>
+                                        {moderationRows.length === 0 ? (
+                                            <p className="text-sm text-[var(--mc-text-muted)]">
+                                                No moderation history on file.
+                                            </p>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left text-sm">
+                                                    <thead>
+                                                        <tr className="border-b border-[var(--mc-border)] text-[11px] uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                                            <th className="pb-2 pr-3 font-medium">Type</th>
+                                                            <th className="pb-2 pr-3 font-medium">Reason</th>
+                                                            <th className="pb-2 pr-3 font-medium">Staff</th>
+                                                            <th className="pb-2 pr-3 font-medium">Duration</th>
+                                                            <th className="pb-2 font-medium">Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {moderationRows.map((row) => (
+                                                            <tr
+                                                                key={row.id}
+                                                                className="border-b border-[var(--mc-border)] last:border-b-0"
+                                                            >
+                                                                <td className="py-2.5 pr-3">
+                                                                    <Badge variant={MOD_TAG_VARIANT[row.type]}>
+                                                                        {row.type}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td className="py-2.5 pr-3 text-[var(--mc-text-secondary)]">
+                                                                    {row.reason}
+                                                                </td>
+                                                                <td className="py-2.5 pr-3 text-[var(--mc-text-muted)]">
+                                                                    {row.staff}
+                                                                </td>
+                                                                <td className="py-2.5 pr-3 text-[var(--mc-text-muted)]">
+                                                                    {row.duration}
+                                                                </td>
+                                                                <td className="py-2.5 text-[var(--mc-text-muted)]">
+                                                                    {formatDate(row.date)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                        ))
-                                    )}
+                                        )}
+                                    </Card>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'recent' && (
+                            <div className="mt-6">
+                                <Card>
+                                    <div className="divide-y divide-[var(--mc-border)]">
+                                        {recent.length === 0 ? (
+                                            <p className="p-4 text-sm text-[var(--mc-text-muted)]">
+                                                Nothing recent.
+                                            </p>
+                                        ) : (
+                                            recent.map((entry) => (
+                                                <div
+                                                    key={`${entry.type}-${entry.id}`}
+                                                    className="flex items-center gap-3 p-3 text-sm"
+                                                >
+                                                    {entry.type === 'ban' ? (
+                                                        <ShieldBan size={15} className="text-[var(--mc-ember-500)]" />
+                                                    ) : (
+                                                        <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
+                                                    )}
+                                                    <button
+                                                        onClick={() =>
+                                                            router.get(
+                                                                route('lookup'),
+                                                                {
+                                                                    player:
+                                                                        entry.type === 'ban'
+                                                                            ? entry.playerName
+                                                                            : entry.target,
+                                                                },
+                                                                { preserveState: true },
+                                                            )
+                                                        }
+                                                        className="font-medium text-[var(--mc-text-primary)] hover:text-[var(--mc-cyan-500)]"
+                                                    >
+                                                        {entry.type === 'ban' ? entry.playerName : entry.target}
+                                                    </button>
+                                                    <span className="text-[var(--mc-text-muted)]">
+                                                        {entry.reason || 'No reason given'}
+                                                    </span>
+                                                    <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
+                                                        {formatDate(
+                                                            entry.type === 'ban' ? entry.banTime : entry.muteTime,
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </Card>
+                            </div>
+                        )}
+
+                        {activeTab === 'ipbans' && (
+                            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <div>
+                                    <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                        IP bans
+                                    </span>
+                                    <Card className="mt-2">
+                                        <div className="divide-y divide-[var(--mc-border)]">
+                                            {ipBans.length === 0 ? (
+                                                <p className="p-4 text-sm text-[var(--mc-text-muted)]">No active IP bans.</p>
+                                            ) : (
+                                                ipBans.map((b) => (
+                                                    <div key={b.id} className="flex items-center gap-3 p-3 text-sm">
+                                                        <Ban size={15} className="text-[var(--mc-ember-500)]" />
+                                                        <span className="font-data font-medium text-[var(--mc-text-primary)]">{b.ipAddress}</span>
+                                                        <span className="text-[var(--mc-text-muted)]">{b.reason || 'No reason given'}</span>
+                                                        <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
+                                                            {formatDate(b.banTime)}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </Card>
                                 </div>
-                            </Card>
-                        </div>
 
-                        <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <div>
-                                <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
-                                    IP bans
-                                </span>
-                                <Card className="mt-2">
-                                    <div className="divide-y divide-[var(--mc-border)]">
-                                        {ipBans.length === 0 ? (
-                                            <p className="p-4 text-sm text-[var(--mc-text-muted)]">No active IP bans.</p>
-                                        ) : (
-                                            ipBans.map((b) => (
-                                                <div key={b.id} className="flex items-center gap-3 p-3 text-sm">
-                                                    <Ban size={15} className="text-[var(--mc-ember-500)]" />
-                                                    <span className="font-data font-medium text-[var(--mc-text-primary)]">{b.ipAddress}</span>
-                                                    <span className="text-[var(--mc-text-muted)]">{b.reason || 'No reason given'}</span>
-                                                    <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
-                                                        {formatDate(b.banTime)}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </Card>
+                                <div>
+                                    <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
+                                        IP mutes
+                                    </span>
+                                    <Card className="mt-2">
+                                        <div className="divide-y divide-[var(--mc-border)]">
+                                            {ipMutes.length === 0 ? (
+                                                <p className="p-4 text-sm text-[var(--mc-text-muted)]">No active IP mutes.</p>
+                                            ) : (
+                                                ipMutes.map((m) => (
+                                                    <div key={m.id} className="flex items-center gap-3 p-3 text-sm">
+                                                        <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
+                                                        <span className="font-data font-medium text-[var(--mc-text-primary)]">{m.target}</span>
+                                                        <span className="text-[var(--mc-text-muted)]">{m.reason || 'No reason given'}</span>
+                                                        <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
+                                                            {formatDate(m.muteTime)}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </Card>
+                                </div>
                             </div>
+                        )}
 
-                            <div>
-                                <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--mc-text-muted)]">
-                                    IP mutes
-                                </span>
-                                <Card className="mt-2">
-                                    <div className="divide-y divide-[var(--mc-border)]">
-                                        {ipMutes.length === 0 ? (
-                                            <p className="p-4 text-sm text-[var(--mc-text-muted)]">No active IP mutes.</p>
-                                        ) : (
-                                            ipMutes.map((m) => (
-                                                <div key={m.id} className="flex items-center gap-3 p-3 text-sm">
-                                                    <VolumeX size={15} className="text-[var(--mc-cyan-500)]" />
-                                                    <span className="font-data font-medium text-[var(--mc-text-primary)]">{m.target}</span>
-                                                    <span className="text-[var(--mc-text-muted)]">{m.reason || 'No reason given'}</span>
-                                                    <span className="ml-auto shrink-0 text-xs text-[var(--mc-text-muted)]">
-                                                        {formatDate(m.muteTime)}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </Card>
+                        {isStaff && result && activeTab !== 'overview' && activeTab !== 'moderation' && activeTab !== 'recent' && activeTab !== 'ipbans' && (
+                            <div
+                                className={`mt-6 rounded-[var(--radius-lg)] p-5 ${
+                                    activeTab === 'staff'
+                                        ? 'border border-[var(--mc-purple-400)] bg-[var(--mc-bg-surface)]'
+                                        : 'border border-[var(--mc-border)] bg-[var(--mc-bg-surface)]'
+                                }`}
+                            >
+                                <PlayerManagementPanel
+                                    username={result.playerName}
+                                    activeTab={activeTab}
+                                    canSeeReports={canSeeReports}
+                                />
                             </div>
-                        </div>
+                        )}
                     </main>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Card from '@/Components/Dashboard/Card';
 import Badge from '@/Components/Dashboard/Badge';
 import type {
@@ -156,12 +156,23 @@ export default function PlayerManagementPanel({ username, activeTab, canSeeRepor
   const rShared = (name: string) => route(`dashboard.players.profile.${name}`, username);
   const r = (name: string) => route(`lookup.manage.${name}`, username);
 
+  // Guards against out-of-order responses: this panel is reused (not remounted) across
+  // searches wherever it's mounted without a key prop tied to the player, so without this, a
+  // slow-resolving load() for a previously-searched player can land after a newer search
+  // already started and overwrite that player's data on screen with the old player's — showing
+  // staff the wrong player's ban/mute/note history. Each load() bumps this ref and only applies
+  // its own results if it's still the most recent call by the time they arrive. Same bug,
+  // independently found and fixed in the mod's own webdashboard-ui/PlayerManagementPanel.tsx.
+  const requestIdRef = useRef(0);
+
   const load = () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setNotFound(false);
     fetch(rShared('lookup'), { headers: { Accept: 'application/json' } })
       .then((res) => res.json())
       .then(async (result: PlayerLookupResult) => {
+        if (requestId !== requestIdRef.current) return;
         setLookup(result);
         if (!result.success || !result.uuid) {
           setNotFound(true);
@@ -193,6 +204,7 @@ export default function PlayerManagementPanel({ username, activeTab, canSeeRepor
           bal, perm, grp, inv, banList, muteList, kickList, warnList, noteList, reportList,
           freeze, vanish, jail, jailList, ptimeRes, pweatherRes,
         ] = await Promise.allSettled(fetches);
+        if (requestId !== requestIdRef.current) return;
 
         if (bal.status === 'fulfilled') setBalance(bal.value.balance);
         if (perm.status === 'fulfilled') setPermInfo(perm.value);

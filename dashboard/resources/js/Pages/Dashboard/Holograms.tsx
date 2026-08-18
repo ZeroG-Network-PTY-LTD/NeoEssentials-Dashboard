@@ -49,6 +49,13 @@ export default function Holograms({ holograms, stats }: Props) {
     if (editingId) {
       put(route('dashboard.holograms.update', editingId), { onSuccess: () => startCreate() });
     } else {
+      // The backend now despawns-and-replaces in place on an id collision (fixed earlier this
+      // session — nothing orphans), but from the user's side it's still silent data loss: an
+      // existing hologram's position/text/visibility vanishes with zero warning, unlike destroy()
+      // just below, which always confirms first.
+      if (holograms.some((h) => h.id === data.id) && !confirm(`A hologram named '${data.id}' already exists. Replace it?`)) {
+        return;
+      }
       post(route('dashboard.holograms.store'), { onSuccess: () => startCreate() });
     }
   };

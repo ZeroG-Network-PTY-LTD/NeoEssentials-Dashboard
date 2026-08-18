@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscordController;
 use App\Http\Controllers\EconomyController;
 use App\Http\Controllers\HologramsController;
+use App\Http\Controllers\IpBansController;
 use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
@@ -278,6 +279,16 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
         Route::middleware('can:reports.manage')->group(function () {
             Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
             Route::post('/reports/{id}/review', [ReportsController::class, 'review'])->name('reports.review');
+        });
+
+        // IP-level bans/mutes — admin-only end-to-end (broader/more severe than a
+        // per-player punishment), mirroring the mod's own gate on every ip{ban,mute}* route.
+        Route::middleware('can:ip-moderation.manage')->group(function () {
+            Route::get('/ip-bans', [IpBansController::class, 'index'])->name('ip-bans.index');
+            Route::post('/ip-bans', [IpBansController::class, 'ban'])->name('ip-bans.ban');
+            Route::delete('/ip-bans/{ip}', [IpBansController::class, 'unban'])->name('ip-bans.unban');
+            Route::post('/ip-mutes', [IpBansController::class, 'mute'])->name('ip-mutes.mute');
+            Route::delete('/ip-mutes/{ip}', [IpBansController::class, 'unmute'])->name('ip-mutes.unmute');
         });
 
         // Mod dashboard accounts — admin-only in this app, mirroring the mod's

@@ -90,10 +90,15 @@ class AppServiceProvider extends ServiceProvider
         // session (self-escalation risk otherwise) — mirror that here too.
         Gate::define('permissions.manage', fn (User $user) => $user->isAdmin());
 
-        // Player-filed reports (in-game /report) — the mod's own GET routes are readable by
-        // any logged-in dashboard account, but reviewing one requires the mod's admin session
-        // (ModerationEndpoint), so admin-only here too; nothing a non-admin could act on anyway.
+        // Player-filed reports (in-game /report) — viewing/reviewing the queue requires the
+        // mod's admin session (ModerationEndpoint). Filing one (POST /reports) is deliberately
+        // NOT behind this gate — see routes/web.php, it's open to any logged-in account.
         Gate::define('reports.manage', fn (User $user) => $user->isAdmin());
+
+        // IP-level bans/mutes — broader and more severe than a per-player punishment (affects
+        // anyone sharing that address), so admin-only, matching the mod's own admin-only gate
+        // on every /api/moderation/ip{ban,mute}* route.
+        Gate::define('ip-moderation.manage', fn (User $user) => $user->isAdmin());
 
         // BackupEndpoint/CloudStorageEndpoint gate every mutating route behind
         // admin on the mod side; status/list/file-browsing stay readable by

@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Flag,
   Send,
+  Ban,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 import { isMcLiveAvailable, useMcLiveStatus } from '@/lib/useMcLive';
@@ -120,6 +121,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     // Reviewing player reports requires the mod's admin session (ModerationEndpoint) —
     // same admin-only gate as Users/Updates/Configuration below, hidden rather than 403ing.
     ...(isAdmin ? [{ label: 'Reports', href: route('dashboard.reports.index'), icon: Flag }] : []),
+    // IP-level bans/mutes are admin-only — broader/more severe than per-player
+    // moderation (affects anyone sharing that address), same gate as Reports.
+    ...(isAdmin ? [{ label: 'IP Bans', href: route('dashboard.ip-bans.index'), icon: Ban }] : []),
     // Mod dashboard account management is admin-only (mirrors the mod's own
     // UserManagementEndpoint) — hide the link entirely for moderators rather
     // than showing a dead end that 403s.

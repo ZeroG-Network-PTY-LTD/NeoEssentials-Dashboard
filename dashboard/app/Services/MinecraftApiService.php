@@ -429,6 +429,46 @@ class MinecraftApiService
         return $this->post("api/moderation/reports/{$id}/review", ['status' => $status, 'notes' => $notes]);
     }
 
+    // --- IP bans/mutes (admin-only, matches the in-game equivalents) -------------------
+
+    public function ipBans(bool $all = false): array
+    {
+        return $this->get($all ? 'api/moderation/ipbans' : 'api/moderation/ipbans/active')['ipBans'] ?? [];
+    }
+
+    public function banIp(string $ip, string $reason, ?string $duration = null): array
+    {
+        return $this->post('api/moderation/ipban', [
+            'ip' => $ip,
+            'reason' => $reason,
+            'duration' => $duration ? (int) $duration : -1, // seconds; -1 = permanent
+        ]);
+    }
+
+    public function unbanIp(string $ip): array
+    {
+        return $this->delete('api/moderation/ipban/' . urlencode($ip));
+    }
+
+    public function ipMutes(): array
+    {
+        return $this->get('api/moderation/ipmutes')['ipMutes'] ?? [];
+    }
+
+    public function muteIp(string $ip, string $reason, ?string $duration = null): array
+    {
+        return $this->post('api/moderation/ipmute', [
+            'ip' => $ip,
+            'reason' => $reason,
+            'duration' => $duration ? (int) $duration : null, // seconds; omit = indefinite
+        ]);
+    }
+
+    public function unmuteIp(string $ip): array
+    {
+        return $this->delete('api/moderation/ipmute/' . urlencode($ip));
+    }
+
     // --- Public moderation lookup (no dashboard login required on either side —
     // the mod's /api/public/moderation/* routes are registered without the
     // Bearer-token check, so these deliberately skip the service-account session

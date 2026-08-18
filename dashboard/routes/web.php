@@ -149,8 +149,10 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
 
     Route::name('dashboard.')->group(function () {
         Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
-        Route::post('/players/{uuid}/teleport', [PlayerController::class, 'teleport'])->name('players.teleport');
-        Route::post('/players/{uuid}/heal', [PlayerController::class, 'heal'])->name('players.heal');
+        Route::post('/players/{uuid}/teleport', [PlayerController::class, 'teleport'])
+            ->middleware('can:players.teleport')->name('players.teleport');
+        Route::post('/players/{uuid}/heal', [PlayerController::class, 'heal'])
+            ->middleware('can:players.teleport')->name('players.heal');
         // Read-only — no gate, mirrors the mod's own homes lookup imposing no
         // admin requirement beyond being logged in.
         Route::get('/players/{uuid}/homes', [PlayerController::class, 'homes'])->name('players.homes');
@@ -188,28 +190,33 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
 
         Route::get('/logs', [ConsoleController::class, 'logs'])->name('logs.index');
 
-        // No gate here — the mod's own /api/warps endpoint imposes no admin
-        // requirement beyond being logged in at all, so this app doesn't add one
-        // either (any authenticated moderator/admin can manage warps).
+        // Reading server warps stays open to any logged-in account (mirrors the mod's own
+        // GET /api/warps, which imposes no admin requirement); creating/deleting them
+        // requires admin (mirrors WarpsEndpoint requiring auth-admin for every non-GET).
         Route::get('/warps', [WarpsController::class, 'index'])->name('warps.index');
-        Route::post('/warps', [WarpsController::class, 'store'])->name('warps.store');
-        Route::delete('/warps/{name}', [WarpsController::class, 'destroy'])->name('warps.destroy');
-        // Player (/pwarp) warps are personal, not public — the mod's endpoint requires ADMIN for
-        // these routes even on GET, unlike public warps above.
-        Route::delete('/warps/players/{uuid}/{name}', [WarpsController::class, 'destroyPlayerWarp'])->name('warps.players.destroy');
+        Route::middleware('can:warps.manage')->group(function () {
+            Route::post('/warps', [WarpsController::class, 'store'])->name('warps.store');
+            Route::delete('/warps/{name}', [WarpsController::class, 'destroy'])->name('warps.destroy');
+            // Player (/pwarp) warps are personal, not public — the mod's endpoint requires
+            // ADMIN for these routes even on GET, unlike public warps above.
+            Route::delete('/warps/players/{uuid}/{name}', [WarpsController::class, 'destroyPlayerWarp'])->name('warps.players.destroy');
+        });
 
         // Read-only — the mod has no create/update/delete/give routes for kits.
         Route::get('/kits', [KitsController::class, 'index'])->name('kits.index');
 
-        // No gate — same rule as Warps: the mod's HologramEndpoint imposes no
-        // admin requirement beyond being logged in.
+        // Reading the hologram list stays open to any logged-in account (mirrors the mod's
+        // own GET /api/holograms, which imposes no admin requirement); every mutation
+        // requires admin (mirrors HologramEndpoint requiring auth-admin for every non-GET).
         Route::get('/holograms', [HologramsController::class, 'index'])->name('holograms.index');
-        Route::post('/holograms', [HologramsController::class, 'store'])->name('holograms.store');
-        Route::put('/holograms/{id}', [HologramsController::class, 'update'])->name('holograms.update');
-        Route::delete('/holograms/{id}', [HologramsController::class, 'destroy'])->name('holograms.destroy');
-        Route::post('/holograms/{id}/spawn', [HologramsController::class, 'spawn'])->name('holograms.spawn');
-        Route::post('/holograms/{id}/despawn', [HologramsController::class, 'despawn'])->name('holograms.despawn');
-        Route::post('/holograms/{id}/visible', [HologramsController::class, 'toggleVisibility'])->name('holograms.visible');
+        Route::middleware('can:holograms.manage')->group(function () {
+            Route::post('/holograms', [HologramsController::class, 'store'])->name('holograms.store');
+            Route::put('/holograms/{id}', [HologramsController::class, 'update'])->name('holograms.update');
+            Route::delete('/holograms/{id}', [HologramsController::class, 'destroy'])->name('holograms.destroy');
+            Route::post('/holograms/{id}/spawn', [HologramsController::class, 'spawn'])->name('holograms.spawn');
+            Route::post('/holograms/{id}/despawn', [HologramsController::class, 'despawn'])->name('holograms.despawn');
+            Route::post('/holograms/{id}/visible', [HologramsController::class, 'toggleVisibility'])->name('holograms.visible');
+        });
 
         // Status/events are readable by any logged-in account; clearing the
         // event log, sending a test message, and the auth-config form are

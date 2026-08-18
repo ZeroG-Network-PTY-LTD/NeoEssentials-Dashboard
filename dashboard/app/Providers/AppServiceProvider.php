@@ -65,6 +65,14 @@ class AppServiceProvider extends ServiceProvider
         // Same tier as kick/ban — changing a player's game mode has a comparable blast
         // radius (e.g. handing out creative mode) if a compromised/careless account uses it.
         Gate::define('players.gamemode', fn (User $user) => $user->isAdmin());
+        // Teleport/heal (PlayerController, /dashboard/players/{uuid}/...) had no gate at
+        // all here despite sitting right next to kick/ban/mute/gamemode above — the mod
+        // requires its own admin session for both (PlayerEndpoint's isAdmin() checks on
+        // handleTeleport()/handleHeal()), so mirror that here too. Note this app talks to
+        // the mod through one shared service API key, not a per-user token, so the mod's
+        // own admin check can't tell our users apart — this gate is the only thing that
+        // actually stops a non-admin dashboard account from teleporting/healing any player.
+        Gate::define('players.teleport', fn (User $user) => $user->isAdmin());
         // Every mutating route on the per-player profile page (fly/god/feed/speed/nickname,
         // freeze/vanish/jail, give/effect/spawnmob/burn/lightning/kill, sudo/clearinventory/
         // ptime/pweather, unban/unmute/notes/warns) — the mod requires its own admin session
@@ -104,6 +112,17 @@ class AppServiceProvider extends ServiceProvider
         // mod's own admin-only gate on every /api/moderation/jail-location* route. Separate
         // from jailing/unjailing a specific player, which stays on players.profile.manage.
         Gate::define('jails.manage', fn (User $user) => $user->isAdmin());
+
+        // Server warp create/delete and every player-warp route (list/delete someone else's
+        // personal warp) require admin on the mod side (WarpsEndpoint: any non-GET method,
+        // and the whole /players/* sub-path even on GET) — mirror that here. Reading server
+        // warps stays open to any logged-in account, same as the mod's own GET.
+        Gate::define('warps.manage', fn (User $user) => $user->isAdmin());
+
+        // Hologram create/update/delete/spawn/despawn/visibility toggle require admin on the
+        // mod side (HologramEndpoint: any non-GET method) — mirror that here. Reading the
+        // hologram list stays open to any logged-in account, same as the mod's own GET.
+        Gate::define('holograms.manage', fn (User $user) => $user->isAdmin());
 
         // BackupEndpoint/CloudStorageEndpoint gate every mutating route behind
         // admin on the mod side; status/list/file-browsing stay readable by

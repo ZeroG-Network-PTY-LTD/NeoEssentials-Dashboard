@@ -37,7 +37,7 @@ class IpBansController extends Controller
     public function ban(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'ip' => ['required', 'string', 'max:64'],
+            'ip' => ['required', 'ip'],
             'reason' => ['required', 'string', 'max:1000'],
             'duration' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -59,7 +59,7 @@ class IpBansController extends Controller
     public function mute(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'ip' => ['required', 'string', 'max:64'],
+            'ip' => ['required', 'ip'],
             'reason' => ['required', 'string', 'max:1000'],
             'duration' => ['nullable', 'integer', 'min:1'],
         ]);

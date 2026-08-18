@@ -488,6 +488,22 @@ class MinecraftApiService
         return $data['recent'] ?? [];
     }
 
+    /** Active IP bans — the mod redacts the address itself before this ever reaches us. */
+    public function publicIpBans(): array
+    {
+        $data = $this->publicGet('api/public/moderation/ip-bans');
+
+        return $data['ipBans'] ?? [];
+    }
+
+    /** Active IP mutes — same redaction as publicIpBans(). */
+    public function publicIpMutes(): array
+    {
+        $data = $this->publicGet('api/public/moderation/ip-mutes');
+
+        return $data['ipMutes'] ?? [];
+    }
+
     private function publicGet(string $path): array
     {
         try {

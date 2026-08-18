@@ -27,6 +27,7 @@ import {
   Flag,
   Send,
   Ban,
+  Lock,
 } from 'lucide-react';
 import { PageProps } from '@/types';
 import { isMcLiveAvailable, useMcLiveStatus } from '@/lib/useMcLive';
@@ -124,6 +125,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     // IP-level bans/mutes are admin-only — broader/more severe than per-player
     // moderation (affects anyone sharing that address), same gate as Reports.
     ...(isAdmin ? [{ label: 'IP Bans', href: route('dashboard.ip-bans.index'), icon: Ban }] : []),
+    // Jail cell management (create/remove by coordinates) — admin-only, matching the
+    // in-game /setjail permission node. Jailing/unjailing a specific PLAYER into an
+    // existing cell stays on the player profile panel, not here.
+    ...(isAdmin ? [{ label: 'Jails', href: route('dashboard.jails.index'), icon: Lock }] : []),
     // Mod dashboard account management is admin-only (mirrors the mod's own
     // UserManagementEndpoint) — hide the link entirely for moderators rather
     // than showing a dead end that 403s.

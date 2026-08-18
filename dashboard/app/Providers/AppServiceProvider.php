@@ -100,6 +100,11 @@ class AppServiceProvider extends ServiceProvider
         // on every /api/moderation/ip{ban,mute}* route.
         Gate::define('ip-moderation.manage', fn (User $user) => $user->isAdmin());
 
+        // Jail cell management (create/remove by coordinates) — admin-only, matching the
+        // mod's own admin-only gate on every /api/moderation/jail-location* route. Separate
+        // from jailing/unjailing a specific player, which stays on players.profile.manage.
+        Gate::define('jails.manage', fn (User $user) => $user->isAdmin());
+
         // BackupEndpoint/CloudStorageEndpoint gate every mutating route behind
         // admin on the mod side; status/list/file-browsing stay readable by
         // any logged-in account.

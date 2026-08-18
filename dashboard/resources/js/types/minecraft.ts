@@ -379,6 +379,25 @@ export interface BanEntry {
   active: boolean;
 }
 
+export type JailShape = 'SPHERE' | 'CUBOID';
+
+export interface JailLocation {
+  name: string;
+  dimension: string;
+  shape: JailShape;
+  createdBy: string;
+  createdTime: number;
+  position: { x: number; y: number; z: number };
+  radius?: number;
+  corner1?: { x: number; y: number; z: number };
+  corner2?: { x: number; y: number; z: number };
+}
+
+export interface ServerWorld {
+  dimension: string;
+  name: string;
+}
+
 export interface MuteEntry {
   id: string;
   target: string;

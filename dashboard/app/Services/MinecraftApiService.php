@@ -278,6 +278,50 @@ class MinecraftApiService
         return $this->delete("api/moderation/jail/{$username}");
     }
 
+    // --- Jail LOCATIONS (admin-only) — defining the cell itself (name, dimension, shape,
+    // coordinates), as opposed to jailPlayer() above which sends a PLAYER to an
+    // already-defined one. Lets an admin create a jail cell by typed-in coordinates
+    // without needing to physically stand there in-game first (the in-game /setjail +
+    // jail wand flow still works exactly as before, writing to the same store). --------
+
+    public function jailLocationsDetailed(): array
+    {
+        return $this->get('api/moderation/jail-locations')['jailLocations'] ?? [];
+    }
+
+    public function createJailLocationSphere(string $name, string $dimension, array $position, ?float $radius = null): array
+    {
+        return $this->post('api/moderation/jail-location', [
+            'name' => $name,
+            'dimension' => $dimension,
+            'shape' => 'SPHERE',
+            'position' => $position,
+            'radius' => $radius,
+        ]);
+    }
+
+    public function createJailLocationCuboid(string $name, string $dimension, array $corner1, array $corner2): array
+    {
+        return $this->post('api/moderation/jail-location', [
+            'name' => $name,
+            'dimension' => $dimension,
+            'shape' => 'CUBOID',
+            'corner1' => $corner1,
+            'corner2' => $corner2,
+        ]);
+    }
+
+    public function removeJailLocation(string $name): array
+    {
+        return $this->delete('api/moderation/jail-location/' . urlencode($name));
+    }
+
+    /** Loaded dimensions ({dimension, name} pairs), for the jail-creation dimension dropdown. */
+    public function serverWorlds(): array
+    {
+        return $this->get('api/server/worlds')['worlds'] ?? [];
+    }
+
     // --- Items / fun commands (online players only) -------------------------
 
     public function giveItem(string $username, string $item, int $amount = 1): array

@@ -8,6 +8,7 @@ use App\Http\Controllers\DiscordController;
 use App\Http\Controllers\EconomyController;
 use App\Http\Controllers\HologramsController;
 use App\Http\Controllers\IpBansController;
+use App\Http\Controllers\JailsController;
 use App\Http\Controllers\KitsController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\PlayerController;
@@ -289,6 +290,14 @@ Route::middleware(['auth', 'verified', 'account.linked'])->prefix('dashboard')->
             Route::delete('/ip-bans/{ip}', [IpBansController::class, 'unban'])->name('ip-bans.unban');
             Route::post('/ip-mutes', [IpBansController::class, 'mute'])->name('ip-mutes.mute');
             Route::delete('/ip-mutes/{ip}', [IpBansController::class, 'unmute'])->name('ip-mutes.unmute');
+        });
+
+        // Jail cell management (create/remove by coordinates) — admin-only, mirroring the
+        // mod's own gate on every /api/moderation/jail-location* route.
+        Route::middleware('can:jails.manage')->group(function () {
+            Route::get('/jails', [JailsController::class, 'index'])->name('jails.index');
+            Route::post('/jails', [JailsController::class, 'store'])->name('jails.store');
+            Route::delete('/jails/{name}', [JailsController::class, 'destroy'])->name('jails.destroy');
         });
 
         // Mod dashboard accounts — admin-only in this app, mirroring the mod's

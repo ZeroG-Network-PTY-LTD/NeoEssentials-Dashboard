@@ -43,9 +43,26 @@ class DiscordAuthController extends Controller
         return Socialite::driver('discord')->redirect();
     }
 
+    /**
+     * Refuses to disconnect if this account has no other way to log back in — an account
+     * created via handleLogin() (guest "Login with Discord", never registered a real password)
+     * gets a random unusable password and placeholder "{discordId}@discord.oauth" email; if it
+     * also has no mod_username (never linked a mod dashboard account, whose local password copy
+     * IS the real one the user just typed — see LoginRequest::mirrorModUser()), nulling
+     * discord_id here would permanently lock it out, since PasswordController::update requires
+     * knowing the current (random, unknown) password to set a new one.
+     */
     public function disconnect(): RedirectResponse
     {
-        Auth::user()->forceFill(['discord_id' => null])->save();
+        $user = Auth::user();
+
+        if ($user->mod_username === null && $user->email === "{$user->discord_id}@discord.oauth") {
+            return redirect()->route('profile.edit')->with('error',
+                'This account has no other way to log in yet — link a Minecraft account or '.
+                'contact an admin to set a password before disconnecting Discord.');
+        }
+
+        $user->forceFill(['discord_id' => null])->save();
 
         return redirect()->route('profile.edit')->with('success', 'Discord account disconnected.');
     }

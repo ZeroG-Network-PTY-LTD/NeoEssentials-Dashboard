@@ -6,7 +6,7 @@ export default function Guest({ children }: PropsWithChildren) {
     const { props } = usePage<PageProps>();
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--mc-bg-base)] px-4 py-10">
+        <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
             <Link
                 href="/"
                 className="flex items-center gap-2 text-[var(--mc-text-primary)] transition hover:text-[var(--mc-cyan-500)]"
@@ -23,7 +23,7 @@ export default function Guest({ children }: PropsWithChildren) {
                 </div>
             )}
 
-            <div className={`w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--mc-border)] bg-[var(--mc-bg-surface)] px-6 py-8 shadow-2xl shadow-black/40 sm:max-w-md ${props.flash?.success ? 'mt-4' : 'mt-8'}`}>
+            <div className={`dash-card w-full overflow-hidden px-6 py-8 shadow-2xl shadow-black/40 sm:max-w-md ${props.flash?.success ? 'mt-4' : 'mt-8'}`}>
                 {children}
             </div>
 

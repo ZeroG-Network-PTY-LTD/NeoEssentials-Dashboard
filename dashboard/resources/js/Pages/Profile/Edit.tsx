@@ -37,26 +37,26 @@ export default function Edit({
                     </div>
                 )}
 
-                <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 sm:p-6">
+                <div className="dash-card p-4 sm:p-6">
                     <UpdateProfileInformationForm
                         mustVerifyEmail={mustVerifyEmail}
                         status={status}
                     />
                 </div>
 
-                <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 sm:p-6">
+                <div className="dash-card p-4 sm:p-6">
                     <MinecraftLinkForm />
                 </div>
 
-                <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 sm:p-6">
+                <div className="dash-card p-4 sm:p-6">
                     <DiscordConnectionForm />
                 </div>
 
-                <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 sm:p-6">
+                <div className="dash-card p-4 sm:p-6">
                     <UpdatePasswordForm />
                 </div>
 
-                <div className="rounded-[var(--radius-lg)] bg-[var(--mc-bg-surface)] border border-[var(--mc-border)] p-4 sm:p-6">
+                <div className="dash-card p-4 sm:p-6">
                     <DeleteUserForm />
                 </div>
             </div>

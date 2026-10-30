@@ -17,7 +17,7 @@ services:
       # the reverse direction from MC_API_URL above: that's this container reaching OUT to
       # the host's mod port, this is the mod reaching IN to this container's published port.
       # Change to your actual externally-reachable address/domain for a real deployment.
-      APP_URL: "http://localhost:8000"
+      APP_URL: "https://dashboards.zerognetwork.co.za"
       # Pairing credentials (API key, webhook token, WS port) live in the mc_connection DB
       # table, not env vars — persisted by the dashboard-data volume below across restarts.
       #

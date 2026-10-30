@@ -4,7 +4,7 @@ services:
     ports:
       - "8000:8000"
     networks:
-      - dashboard-net
+      - cloudflare-shared
     environment:
       # Point at your NeoEssentials server's dashboard API. Use host.docker.internal
       # if the mod runs on the same machine as Docker (Linux: add
@@ -17,7 +17,7 @@ services:
       # the reverse direction from MC_API_URL above: that's this container reaching OUT to
       # the host's mod port, this is the mod reaching IN to this container's published port.
       # Change to your actual externally-reachable address/domain for a real deployment.
-      APP_URL: "https://dashboards.zerognetwork.co.za"
+      APP_URL: "https://dashboard.zerognetwork.co.za"
       # Pairing credentials (API key, webhook token, WS port) live in the mc_connection DB
       # table, not env vars — persisted by the dashboard-data volume below across restarts.
       #
@@ -37,25 +37,16 @@ services:
       - dashboard-data:/app/database
       - dashboard-storage:/app/storage
 
-  # Mirrors the Forgejo stack's own cloudflared service (D:\docker\forgejo\docker-compose.yml)
-  # — same image, same token-based `tunnel run` (no local ingress config.yml; the public
-  # hostname -> internal service mapping is configured on the Cloudflare Zero Trust dashboard
-  # side, pointing the new "dashboard" public hostname at http://dashboard:8000, the container's
-  # name on this same compose network). TUNNEL_TOKEN comes from a .env file next to this compose
-  # file (gitignored — see .gitignore), same convention as Forgejo's TUNNEL_TOKEN/POSTGRES_PASSWORD.
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
-    depends_on:
-      - dashboard
-    networks:
-      - dashboard-net
-
 networks:
-  dashboard-net:
+  # Pre-created externally (docker network create cloudflare-shared) — NOT managed by this
+  # compose file. Shared with D:\docker\forgejo\docker-compose.yml's cloudflared service, which
+  # is the ONLY connector for this tunnel/token now. A second, dashboard-only cloudflared
+  # container used to live in this file, but Cloudflare's edge load-balances every request
+  # across every connector registered under one token, and a connector that could only reach
+  # its own stack's network failed ~50% of requests meant for either site. Joining this one
+  # network lets Forgejo's single connector resolve and reach "dashboard" by name too.
+  cloudflare-shared:
+    external: true
 
 volumes:
   dashboard-data:

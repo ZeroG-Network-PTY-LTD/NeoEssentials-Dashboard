@@ -30,7 +30,7 @@ services:
       # as "not paired" instead. Still: to avoid having to re-pair after every rebuild,
       # generate one real key ONCE (`php artisan key:generate --show`) and set it here — a
       # value supplied here always wins over whatever got baked in at build time.
-      # APP_KEY: "base64:...replace-with-a-real-generated-key..."
+      APP_KEY: "${APP_KEY}"
     volumes:
       # Persist the SQLite DB (including mc_connection's pairing) and Laravel's writable
       # storage dirs across container restarts/rebuilds. Does NOT cover APP_KEY — see above.

@@ -74,4 +74,14 @@ EXPOSE 8000
 # to .env). The restart kills the in-flight response mid-request, so the save actually
 # succeeds but the browser sees a network error/empty response and the admin has no way to
 # tell it worked short of reloading the page and checking.
-CMD php artisan migrate --force && php artisan serve --no-reload --host=0.0.0.0 --port=8000
+#
+# routes/console.php schedules dashboard:sync-mod-users and dashboard:check-mc-health, but
+# Laravel's scheduler is inert on its own — it only does anything when something calls
+# `php artisan schedule:run` periodically (normally an OS cron entry). This image has no cron
+# daemon, so without the background loop below, those two commands NEVER ran, silently, since
+# nothing in this container ever invoked schedule:run. The loop polls once a minute (Laravel's
+# own minimum granularity), backgrounded so it doesn't block the main `serve` process below,
+# which stays the container's foreground/PID-1-adjacent process.
+CMD php artisan migrate --force && \
+    (while true; do php artisan schedule:run; sleep 60; done &) && \
+    php artisan serve --no-reload --host=0.0.0.0 --port=8000

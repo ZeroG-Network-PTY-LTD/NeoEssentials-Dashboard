@@ -32,7 +32,11 @@ import {
 import { PageProps } from '@/types';
 import { isMcLiveAvailable, useMcLiveStatus } from '@/lib/useMcLive';
 
-type DashboardPageProps = PageProps<{ apiReachable?: boolean; permissionsUsingExternal?: boolean }>;
+type DashboardPageProps = PageProps<{
+  apiReachable?: boolean;
+  permissionsUsingExternal?: boolean;
+  serverProfile?: { serverName: string | null; minecraftVersion: string | null } | null;
+}>;
 
 function FlashToast() {
   const { props } = usePage<DashboardPageProps>();
@@ -83,6 +87,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   const { url, props } = usePage<DashboardPageProps>();
   const reachable = props.apiReachable ?? true;
   const permissionsUsingExternal = props.permissionsUsingExternal ?? false;
+  const serverProfile = props.serverProfile ?? null;
   // Reverb isn't configured at all on shared/cPanel installs (see resources/js/app.tsx) — in
   // that case there's nothing to show a connection status for, so the badge only renders once
   // it's actually possible to be live.
@@ -164,9 +169,11 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
               <div className="font-display text-[15px] font-semibold tracking-tight group-hover:text-[var(--mc-cyan-400)] transition-colors">
                 ZeroG Network
               </div>
-              <div className="text-[11px] text-[var(--mc-text-muted)] font-data mt-0.5">
-                survival · 1.21.1
-              </div>
+              {(serverProfile?.serverName || serverProfile?.minecraftVersion) && (
+                <div className="text-[11px] text-[var(--mc-text-muted)] font-data mt-0.5 truncate">
+                  {[serverProfile.serverName, serverProfile.minecraftVersion].filter(Boolean).join(' · ')}
+                </div>
+              )}
             </div>
           </Link>
           <button

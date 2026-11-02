@@ -79,6 +79,21 @@ class HandleInertiaRequests extends Middleware
                     return false;
                 }
             },
+            // Drives the sidebar's "<name> · <mc version>" line under the logo, which used to
+            // be a hardcoded "survival · 1.21.1" string that never reflected the real server.
+            // Null on any failure/no-session — DashboardLayout falls back to just not showing
+            // the line rather than a stale/wrong placeholder.
+            'serverProfile' => function () use ($request) {
+                if (!$request->user()) {
+                    return null;
+                }
+
+                try {
+                    return app(MinecraftApiService::class)->serverProfile();
+                } catch (\Throwable $e) {
+                    return null;
+                }
+            },
         ];
     }
 }

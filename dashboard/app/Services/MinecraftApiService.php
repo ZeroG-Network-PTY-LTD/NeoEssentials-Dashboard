@@ -41,6 +41,24 @@ class MinecraftApiService
 
     // --- Status / players -----------------------------------------------
 
+    /**
+     * Server name and Minecraft/mod version, from GET /api/server/profile. Cached much longer
+     * than status()/players() (5 minutes, not 3 seconds) since this only changes on a server
+     * restart or mod update, not every tick. Used by DashboardLayout's sidebar, which used to
+     * show this as a hardcoded "survival · 1.21.1" string that never reflected the real server.
+     */
+    public function serverProfile(): array
+    {
+        return Cache::remember('mc_api:server_profile', 300, function () {
+            $profile = $this->get('api/server/profile');
+
+            return [
+                'serverName' => $profile['serverName'] ?? null,
+                'minecraftVersion' => $profile['minecraftVersion'] ?? null,
+            ];
+        });
+    }
+
     /** Server status: TPS, uptime, online count, memory. Cached briefly. */
     public function status(): array
     {

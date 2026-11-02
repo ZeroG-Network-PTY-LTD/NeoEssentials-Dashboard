@@ -107,6 +107,35 @@ the dashboard (instead of it only pulling on a schedule), see
 [Pairing the dashboard with your Minecraft server](#pairing-the-dashboard-with-your-minecraft-server)
 below — optional, and configurable any time from the **Configuration** page.
 
+### 9. Required: set up the cron job (the scheduled account sync does nothing without it)
+
+The app defines a periodic account sync (`dashboard:sync-mod-users`, every
+hour by default) and a health check, but **Laravel's scheduler doesn't run
+anything on its own** — it only does something when `php artisan
+schedule:run` is actually invoked, normally by a cron entry. Without this
+step, those scheduled jobs are silently defined but never execute, and
+account roles/data will only ever update when you manually visit the
+Configuration page and click **Sync now**.
+
+cPanel has a **Cron Jobs** tool (usually under *Advanced*) for exactly this,
+no SSH needed:
+
+1. Open cPanel → **Cron Jobs**.
+2. Set it to run **every minute** (select "Every Minute" under *Common
+   Settings*, or `* * * * *` manually) — this is Laravel's own expected
+   granularity; `schedule:run` itself decides which commands are actually
+   due each time it's called, so running it every minute doesn't mean your
+   hourly sync runs every minute too.
+3. Command to run (use the **full absolute path** to your install —
+   check File Manager if unsure, it's whatever directory contains this
+   package's `artisan` file):
+   ```
+   php /home/yourcpaneluser/path/to/dashboard/artisan schedule:run >> /dev/null 2>&1
+   ```
+4. Save. You can confirm it's actually firing from **Configuration** —
+   the sync's "last run" timestamp will start advancing on its own instead
+   of only changing when you click Sync now.
+
 ---
 
 ## Option B — Manual install (SSH/Composer/Node available)
@@ -128,6 +157,27 @@ php artisan serve
 Then open `http://127.0.0.1:8000`, register an account (the first one
 becomes admin automatically), and log in. Set `MC_API_URL` in `.env` and pair
 with the mod as described below.
+
+### Required: set up the cron job (the scheduled account sync does nothing without it)
+
+The app defines a periodic account sync (`dashboard:sync-mod-users`, every
+hour by default) and a health check, but **Laravel's scheduler doesn't run
+anything on its own** — it only does something when `php artisan
+schedule:run` is actually invoked. Without a cron entry calling it, those
+scheduled jobs are silently defined but never execute, and account
+roles/data will only ever update when you manually visit the Configuration
+page and click **Sync now**.
+
+Add this to your crontab (`crontab -e`), using the **full absolute path**
+to wherever you cloned the app:
+
+```
+* * * * * cd /path/to/dashboard && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Every minute is Laravel's own expected granularity — `schedule:run` itself
+decides which commands are actually due each time it's called, so this
+doesn't mean the hourly sync runs every minute too.
 
 ### Optional: live dashboard updates (Reverb)
 
@@ -158,9 +208,10 @@ breaks by skipping it.
 
 Optional. The API key you pasted during setup (`/apikey create`) already lets
 the dashboard pull data from the mod, including the hourly (configurable)
-account sync — this section is only for also letting the mod *push* live
-updates to the dashboard the moment something changes, via a one-time
-pairing code exchanged automatically:
+account sync — **as long as you've set up the cron job above**, since that
+scheduled pull doesn't run on its own otherwise. This section is only for
+also letting the mod *push* live updates to the dashboard the moment
+something changes, via a one-time pairing code exchanged automatically:
 
 1. **Generate a code.** In the install wizard's "Connect to the Minecraft
    server" step (or on the dashboard's **Configuration** page after setup),

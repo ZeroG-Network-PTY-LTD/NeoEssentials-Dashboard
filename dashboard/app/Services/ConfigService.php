@@ -333,6 +333,24 @@ class ConfigService
             $created++;
         }
 
-        return ['success' => true, 'created' => $created, 'updated' => $updated, 'total' => count($modUsers)];
+        // Accounts linked purely via mc_username/mc_uuid (the Settings page's "link mc
+        // account" flow — MinecraftAccountLinkManager on the mod side) never appear in
+        // $modUsers above, since that list is the mod's own internal dashboard-account store
+        // (DashboardRegistrationManager), a completely separate system. Without this, an
+        // in-game permission-group change for someone who only ever linked this way (never
+        // registered a mod-side dashboard account) would never reach this app's role column —
+        // resolveLocalRole() already does a live lookup against the mod, so this just needs to
+        // also call it for this account shape.
+        $linkedOnly = User::whereNotNull('mc_username')->whereNull('mod_username')->get();
+        foreach ($linkedOnly as $user) {
+            $role = $this->resolveLocalRole($user->mc_username);
+            if ($user->role !== $role) {
+                $user->role = $role;
+                $user->save();
+                $updated++;
+            }
+        }
+
+        return ['success' => true, 'created' => $created, 'updated' => $updated, 'total' => count($modUsers) + $linkedOnly->count()];
     }
 }

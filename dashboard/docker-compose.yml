@@ -9,7 +9,12 @@ services:
       # Point at your NeoEssentials server's dashboard API. Use host.docker.internal
       # if the mod runs on the same machine as Docker (Linux: add
       # "extra_hosts: - host.docker.internal:host-gateway" below).
-      MC_API_URL: "http://host.docker.internal:8090"
+      # ${MC_API_URL} lets a local .env override this without touching the tracked default —
+      # e.g. this host's mod listens on :8099, not :8090, because :8090 is squatted by an
+      # unrelated ledgerline-ntfy container here. Pointed at the wrong port, this silently hit
+      # ntfy's own API instead (same {"error": "..."} JSON shape ours uses), surfacing ntfy's
+      # own auth-rate-limit text ("too many auth failures") as if it came from the mod.
+      MC_API_URL: "${MC_API_URL:-http://host.docker.internal:8090}"
       # Without this it defaults to bare "http://localhost" (no port) — the pairing code
       # Configuration generates (`/dashboard pair "<APP_URL>" <code>`) embeds this exact
       # value, and the mod (running on the HOST, not in this container) tries to reach it

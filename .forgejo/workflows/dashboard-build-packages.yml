@@ -13,18 +13,21 @@ name: Dashboard — build installer/updater packages (Forgejo)
 # from when this repo also staged two now-unused placeholder sites); it was
 # flattened to the repo root since nothing else ever used those paths.
 #
-# Notification: deliberately NOT a Discord-post step here, unlike the mod's workflow.
-# This repo's releases should land in the same channel GitHub's native repo webhook
-# already posts to (Settings > Webhooks on the GitHub repo) — not the mod's separate
-# "dev builds" channel. A Forgejo-side repo webhook (Settings > Webhooks on this
-# mirror, pointed at that same Discord webhook URL) fires natively on Forgejo's own
-# release-publish event, so no extra Actions step/secret is needed for that.
+# Notification: posts a rich embed to the dashboard's own "releases" Discord channel
+# (not the mod's separate "dev builds" channel, and not the general commits/events
+# channel GitHub's own native repo webhook already covers) — same pattern as the
+# mod workflow's own "Post build to Discord" step, adapted for the two zip assets
+# instead of one jar. continue-on-error: a Discord outage shouldn't fail the release.
 #
-# Requires a repo secret CI_RELEASE_TOKEN — a Forgejo access token with read/write
-# access to this repo's contents/releases — add it manually via this repo's Settings
-# > Actions > Secrets. (Same requirement as the mod's workflow; Forgejo secrets are
-# per-repo, so the mod's existing token value works here too but still has to be
-# added again under this repo's own settings.)
+# Requires two repo secrets, added manually via this repo's Settings > Actions >
+# Secrets:
+# - CI_RELEASE_TOKEN — a Forgejo access token with read/write access to this repo's
+#   contents/releases. (Forgejo secrets are per-repo, so the mod's existing token
+#   value works here too but still has to be added again under this repo's own
+#   settings.)
+# - DISCORD_RELEASES_WEBHOOK_URL — the releases channel's Discord webhook URL.
+#   Skipped (not failed) if unset, so this workflow doesn't break for anyone who
+#   hasn't configured it.
 
 on:
   push:
@@ -102,6 +105,7 @@ jobs:
       # Forgejo's REST API directly since that action is GitHub-specific (same pattern
       # as the mod workflow's own "Publish build release" step).
       - name: Publish release
+        id: publish
         env:
           FORGEJO_API: ${{ github.server_url }}/api/v1
           TOKEN: ${{ secrets.CI_RELEASE_TOKEN }}
@@ -122,6 +126,7 @@ jobs:
           release_id=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/created.json','utf8')).id)")
           echo "release_id=$release_id"
 
+          : > /tmp/asset-urls.txt
           for f in dist/*_installer.zip dist/*-updater.zip; do
             name=$(basename "$f")
             # Encode the "+"-free here (jar filenames elsewhere have had trouble with it;
@@ -135,4 +140,43 @@ jobs:
               echo "::error::Failed to upload asset $name (HTTP $asset_code)"
               exit 1
             fi
+            node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/asset.json','utf8')).browser_download_url)" >> /tmp/asset-urls.txt
           done
+
+          echo "html_url=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/created.json','utf8')).html_url)")" >> "$GITHUB_OUTPUT"
+
+      # Separate from the mod workflow's own Discord step/secret — this repo's builds
+      # go to the dashboard's own releases channel, not the mod's "dev builds" one.
+      - name: Post release to Discord
+        continue-on-error: true
+        env:
+          DISCORD_RELEASES_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK_URL }}
+          TAG: dashboard-${{ steps.vars.outputs.sha }}
+          HTML_URL: ${{ steps.publish.outputs.html_url }}
+        run: |
+          if [ -z "$DISCORD_RELEASES_WEBHOOK_URL" ]; then
+            echo "DISCORD_RELEASES_WEBHOOK_URL not set - skipping Discord notification."
+            exit 0
+          fi
+
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          payload=$(TIMESTAMP="$TIMESTAMP" node -e "
+            const fs = require('fs');
+            const urls = fs.readFileSync('/tmp/asset-urls.txt', 'utf8').trim().split('\n').filter(Boolean);
+            const lines = urls.map(u => '[' + decodeURIComponent(u.split('/').pop()) + '](' + u + ')').join('\n');
+            console.log(JSON.stringify({
+              embeds: [{
+                author: { name: 'NeoEssentials Dashboard (Forgejo)' },
+                title: '🆕 Release',
+                color: 5793266,
+                url: process.env.HTML_URL,
+                description: '**' + process.env.TAG + '**\n' + lines,
+                timestamp: process.env.TIMESTAMP
+              }]
+            }));
+          ")
+
+          curl -sS -f \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_RELEASES_WEBHOOK_URL"

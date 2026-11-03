@@ -61,6 +61,7 @@ jobs:
         run: ./bin/build-installer.ps1 -Kind updater -Version "${{ steps.vars.outputs.sha }}"
 
       - name: Publish dated release
+        id: publish
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dashboard-${{ steps.vars.outputs.sha }}
@@ -76,3 +77,44 @@ jobs:
           files: |
             dist/*_installer.zip
             dist/*-updater.zip
+
+      # Separate from the mod workflow's own Discord step/secret, and from this repo's
+      # general commits/events channel (already covered by GitHub's own native repo
+      # webhook on the `release` event) — this posts to the dashboard's own releases
+      # channel specifically. continue-on-error: a Discord outage shouldn't fail the release.
+      - name: Post release to Discord
+        continue-on-error: true
+        shell: bash
+        env:
+          DISCORD_RELEASES_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK_URL }}
+          TAG: dashboard-${{ steps.vars.outputs.sha }}
+          HTML_URL: ${{ steps.publish.outputs.url }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$DISCORD_RELEASES_WEBHOOK_URL" ]; then
+            echo "DISCORD_RELEASES_WEBHOOK_URL not set - skipping Discord notification."
+            exit 0
+          fi
+
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          payload=$(TIMESTAMP="$TIMESTAMP" node -e "
+            const fs = require('fs');
+            const files = fs.readdirSync('dist').filter(f => f.endsWith('.zip'));
+            const base = 'https://github.com/' + process.env.REPO + '/releases/download/' + process.env.TAG + '/';
+            const lines = files.map(f => '[' + f + '](' + base + encodeURIComponent(f) + ')').join('\n');
+            console.log(JSON.stringify({
+              embeds: [{
+                author: { name: 'NeoEssentials Dashboard (GitHub)' },
+                title: '🆕 Release',
+                color: 5793266,
+                url: process.env.HTML_URL,
+                description: '**' + process.env.TAG + '**\n' + lines,
+                timestamp: process.env.TIMESTAMP
+              }]
+            }));
+          ")
+
+          curl -sS -f \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_RELEASES_WEBHOOK_URL"

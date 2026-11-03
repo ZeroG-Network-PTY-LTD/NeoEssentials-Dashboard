@@ -812,6 +812,19 @@ class MinecraftApiService
         return $this->get("api/permissions/user/{$username}");
     }
 
+    /**
+     * Resolves an in-game permission GROUP (not a player) to its configured dashboard tab
+     * permissions, via the mod's `webDashboard.groupPermissions[]` config
+     * (GET /api/permissions/dashboard-mapping?group=...). Used by ConfigService::resolveLocalPermissions()
+     * to populate this app's own per-user `permissions` column, mirroring the mod's own bundled
+     * dashboard's custom per-group tab access. Returns ['success' => ..., 'found' => false, 'tabs' => []]
+     * shape on any failure, matching permissionUserLookup()'s defensive style.
+     */
+    public function permissionDashboardMapping(string $group): array
+    {
+        return $this->get('api/permissions/dashboard-mapping', ['group' => $group]);
+    }
+
     public function permissionAliases(): array
     {
         $data = $this->get('api/permissions/aliases');

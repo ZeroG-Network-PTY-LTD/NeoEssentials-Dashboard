@@ -238,6 +238,40 @@ class ConfigService
         return ($result['group'] ?? null) === config('minecraft.admin_group') ? 'admin' : 'moderator';
     }
 
+    /**
+     * Resolves a Minecraft account's per-tab dashboard permissions from the mod's
+     * `webDashboard.groupPermissions[]` config — same primary-group lookup resolveLocalRole()
+     * above already does, then a second call mapping that group to tab grants. Returns an empty
+     * array on any failure (mod unreachable, player not found, group unmapped) — same defensive,
+     * never-throw style as resolveLocalRole(), since the caller (syncFromMod()) persists whatever
+     * comes back directly as this app's own per-user `permissions` column.
+     */
+    public function resolveLocalPermissions(string $mcUsername): array
+    {
+        try {
+            $lookup = $this->mc->permissionUserLookup($mcUsername);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if (! ($lookup['success'] ?? false)) {
+            return [];
+        }
+
+        $group = $lookup['group'] ?? null;
+        if (! $group) {
+            return [];
+        }
+
+        try {
+            $mapping = $this->mc->permissionDashboardMapping($group);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        return $mapping['tabs'] ?? [];
+    }
+
     public function testMcApi(): array
     {
         if (! McConnection::current()->isPaired()) {
@@ -285,6 +319,7 @@ class ConfigService
             }
 
             $role = $this->resolveLocalRole($username);
+            $permissions = $this->resolveLocalPermissions($username);
             $email = $modUser['email'] ?: "{$username}@mod.local";
 
             $existing = User::where('mod_username', $username)->first();
@@ -305,10 +340,12 @@ class ConfigService
             if ($existing) {
                 $changed = $existing->isDirty('mod_username')
                     || $existing->role !== $role
+                    || $existing->permissions !== $permissions
                     || (($modUser['email'] ?? null) && $existing->email !== $modUser['email']);
 
                 if ($changed) {
                     $existing->role = $role;
+                    $existing->permissions = $permissions;
                     if (! empty($modUser['email'])) {
                         $existing->email = $modUser['email'];
                     }
@@ -329,6 +366,7 @@ class ConfigService
             $user->email = $email;
             $user->password = bcrypt(Str::random(40));
             $user->role = $role;
+            $user->permissions = $permissions;
             $user->save();
             $created++;
         }
@@ -344,8 +382,10 @@ class ConfigService
         $linkedOnly = User::whereNotNull('mc_username')->whereNull('mod_username')->get();
         foreach ($linkedOnly as $user) {
             $role = $this->resolveLocalRole($user->mc_username);
-            if ($user->role !== $role) {
+            $permissions = $this->resolveLocalPermissions($user->mc_username);
+            if ($user->role !== $role || $user->permissions !== $permissions) {
                 $user->role = $role;
+                $user->permissions = $permissions;
                 $user->save();
                 $updated++;
             }

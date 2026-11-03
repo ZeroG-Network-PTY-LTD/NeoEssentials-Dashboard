@@ -95,6 +95,18 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   const isLive = useMcLiveStatus();
   const user = props.auth.user;
   const isAdmin = user.role === 'admin';
+  // Mirrors the mod's own internal dashboard's can() helper (webdashboard-ui/src/lib/auth.tsx):
+  // reads this account's per-tab grants (resolved server-side from webDashboard.groupPermissions
+  // for their in-game primary group, see ConfigService::resolveLocalPermissions()) rather than
+  // this app's own admin/moderator role, which has no concept of a per-tab CUSTOM grant. A
+  // moderator with no matching group-permission entry sees nothing extra — exactly the same as
+  // before this feature existed, since every existing `isAdmin ? [...] : []` nav gate below now
+  // reads `isAdmin || can('<tab>')`.
+  const can = (tab: string, write = false) => {
+    const entry = user.permissions?.find((t) => t.tab === tab);
+    if (!entry) return false;
+    return write ? entry.canWrite : entry.canRead;
+  };
   // Mirrors EnsureAccountLinked's server-side gate exactly (admins exempt) — every /dashboard/*
   // route already redirects to Profile for anyone failing this, so the nav below just needs to
   // stay consistent with what's actually reachable rather than dead-ending on a redirect.
@@ -126,18 +138,20 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     { label: 'Report', href: route('dashboard.reports.create'), icon: Send },
     // Reviewing player reports requires the mod's admin session (ModerationEndpoint) —
     // same admin-only gate as Users/Updates/Configuration below, hidden rather than 403ing.
-    ...(isAdmin ? [{ label: 'Reports', href: route('dashboard.reports.index'), icon: Flag }] : []),
+    ...(isAdmin || can('moderation') ? [{ label: 'Reports', href: route('dashboard.reports.index'), icon: Flag }] : []),
     // IP-level bans/mutes are admin-only — broader/more severe than per-player
     // moderation (affects anyone sharing that address), same gate as Reports.
-    ...(isAdmin ? [{ label: 'IP Bans', href: route('dashboard.ip-bans.index'), icon: Ban }] : []),
+    ...(isAdmin || can('moderation') ? [{ label: 'IP Bans', href: route('dashboard.ip-bans.index'), icon: Ban }] : []),
     // Jail cell management (create/remove by coordinates) — admin-only, matching the
     // in-game /setjail permission node. Jailing/unjailing a specific PLAYER into an
     // existing cell stays on the player profile panel, not here.
-    ...(isAdmin ? [{ label: 'Jails', href: route('dashboard.jails.index'), icon: Lock }] : []),
+    ...(isAdmin || can('moderation') ? [{ label: 'Jails', href: route('dashboard.jails.index'), icon: Lock }] : []),
     // Mod dashboard account management is admin-only (mirrors the mod's own
     // UserManagementEndpoint) — hide the link entirely for moderators rather
-    // than showing a dead end that 403s.
-    ...(isAdmin ? [{ label: 'Users', href: route('dashboard.users.index'), icon: UserCog }] : []),
+    // than showing a dead end that 403s. CUSTOM-style group-permission grants
+    // (webDashboard.groupPermissions) can also unlock this, same as every other
+    // gate in this list that now reads `isAdmin || can('<tab>')`.
+    ...(isAdmin || can('users') ? [{ label: 'Users', href: route('dashboard.users.index'), icon: UserCog }] : []),
     // Self-update is entirely admin-gated server-side (can:updates.manage) —
     // hide the link for moderators too rather than showing a dead end.
     ...(isAdmin ? [{ label: 'Updates', href: route('dashboard.updates.index'), icon: RefreshCw }] : []),

@@ -49,6 +49,14 @@ class InstallController extends Controller
      */
     public function apiKeyConnect(Request $request): RedirectResponse
     {
+        // Every other install step goes through guard(), which redirects away once
+        // storage/installed.lock exists - this one was missing that check, so it stayed
+        // reachable (and fully functional, re-pairing the live mc_connection row) by anyone,
+        // unauthenticated, even against an already-installed production instance.
+        if ($this->install->isInstalled()) {
+            return redirect('/');
+        }
+
         $data = $request->validate([
             'url' => 'required|url',
             'apiKey' => 'required|string',

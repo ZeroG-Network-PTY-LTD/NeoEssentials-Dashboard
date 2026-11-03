@@ -1,0 +1,139 @@
+name: Dashboard — build installer/updater packages (Forgejo)
+
+# Forgejo Actions stand-in for GitHub's own .github/workflows/dashboard-build-packages.yml,
+# same shape: builds dashboard/dist/*_installer.zip and *-updater.zip (via
+# dashboard/bin/build-installer.ps1) and publishes them as a release tagged
+# dashboard-<shortsha>. Runs on the same Linux-based Forgejo runner the mod's own
+# build-and-release.yml uses — build-installer.ps1 no longer shells out to
+# robocopy (Windows-only), so it runs fine under `pwsh` here too; pwsh itself isn't
+# in the runner image, so it's installed from Microsoft's tarball below, same
+# "skip apt, fetch a known-good tarball directly" approach as the mod workflow's JDK step.
+#
+# Notification: deliberately NOT a Discord-post step here, unlike the mod's workflow.
+# This repo's releases should land in the same channel GitHub's native repo webhook
+# already posts to (Settings > Webhooks on the GitHub repo) — not the mod's separate
+# "dev builds" channel. A Forgejo-side repo webhook (Settings > Webhooks on this
+# mirror, pointed at that same Discord webhook URL) fires natively on Forgejo's own
+# release-publish event, so no extra Actions step/secret is needed for that.
+#
+# Requires a repo secret CI_RELEASE_TOKEN — a Forgejo access token with read/write
+# access to this repo's contents/releases — add it manually via this repo's Settings
+# > Actions > Secrets. (Same requirement as the mod's workflow; Forgejo secrets are
+# per-repo, so the mod's existing token value works here too but still has to be
+# added again under this repo's own settings.)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard/**'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: docker
+    container:
+      image: catthehacker/ubuntu:act-22.04
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fails fast instead of discovering a bad/missing secret only after the whole
+      # build, at the Publish step's own API calls — same rationale as the mod workflow.
+      - name: Verify CI_RELEASE_TOKEN
+        env:
+          FORGEJO_API: ${{ github.server_url }}/api/v1
+          TOKEN: ${{ secrets.CI_RELEASE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "TOKEN length: ${#TOKEN} (expect 40 for a Forgejo access token; 0 means the secret isn't reaching this job)"
+          code=$(curl -s -o /tmp/whoami.json -w "%{http_code}" -H "Authorization: token $TOKEN" "$FORGEJO_API/repos/$REPO")
+          echo "Auth check -> HTTP $code"; cat /tmp/whoami.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::CI_RELEASE_TOKEN failed to authenticate (HTTP $code) - add it in Settings > Actions > Secrets"
+            exit 1
+          fi
+
+      # catthehacker/ubuntu:act-22.04 has node/git (needed for JS actions) but not pwsh.
+      # Fetching Microsoft's tarball directly rather than apt, same reasoning as the mod
+      # workflow's JDK step: faster and avoids archive mirror flakiness on a cold container.
+      - name: Install PowerShell (pwsh)
+        run: |
+          if command -v pwsh >/dev/null 2>&1; then
+            echo "Using pre-installed pwsh: $(pwsh -v)"
+          else
+            echo "No pre-installed pwsh - fetching from Microsoft"
+            curl -fsSL --retry 5 --retry-delay 10 \
+              "https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/powershell-7.4.6-linux-x64.tar.gz" \
+              -o /tmp/pwsh.tar.gz
+            mkdir -p /opt/microsoft/powershell/7
+            tar -xzf /tmp/pwsh.tar.gz -C /opt/microsoft/powershell/7
+            chmod +x /opt/microsoft/powershell/7/pwsh
+            ln -sf /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh
+          fi
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          # Matches composer.json's require.php - composer.lock is actually
+          # resolved against Symfony 8.0.x, which needs PHP >=8.4.
+          php-version: '8.4'
+          extensions: mbstring, pdo, pdo_sqlite, curl, fileinfo, zip, ctype, json, tokenizer, openssl
+          tools: composer:v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compute short SHA
+        id: vars
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build installer package
+        run: pwsh ./bin/build-installer.ps1 -Kind installer -Version "${{ steps.vars.outputs.sha }}"
+
+      - name: Build updater package
+        run: pwsh ./bin/build-installer.ps1 -Kind updater -Version "${{ steps.vars.outputs.sha }}"
+
+      # Mirrors the GitHub workflow's softprops/action-gh-release step, done here via
+      # Forgejo's REST API directly since that action is GitHub-specific (same pattern
+      # as the mod workflow's own "Publish build release" step).
+      - name: Publish release
+        env:
+          FORGEJO_API: ${{ github.server_url }}/api/v1
+          TOKEN: ${{ secrets.CI_RELEASE_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: dashboard-${{ steps.vars.outputs.sha }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+
+          create_code=$(curl -s -o /tmp/created.json -w "%{http_code}" -X POST -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"Dashboard $TAG\",\"body\":\"Built from commit $SHA on \`main\`.\",\"target_commitish\":\"$SHA\",\"prerelease\":false}" \
+            "$FORGEJO_API/repos/$REPO/releases")
+          echo "POST create release -> HTTP $create_code"; cat /tmp/created.json; echo
+          if [ "$create_code" != "201" ]; then
+            echo "::error::Failed to create release (HTTP $create_code)"
+            exit 1
+          fi
+          release_id=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/created.json','utf8')).id)")
+          echo "release_id=$release_id"
+
+          for f in dist/*_installer.zip dist/*-updater.zip; do
+            name=$(basename "$f")
+            # Encode the "+"-free here (jar filenames elsewhere have had trouble with it;
+            # this repo's zip names don't contain one, but encoding is cheap insurance).
+            name_encoded=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$name")
+            asset_code=$(curl -s -o /tmp/asset.json -w "%{http_code}" -X POST -H "Authorization: token $TOKEN" \
+              -F "attachment=@${f};filename=${name}" \
+              "$FORGEJO_API/repos/$REPO/releases/$release_id/assets?name=${name_encoded}")
+            echo "POST upload asset $name -> HTTP $asset_code"; cat /tmp/asset.json; echo
+            if [ "$asset_code" != "201" ]; then
+              echo "::error::Failed to upload asset $name (HTTP $asset_code)"
+              exit 1
+            fi
+          done

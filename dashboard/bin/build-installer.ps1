@@ -55,28 +55,47 @@ Write-Host "    Output:  $ZipPath"
 # --- 1. Clean copy of the app, excluding dev-only / generated / secret paths ---
 # README.md and INSTALL.md aren't excluded below, so they're carried straight
 # into the package root, right next to the wizard the extracted zip lands on.
+#
+# Plain recursive Copy-Item instead of robocopy: robocopy is a Windows-only
+# external binary, and this script runs under `pwsh` (PowerShell Core, cross-
+# platform) in CI on both GitHub's windows-latest and a Linux-based Forgejo
+# runner, so nothing here can shell out to a Windows-specific tool.
 Write-Host "`n==> Copying source (excluding vendor/node_modules/.env/storage logs/tests)..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
 
-$RobocopyExcludeDirs = @(
-    '.git', 'node_modules', 'vendor', 'dist', 'tests',
-    (Join-Path (Join-Path 'storage' 'framework') 'cache'),
-    (Join-Path (Join-Path 'storage' 'framework') 'sessions'),
-    (Join-Path (Join-Path 'storage' 'framework') 'views'),
+# Directories skipped by name, anywhere in the tree (matches robocopy /XD's behavior
+# for a bare name, and none of these names recur elsewhere in this repo).
+$ExcludeDirNames = @('.git', 'node_modules', 'vendor', 'dist', 'tests')
+# Directories skipped by their exact path relative to $RepoRoot — storage/ itself
+# (e.g. storage/app) still needs to be copied, only these specific subpaths don't.
+$ExcludeRelativeDirs = @(
+    (Join-Path 'storage' (Join-Path 'framework' 'cache')),
+    (Join-Path 'storage' (Join-Path 'framework' 'sessions')),
+    (Join-Path 'storage' (Join-Path 'framework' 'views')),
     (Join-Path 'storage' 'logs')
 )
-$RobocopyExcludeFiles = @('.env', '.env.backup', '.env.production', 'database.sqlite', 'installed.lock', 'deployment.json', '*.log')
+# Files skipped by name (or *.log pattern), anywhere in the tree, matching robocopy /XF.
+$ExcludeFileNames = @('.env', '.env.backup', '.env.production', 'database.sqlite', 'installed.lock', 'deployment.json')
 
-$robocopyArgs = @(
-    $RepoRoot, $StagingDir, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP',
-    '/XD'
-) + $RobocopyExcludeDirs + @('/XF') + $RobocopyExcludeFiles
-
-robocopy @robocopyArgs | Out-Null
-# robocopy's exit codes 0-7 are all "success" (8+ means real errors)
-if ($LASTEXITCODE -ge 8) {
-    throw "robocopy failed with exit code $LASTEXITCODE"
+function Copy-FilteredTree {
+    param([string]$Source, [string]$Destination)
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
+        $destPath = Join-Path $Destination $_.Name
+        if ($_.PSIsContainer) {
+            if ($ExcludeDirNames -contains $_.Name) { return }
+            $relFromRoot = $_.FullName.Substring($RepoRoot.Length).TrimStart('\', '/')
+            if ($ExcludeRelativeDirs -contains $relFromRoot) { return }
+            Copy-FilteredTree -Source $_.FullName -Destination $destPath
+        } else {
+            if ($ExcludeFileNames -contains $_.Name) { return }
+            if ($_.Name -like '*.log') { return }
+            Copy-Item -LiteralPath $_.FullName -Destination $destPath -Force
+        }
+    }
 }
+
+Copy-FilteredTree -Source $RepoRoot -Destination $StagingDir
 
 # --- 2. Install production dependencies + build frontend, inside the copy only ---
 Push-Location $StagingDir
@@ -108,11 +127,11 @@ if ($Kind -eq 'installer') {
     # --- 3. Bundle a working .env (unique APP_KEY per build, safe defaults
     #        for a host that may not offer a queue worker / much DB headroom) ---
     Write-Host "`n==> Writing bundled .env..." -ForegroundColor Cyan
-    # RandomNumberGenerator::Fill() is .NET 5+ only — Windows PowerShell 5.1
-    # runs on .NET Framework, where RNGCryptoServiceProvider is what's available.
+    # RandomNumberGenerator.Fill() needs .NET 5+, which `pwsh` (PowerShell Core)
+    # always runs on, on both Windows and Linux — this script no longer supports
+    # legacy Windows PowerShell 5.1 (.NET Framework), where this API isn't available.
     $appKeyBytes = New-Object byte[] 32
-    $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
-    try { $rng.GetBytes($appKeyBytes) } finally { $rng.Dispose() }
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill($appKeyBytes)
     $appKey = 'base64:' + [Convert]::ToBase64String($appKeyBytes)
 
     $envExamplePath = Join-Path $StagingDir '.env.example'

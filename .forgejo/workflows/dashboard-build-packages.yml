@@ -1,13 +1,17 @@
 name: Dashboard — build installer/updater packages (Forgejo)
 
 # Forgejo Actions stand-in for GitHub's own .github/workflows/dashboard-build-packages.yml,
-# same shape: builds dashboard/dist/*_installer.zip and *-updater.zip (via
-# dashboard/bin/build-installer.ps1) and publishes them as a release tagged
-# dashboard-<shortsha>. Runs on the same Linux-based Forgejo runner the mod's own
-# build-and-release.yml uses — build-installer.ps1 no longer shells out to
-# robocopy (Windows-only), so it runs fine under `pwsh` here too; pwsh itself isn't
-# in the runner image, so it's installed from Microsoft's tarball below, same
-# "skip apt, fetch a known-good tarball directly" approach as the mod workflow's JDK step.
+# same shape: builds dist/*_installer.zip and *-updater.zip (via bin/build-installer.ps1)
+# and publishes them as a release tagged dashboard-<shortsha>. Runs on the same
+# Linux-based Forgejo runner the mod's own build-and-release.yml uses —
+# build-installer.ps1 no longer shells out to robocopy (Windows-only), so it runs
+# fine under `pwsh` here too; pwsh itself isn't in the runner image, so it's
+# installed from Microsoft's tarball below, same "skip apt, fetch a known-good
+# tarball directly" approach as the mod workflow's JDK step.
+#
+# Repo layout: this app used to live under a dashboard/ subfolder (a leftover
+# from when this repo also staged two now-unused placeholder sites); it was
+# flattened to the repo root since nothing else ever used those paths.
 #
 # Notification: deliberately NOT a Discord-post step here, unlike the mod's workflow.
 # This repo's releases should land in the same channel GitHub's native repo webhook
@@ -25,8 +29,6 @@ name: Dashboard — build installer/updater packages (Forgejo)
 on:
   push:
     branches: [main]
-    paths:
-      - 'dashboard/**'
   workflow_dispatch: {}
 
 jobs:
@@ -34,9 +36,6 @@ jobs:
     runs-on: docker
     container:
       image: catthehacker/ubuntu:act-22.04
-    defaults:
-      run:
-        working-directory: dashboard
     steps:
       - name: Checkout
         uses: actions/checkout@v4

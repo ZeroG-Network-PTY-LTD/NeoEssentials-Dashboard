@@ -63,7 +63,8 @@ COPY --from=assets /app ./
 # or a real .env volume-mounted over this one at runtime — none of which get overridden
 # by anything baked in here, since this image never runs `config:cache`.
 RUN cp .env.example .env \
-    && touch database/database.sqlite \
+    && mkdir -p storage/app \
+    && touch storage/app/database.sqlite \
     && php artisan key:generate --force \
     && chown -R www-data:www-data storage bootstrap/cache database
 

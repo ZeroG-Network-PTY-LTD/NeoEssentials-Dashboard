@@ -36,10 +36,22 @@ services:
       # generate one real key ONCE (`php artisan key:generate --show`) and set it here — a
       # value supplied here always wins over whatever got baked in at build time.
       APP_KEY: "${APP_KEY}"
+      # The SQLite DB file lives under storage/ (persisted by dashboard-storage below), not
+      # database/ — see the volumes comment below for why.
+      DB_DATABASE: "/app/storage/app/database.sqlite"
     volumes:
-      # Persist the SQLite DB (including mc_connection's pairing) and Laravel's writable
-      # storage dirs across container restarts/rebuilds. Does NOT cover APP_KEY — see above.
-      - dashboard-data:/app/database
+      # Persist Laravel's writable storage dir (now including the SQLite DB itself, via
+      # DB_DATABASE above) across container restarts/rebuilds. Does NOT cover APP_KEY — see
+      # above. This used to ALSO have `dashboard-data:/app/database`, mounting the whole
+      # database/ directory — that shadowed the image's baked-in database/migrations/ with
+      # whatever was in the volume from the container's first ever start, so any migration
+      # added to the repo after that silently never ran (no error; migrate:status just never
+      # listed it). A volume mounted on the single file instead (`:/app/database/
+      # database.sqlite`) was tried next but this Docker Desktop/Windows setup doesn't
+      # reliably auto-create file-type named volumes ("not a directory" mount error even on
+      # a fresh volume). Moving the DB file into storage/ sidesteps both: storage/ was
+      # already a full-directory volume mount and never has new versioned files added to it
+      # at build time the way database/migrations/ does, so there's nothing for it to shadow.
       - dashboard-storage:/app/storage
 
 networks:
@@ -54,5 +66,4 @@ networks:
     external: true
 
 volumes:
-  dashboard-data:
   dashboard-storage:

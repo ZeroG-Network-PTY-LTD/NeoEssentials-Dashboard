@@ -79,9 +79,15 @@ class BackupsController extends Controller
             return response($e->getMessage(), 502);
         }
 
+        // $name is a route parameter under attacker control (any logged-in user, not just
+        // backups.manage - see route comment); an embedded '"' could break out of the quoted
+        // filename, so escape it and encode via RFC 5987 rather than trusting it raw in a header.
+        $safeName = str_replace('"', '', $name);
+        $encodedName = rawurlencode("{$name}.zip");
+
         return response($mcResponse->body(), 200, [
             'Content-Type' => 'application/zip',
-            'Content-Disposition' => "attachment; filename=\"{$name}.zip\"",
+            'Content-Disposition' => "attachment; filename=\"{$safeName}.zip\"; filename*=UTF-8''{$encodedName}",
         ]);
     }
 

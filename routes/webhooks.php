@@ -18,4 +18,6 @@ Route::prefix('webhooks')->name('webhooks.')->group(function () {
 // Named webhooks.* (despite the /api/pair/complete URI) so EnsureInstalled's route-name
 // exemption check actually matches it — this route must work even before the install
 // wizard has finished, since it's part of that same wizard's own pairing step.
-Route::post('/api/pair/complete', [PairingController::class, 'complete'])->name('webhooks.pair.complete');
+Route::post('/api/pair/complete', [PairingController::class, 'complete'])
+    ->middleware('throttle:10,1')
+    ->name('webhooks.pair.complete');

@@ -105,10 +105,19 @@ class ProfileController extends Controller
         );
 
         if (($status['linked'] ?? false) && ! empty($status['mcUuid'])) {
-            $request->user()->forceFill([
-                'mc_uuid' => $status['mcUuid'],
-                'mc_username' => $status['mcUsername'] ?? null,
-            ])->save();
+            try {
+                $request->user()->forceFill([
+                    'mc_uuid' => $status['mcUuid'],
+                    'mc_username' => $status['mcUsername'] ?? null,
+                ])->save();
+            } catch (\Illuminate\Database\QueryException $e) {
+                // mc_uuid is unique (see add_unique_index_to_users_mc_uuid) - this
+                // Minecraft account is already linked to a different Laravel account.
+                return response()->json([
+                    'linked' => false,
+                    'error' => 'This Minecraft account is already linked to another account.',
+                ], 409);
+            }
         }
 
         return response()->json($status);
